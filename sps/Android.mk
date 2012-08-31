@@ -9,6 +9,6 @@ include $(BUILD_COPY_HEADERS)
 
 LOCAL_MODULE      := msm_sps_test_module.ko
 LOCAL_MODULE_TAGS := eng
-include $(TOP)/build/dlkm/AndroidKernelModule.mk
+include $(TOP)/device/qcom/common/dlkm/AndroidKernelModule.mk
 
 endif

@@ -1,6 +1,6 @@
 ifeq ($(call is-board-platform,msm8660),true)
 
-DLKM_DIR   := build/dlkm
+DLKM_DIR   := device/qcom/common/dlkm
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
