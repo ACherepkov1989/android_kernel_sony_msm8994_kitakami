@@ -12,6 +12,9 @@ endif
 if USEWATCHDOG
 BUILD_TEST += watchdog
 endif
+if USEOCMEM
+BUILD_TEST += ocmem
+endif
 endif
 
 if USESPS
