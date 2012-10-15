@@ -1,3 +1,9 @@
+ocmemdir         = $(prefix)/ocmem
+
+ocmem_PROGRAMS   = ocmem_test
+ocmem_test_LDADD = -lpthread -lrt
+ocmem_SCRIPTS    = ocmem_test.sh run.sh
+
 KERNEL_FLAGS ?= ARCH=arm
 
 EXTRA_CFLAGS	= -DDEBUG
@@ -19,6 +25,3 @@ install-exec-local: $(module)
 # if there is a problem.
 clean-local:
 	-test ! -d "$(KERNEL_DIR)" || $(kmake) clean
-
-ocmemdir        = $(prefix)/ocmem
-

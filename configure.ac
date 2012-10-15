@@ -70,7 +70,7 @@ ENABLE_KERNEL_TEST([sps],[include the sps test (default=yes)])
 # watchdog
 ENABLE_KERNEL_TEST([watchdog],[include the watchdog test (default=yes)])
 
-#ocmem
+# ocmem
 ENABLE_KERNEL_TEST([ocmem],[include the ocmem test (default=yes)])
 
 AC_SUBST([CFLAGS])
