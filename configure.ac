@@ -58,6 +58,9 @@ AM_CONDITIONAL(KERNELMODULES, [test -n "${with_kernel}"])
 # be installed if the conditional BIGTESTS is false.
 #
 
+# ion
+ENABLE_KERNEL_TEST([ion],[include the ion test (default=yes)])
+
 # msm-bus
 ENABLE_KERNEL_TEST([msm-bus],[include the MSM bus test (default=yes)])
 
@@ -75,6 +78,7 @@ AC_SUBST([CC])
 
 AC_CONFIG_FILES([
 	Makefile
+	ion/Makefile
 	msm_bus/Makefile
 	ocmem/Makefile
 	sps/Makefile

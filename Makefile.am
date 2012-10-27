@@ -6,6 +6,9 @@ topdir           = $(prefix)
 BUILD_TEST=
 
 if KERNELMODULES
+if USEION
+BUILD_TEST += ion
+endif
 if USEMSM_BUS
 BUILD_TEST += msm_bus
 endif
