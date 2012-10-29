@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,9 +20,6 @@
 #include <mach/msm_bus_board.h>
 #include "msm_bus_test.h"
 
-#define MSM_BUS_IOCDBG(msg, ...) \
-	printk(KERN_DEBUG "AXI: %s(): " msg, __func__, ## __VA_ARGS__)
-
 static int msm_bus_create_client(unsigned long arg)
 {
 	struct msm_bus_paths *usecase;
@@ -33,10 +30,10 @@ static int msm_bus_create_client(unsigned long arg)
 	uint32_t clid;
 
 	pdata = kmalloc(sizeof(struct msm_bus_scale_pdata), GFP_KERNEL);
-	MSM_BUS_IOCDBG("create cl\n");
+	pr_debug("AXI: %s(): create cl\n", __func__);
 	if (__copy_from_user(&cldata, (void __user *)arg,
 			sizeof(struct msm_bus_test_cldata))) {
-		MSM_BUS_IOCDBG("Error getting user memory\n");
+		pr_err("AXI: %s(): Error getting user memory\n", __func__);
 		return -EFAULT;
 	}
 
@@ -46,7 +43,7 @@ static int msm_bus_create_client(unsigned long arg)
 	usecase = kmalloc(((pdata->num_usecases) *
 		sizeof(struct msm_bus_paths)), GFP_KERNEL);
 	if (IS_ERR(usecase)) {
-		MSM_BUS_IOCDBG("Error creating usecase in test\n");
+		pr_err("AXI: %s(): Error creating usecase in test\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -61,7 +58,8 @@ static int msm_bus_create_client(unsigned long arg)
 
 			kfree(pdata->usecase);
 			kfree(pdata);
-			MSM_BUS_IOCDBG("Error creating usecase in test\n");
+			pr_err("AXI: %s(): Error creating usecase in test\n",
+				__func__);
 			return -ENOMEM;
 		}
 
@@ -75,12 +73,12 @@ static int msm_bus_create_client(unsigned long arg)
 	}
 
 	clid = msm_bus_scale_register_client(pdata);
-	MSM_BUS_IOCDBG("Got client id: %u\n", clid);
+	pr_debug("AXI: %s(): Got client id: %u\n", __func__, clid);
 	cldata.clid = clid;
 	cldata.pdatah = (uint32_t)(pdata);
 	if (__copy_to_user((void __user *)arg, &cldata,
 		sizeof(struct msm_bus_test_cldata))) {
-		MSM_BUS_IOCDBG("Error copying data to client\n");
+		pr_err("AXI: %s(): Error copying data to client\n", __func__);
 		msm_bus_scale_unregister_client(clid);
 		for (i = 0; i < pdata->num_usecases; i++)
 			kfree(pdata->usecase[i].vectors);
@@ -105,7 +103,7 @@ static int msm_bus_ioctl_unreg_cl(unsigned cmd, unsigned long arg)
 		retval = -EFAULT;
 
 	clid = cldata.clid;
-	MSM_BUS_IOCDBG("IOCTL: Unregister cl%u\n", clid);
+	pr_debug("AXI: %s(): IOCTL: Unregister cl%u\n", __func__, clid);
 	msm_bus_scale_unregister_client(clid);
 	pdata = (struct msm_bus_scale_pdata *)cldata.pdatah;
 	for (i = 0; i < pdata->num_usecases; i++)
@@ -127,8 +125,8 @@ static int msm_bus_ioctl_update_req(unsigned cmd, unsigned long arg)
 		goto err;
 	}
 
-	MSM_BUS_IOCDBG("IOCTL: Update req for cl: %u, index: %d\n",
-		rdata.clid, rdata.index);
+	pr_debug("AXI: %s(): IOCTL: Update req for cl: %u, index: %d\n",
+		__func__, rdata.clid, rdata.index);
 	retval = msm_bus_scale_client_update_request(rdata.clid,
 		rdata.index);
 err:
@@ -139,10 +137,10 @@ static long msm_bus_test_ioctl(struct file *file, unsigned cmd,
 	unsigned long arg)
 {
 	long retval = 0;
-	MSM_BUS_IOCDBG("entering test ioctl\n");
+	pr_debug("AXI: %s(): entering test ioctl\n", __func__);
 
 	if (_IOC_TYPE(cmd) != MSM_BUS_TEST_IOC_MAGIC) {
-		MSM_BUS_IOCDBG("Wrong IOC_MAGIC.Exiting\n");
+		pr_err("AXI: %s(): Wrong IOC_MAGIC.Exiting\n", __func__);
 		return -ENOTTY;
 	}
 
@@ -159,7 +157,7 @@ static long msm_bus_test_ioctl(struct file *file, unsigned cmd,
 		retval = msm_bus_ioctl_update_req(cmd, arg);
 		break;
 	default:
-		MSM_BUS_IOCDBG("IOCTL: Invalid case\n");
+		pr_err("AXI: %s(): IOCTL: Invalid case\n", __func__);
 		retval = -EFAULT;
 		break;
 	}
@@ -182,7 +180,7 @@ static int msm_bus_test_init(void)
 {
 	int ret;
 
-	MSM_BUS_IOCDBG("Initializing ioctl module\n");
+	pr_debug("AXI: %s(): Initializing ioctl module\n", __func__);
 	ret = misc_register(&msm_bus_test_dev);
 	if (ret < 0)
 		return ret;
@@ -192,7 +190,7 @@ static int msm_bus_test_init(void)
 
 static void msm_bus_test_exit(void)
 {
-	MSM_BUS_IOCDBG("Exiting ioctl module\n");
+	pr_debug("AXI: %s(): Exiting ioctl module\n", __func__);
 	misc_deregister(&msm_bus_test_dev);
 }
 
