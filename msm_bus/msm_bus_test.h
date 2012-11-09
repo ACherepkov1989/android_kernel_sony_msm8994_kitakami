@@ -2,7 +2,6 @@
 #define __MSM_BUS_TEST__
 
 #include <linux/ioctl.h>
-#define DEBUG
 #define MSM_BUS_IOC_MAGIC 0x80
 #define TEST_SLAVE_ID_KEY 512
 #define NUM_USECASES 10
