@@ -40,6 +40,8 @@
 #define OCMEM_TEST_DEBUG_MODE \
 	_IO(OCMEM_KERNEL_TEST_MAGIC, 5)
 
+#define TEST_OCMEM_CLIENT OCMEM_GRAPHICS
+
 /* "OCMM" */
 #define OCMEM_READ_WRITE_MAGIC 0xA110CA7E
 #define OCMEM_MAX_SIZE 0x180000
@@ -142,7 +144,7 @@ static int ocmem_test_single_alloc(void)
 	unsigned long size = 512 * SZ_1K;
 	num_test_cases++;
 
-	buff = ocmem_allocate(OCMEM_VIDEO, 512 * SZ_1K);
+	buff = ocmem_allocate(TEST_OCMEM_CLIENT, 512 * SZ_1K);
 
 	if (!buff || !buff->len)
 		return -EINVAL;
@@ -153,9 +155,9 @@ static int ocmem_test_single_alloc(void)
 	if (buff->len != size)
 		return -EINVAL;
 
-	ocmem_verify_access(OCMEM_VIDEO, buff);
+	ocmem_verify_access(TEST_OCMEM_CLIENT, buff);
 
-	if (ocmem_free(OCMEM_VIDEO, buff))
+	if (ocmem_free(TEST_OCMEM_CLIENT, buff))
 		return -EINVAL;
 
 	OCMEM_LOG("ocmem test: single_alloc succeeded\n");
@@ -174,7 +176,7 @@ static int ocmem_test_single_alloc_nowait(void)
 
 	num_test_cases++;
 
-	buff = ocmem_allocate_nowait(OCMEM_VIDEO, size);
+	buff = ocmem_allocate_nowait(TEST_OCMEM_CLIENT, size);
 
 	if (!buff || !buff->len)
 		return -EINVAL;
@@ -185,9 +187,9 @@ static int ocmem_test_single_alloc_nowait(void)
 	if (buff->len != size)
 		return -EINVAL;
 
-	ocmem_verify_access(OCMEM_VIDEO, buff);
+	ocmem_verify_access(TEST_OCMEM_CLIENT, buff);
 
-	if (ocmem_free(OCMEM_VIDEO, buff))
+	if (ocmem_free(TEST_OCMEM_CLIENT, buff))
 		return -EINVAL;
 
 	OCMEM_LOG("ocmem test: single_alloc_nw succeeded\n");
@@ -209,7 +211,7 @@ static int ocmem_test_single_alloc_range(void)
 
 	num_test_cases++;
 
-	buff = ocmem_allocate_range(OCMEM_VIDEO, min, max, step);
+	buff = ocmem_allocate_range(TEST_OCMEM_CLIENT, min, max, step);
 
 	if (!buff || !buff->len)
 		return -EINVAL;
@@ -220,7 +222,7 @@ static int ocmem_test_single_alloc_range(void)
 	if (buff->len != max)
 		return -EINVAL;
 
-	if (ocmem_free(OCMEM_VIDEO, buff))
+	if (ocmem_free(TEST_OCMEM_CLIENT, buff))
 		return -EINVAL;
 
 	num_success++;
