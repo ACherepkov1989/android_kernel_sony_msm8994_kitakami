@@ -23,6 +23,9 @@ endif
 if USESPS
 BUILD_TEST += sps
 endif
+if USEV4L2APPS
+BUILD_TEST += v4l2apps
+endif
 
 SUBDIRS = $(BUILD_TEST)
 
