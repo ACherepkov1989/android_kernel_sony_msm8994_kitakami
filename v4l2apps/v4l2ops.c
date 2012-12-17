@@ -73,7 +73,8 @@ static int _v4l2_querycap(int fd, int capabilities)
 	return 0;
 }
 
-static int _v4l2_cropcap(int fd, enum v4l2_buf_type type, struct v4l2_rect *crop)
+static int _v4l2_cropcap(int fd, enum v4l2_buf_type type,
+			struct v4l2_rect *crop)
 {
 	int ret;
 	struct v4l2_cropcap cropcap;
@@ -87,12 +88,13 @@ static int _v4l2_cropcap(int fd, enum v4l2_buf_type type, struct v4l2_rect *crop
 	}
 
 	if ((crop->left < cropcap.bounds.left) &&
-	        (crop->top < cropcap.bounds.top) &&
-	        (crop->width > cropcap.bounds.width) &&
-	        (crop->height > cropcap.bounds.height)) {
+		(crop->top < cropcap.bounds.top) &&
+		(crop->width > cropcap.bounds.width) &&
+		(crop->height > cropcap.bounds.height)) {
 		printf ("(%d,%d %dx%d) is out of bound(%d,%d %dx%d)\n",
-		        crop->left, crop->top, crop->width, crop->height,
-		        cropcap.bounds.left, cropcap.bounds.top, cropcap.bounds.width, cropcap.bounds.height);
+			crop->left, crop->top, crop->width, crop->height,
+			cropcap.bounds.left, cropcap.bounds.top,
+			cropcap.bounds.width, cropcap.bounds.height);
 		return -1;
 	}
 
@@ -239,16 +241,16 @@ int v4l2_set_src(int fd, int width, int height,
 {
 	int capabilities;
 	int ret;
-	struct v4l2_format	format;
-	struct v4l2_crop	crop;
+	struct v4l2_format format;
+	struct v4l2_crop crop;
 
 	memset(&format, 0, sizeof(struct v4l2_format));
 	memset(&crop, 0, sizeof(struct v4l2_crop));
 
 	printf ("SetSrc : image(%dx%d) crop(%d,%d %dx%d) pixfmt(0x%08x) \n",
-	        width, height,
-	        crop_x, crop_y, crop_w, crop_h,
-	        pixelformat);
+		width, height,
+		crop_x, crop_y, crop_w, crop_h,
+		pixelformat);
 
 	/* check if capabilities is valid */
 	capabilities = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_OUTPUT;
@@ -268,8 +270,9 @@ int v4l2_set_src(int fd, int width, int height,
 	format.fmt.pix.pixelformat = pixelformat;
 	format.fmt.pix.field       = V4L2_FIELD_NONE;
 	ret = _v4l2_s_fmt (fd, &format);
-	if (ret < 0)
+	if (ret < 0) {
 		return ret;
+        }
 
 	/* set the crop area of SRC */
 	crop.type     = V4L2_BUF_TYPE_VIDEO_OUTPUT;
@@ -291,8 +294,8 @@ int v4l2_set_src(int fd, int width, int height,
 int v4l2_set_dst(int fd,
 	int dst_x, int dst_y, int dst_w, int dst_h, void *addr)
 {
-	struct v4l2_format		format;
-	struct v4l2_framebuffer	fbuf;
+	struct v4l2_format format;
+	struct v4l2_framebuffer fbuf;
 	int ret;
 	memset(&format, 0, sizeof(struct v4l2_format));
 	memset(&fbuf, 0, sizeof(struct v4l2_framebuffer));
@@ -337,7 +340,7 @@ int v4l2_set_buffer (int fd,
                      int num_buf,
                      struct mem_buffer **mem_buf)
 {
-	struct v4l2_requestbuffers	req;
+	struct v4l2_requestbuffers req;
 	int ret;
 	memset(&req, 0, sizeof(struct v4l2_requestbuffers));
 
@@ -377,8 +380,8 @@ int v4l2_set_buffer (int fd,
 			out_buf[i].index  = buffer.index;
 			out_buf[i].size   = buffer.length;
 			out_buf[i].buf    = (void*)mmap (NULL, buffer.length,
-			                                 PROT_READ | PROT_WRITE , \
-			                                 MAP_SHARED , fd, buffer.m.offset);
+					PROT_READ | PROT_WRITE , \
+					MAP_SHARED , fd, buffer.m.offset);
 			if (out_buf[i].buf == MAP_FAILED)
 			{
 				printf ("mmap failed. index(%d)\n", i);
@@ -399,11 +402,15 @@ int v4l2_clear_buffer(int fd,
                       struct mem_buffer *mem_buf)
 {
 	int ret;
-	/* The = {0} syntax gives warnings on gcc version in OE, hence the memset */
+	/*
+	 * The = {0} syntax gives warnings on gcc version in OE,
+	 * hence the memset
+	 */
 	struct v4l2_requestbuffers req;
 	memset(&req, 0, sizeof(struct v4l2_requestbuffers));
 
-	printf ("ClearBuffer : memory(%d) num_buf(%d) mem_buf(%p)\n", memory, num_buf, mem_buf);
+	printf ("ClearBuffer : memory(%d) num_buf(%d) mem_buf(%p)\n", memory,
+				num_buf, mem_buf);
 
 	if (memory == V4L2_MEMORY_MMAP && mem_buf)
 	{
@@ -411,8 +418,10 @@ int v4l2_clear_buffer(int fd,
 
 		for (i = 0; i < num_buf; i++)
 			if (mem_buf[i].buf)
-				if (munmap(mem_buf[i].buf, mem_buf[i].size) == -1)
-					printf("Failed to unmap v4l2 buffer at index %d\n", i);
+				if (munmap(mem_buf[i].buf, mem_buf[i].size)
+							== -1)
+					printf("Failed to unmap v4l2 buffer at"
+							"index %d\n", i);
 
 		free(mem_buf);
 	}
@@ -443,12 +452,12 @@ int v4l2_set_rotation(int fd, int rotation)
 	if (ret < 0)
 		return ret;
 
-    ctrl.value = rotation;
-    ret = _v4l2_s_ctrl (fd, &ctrl);
-    if (ret < 0)
-	return ret;
+	ctrl.value = rotation;
+	ret = _v4l2_s_ctrl (fd, &ctrl);
+	if (ret < 0)
+		return ret;
 
-    return 0;
+	return 0;
 }
 
 int v4l2_set_flip(int fd, int hflip, int vflip)
@@ -461,27 +470,27 @@ int v4l2_set_flip(int fd, int hflip, int vflip)
 
 	memset(&ctrl, 0, sizeof(struct v4l2_control));
 
-    /* set the hflip value */
+	/* set the hflip value */
 	ctrl.id = V4L2_CID_HFLIP;
 	ret = _v4l2_g_ctrl (fd, &ctrl);
 	if (ret < 0)
 		return ret;
 
-    ctrl.value = hflip;
-    ret = _v4l2_s_ctrl (fd, &ctrl);
-    if (ret < 0)
-        return ret;
+	ctrl.value = hflip;
+	ret = _v4l2_s_ctrl (fd, &ctrl);
+	if (ret < 0)
+		return ret;
 
-    /* set the vflip value */
+	/* set the vflip value */
 	ctrl.id = V4L2_CID_VFLIP;
 	ret = _v4l2_g_ctrl (fd, &ctrl);
 	if (ret < 0)
 		return ret;
 
-    ctrl.value = vflip;
-    ret = _v4l2_s_ctrl (fd, &ctrl);
-    if (ret < 0)
-        return ret;
+	ctrl.value = vflip;
+	ret = _v4l2_s_ctrl (fd, &ctrl);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -524,10 +533,9 @@ int v4l2_dequeue(int fd, enum v4l2_memory memory, int *index)
 	return 0;
 }
 
-int v4l2_queue(int fd, int index, enum v4l2_memory memory, unsigned long *userptr,
-	__u32 bytes)
+int v4l2_queue(int fd, int index, enum v4l2_memory memory, __u32 bytes)
 {
-	int ret;
+	int ret, i;
 	struct v4l2_buffer buf;
 	memset(&buf, 0, sizeof(struct v4l2_buffer));
 
@@ -535,9 +543,10 @@ int v4l2_queue(int fd, int index, enum v4l2_memory memory, unsigned long *userpt
 	buf.index  = index;
 	buf.memory = memory;
 	buf.bytesused = bytes;
-
-	if (memory == V4L2_MEMORY_USERPTR)
-		buf.m.userptr	= (unsigned long) userptr;
+	if (memory == V4L2_MEMORY_USERPTR) {
+		buf.m.userptr = (unsigned long) userptr;
+		buf.length = bytes;
+	}
 
 	ret = _v4l2_queue (fd, &buf);
 	if (ret < 0)
