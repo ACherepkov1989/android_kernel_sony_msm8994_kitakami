@@ -75,17 +75,18 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 	struct ion_test_data *test_data =
 		(struct ion_test_data *)ion_tp->test_plan_data;
 
-	ion_kernel_fd = open(msm_ion_dev, O_RDONLY);
-	if (ion_kernel_fd < 0) {
-		debug(INFO, "Failed to open msm ion test device\n");
-		perror("msm ion");
-		return ion_kernel_fd;
-	}
 	ion_fd = open(ion_dev, O_RDONLY);
 	if (ion_fd < 0) {
 		debug(INFO, "Failed to open ion device\n");
 		perror("msm ion");
 		return ion_fd;
+	}
+	ion_kernel_fd = open(msm_ion_dev, O_RDONLY);
+	if (ion_kernel_fd < 0) {
+		debug(INFO, "Failed to open msm ion test device\n");
+		perror("msm ion");
+		close(ion_fd);
+		return ion_kernel_fd;
 	}
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
@@ -212,17 +213,17 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 	struct ion_test_data **test_data_table =
 		(struct ion_test_data **)ion_tp->test_plan_data;
 
+	ion_fd = open(ion_dev, O_RDONLY);
+	if (ion_fd < 0) {
+		debug(INFO, "Failed to open ion device\n");
+		perror("msm ion");
+		return -EIO;
+	}
 	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 	if (ion_kernel_fd < 0) {
 		debug(INFO, "Failed to open msm ion test device\n");
 		perror("msm ion");
 		close(ion_fd);
-		return -EIO;
-	}
-	ion_fd = open(ion_dev, O_RDONLY);
-	if (ion_fd < 0) {
-		debug(INFO, "Failed to open ion device\n");
-		perror("msm ion");
 		return -EIO;
 	}
 	if (test_type == NOMINAL_TEST)
