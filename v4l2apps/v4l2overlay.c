@@ -45,6 +45,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <getopt.h>
 
 #include <linux/fb.h>
 #include <linux/stddef.h>
@@ -465,8 +466,8 @@ static int runtest(struct platform_parameters *platform,
 	if (err < 0)
 		goto done;
 
-	printf("allocate ION buffer\n");
 	if (test->memory == V4L2_MEMORY_USERPTR) {
+		printf("allocate ION buffer\n");
 		for (i = 0; i < image->num_plane; i++) {
 			if (allocMEM(img_buf_size[i] * test->buf_count, i)) {
 				printf("allocMEM failed! for buffer %d\n",i);
@@ -564,10 +565,9 @@ enum test_indices {
 	V4L2_MEMORY_USERPTR_TEST
 };
 
-void usage(char *prg_name)
+void showUsage(void)
 {
-	printf("usage: %s HELP | {TESTS_LIST}\n", prg_name);
-	printf("HELP: prints this help message\n");
+	printf("usage: TESTS_LIST\n");
 	printf("TESTS_LIST is one of more of:\n");
 	printf("SIMPLE_OVERLAY\n");
 	printf("ROT_0\n");
@@ -579,68 +579,101 @@ void usage(char *prg_name)
 	printf("SCALE\n");
 	printf("V4L2_MEMORY_USERPTR_TEST\n");
 	printf("ALL\n");
-	printf("Empty TESTS_LIST runs SIMPLE_OVERLAY\n");
 	printf("ALL runs all the test cases\n");
-	printf("Separate multiple testnames with whitespace\n");
-	printf("For example: %s ROT_0 ROT_180 VFLIP\n", prg_name);
 }
 
 static int select_tests(struct test_parameters *active_tests, int argc, char *argv[])
 {
 	int nr_tests = 0;
 	int i;
+	int opt;
+
+	struct option longOptions[] = {
+		{ "usage",		no_argument,		NULL,	'u'},
+		{ "verbose",		no_argument,		NULL,	'v'},
+		{ "nominal",		no_argument,		NULL,	'n'},
+		{ "adversarial",	no_argument,		NULL,	'a'},
+		{ "repeatability",	no_argument,		NULL,	'r'},
+		{ "stress",		no_argument,		NULL,	's'},
+		{ "test",		required_argument,	NULL,	't'},
+	};
+
 	if (argc == 1) {
-		usage(argv[1]);
-		printf("--------------------------\n");
-		printf("Running SIMPLE_OVERLAY\n");
-		active_tests[SIMPLE_OVERLAY].run = 1;
+		printf("This program needs arguments....\n\n");
+		showUsage();
 		return 1;
 	}
 
-	if (!strcmp(argv[1], "help")) {
-		usage(argv[0]);
-		return 0;
-	}
-
-	for (i=1; i<argc; i++) {
-		++nr_tests;
-		if (!strcmp(argv[i], "SIMPLE_OVERLAY"))
-			active_tests[SIMPLE_OVERLAY].run = 1;
-		else if (!strcmp(argv[i], "ROT_0"))
-			active_tests[ROT_0].run = 1;
-		else if (!strcmp(argv[i], "ROT_90"))
-			active_tests[ROT_90].run = 1;
-		else if (!strcmp(argv[i], "ROT_180"))
-			active_tests[ROT_180].run = 1;
-		else if (!strcmp(argv[i], "ROT_270"))
-			active_tests[ROT_270].run = 1;
-		else if (!strcmp(argv[i], "HFLIP"))
-			active_tests[HFLIP].run = 1;
-		else if (!strcmp(argv[i], "VFLIP"))
-			active_tests[VFLIP].run = 1;
-		else if (!strcmp(argv[i], "SCALE"))
-			active_tests[SCALE].run = 1;
-		else if (!strcmp(argv[i], "V4L2_MEMORY_USERPTR_TEST"))
-			active_tests[V4L2_MEMORY_USERPTR_TEST].run = 1;
-		else if (!strcmp(argv[i], "ALL")) {
-			active_tests[SIMPLE_OVERLAY].run = 1;
-			active_tests[ROT_0].run = 1;
-			active_tests[ROT_90].run = 1;
-			active_tests[ROT_180].run = 1;
-			active_tests[ROT_270].run = 1;
-			active_tests[HFLIP].run = 1;
-			active_tests[VFLIP].run = 1;
-			active_tests[SCALE].run = 1;
-			active_tests[V4L2_MEMORY_USERPTR_TEST].run = 1;
+	optind = 0;
+	while((opt = getopt_long(argc, argv, "uvnarst:", longOptions,
+					NULL)) != -1) {
+		switch(opt) {
+			case 'u':
+				showUsage();
+				return 0;
+			case 'v':
+				printf("verbose is enabled\n");
+				break;
+			case 'n':
+				active_tests[SIMPLE_OVERLAY].run = 1;
+				break;
+			case 'a':
+				printf("adversarial test not supported \n");
+				return 0;
+			case 'r':
+				active_tests[SIMPLE_OVERLAY].run = 1;
+				active_tests[ROT_0].run = 1;
+				active_tests[ROT_90].run = 1;
+				active_tests[ROT_180].run = 1;
+				active_tests[ROT_270].run = 1;
+				active_tests[HFLIP].run = 1;
+				active_tests[VFLIP].run = 1;
+				active_tests[SCALE].run = 1;
+				break;
+			case 's':
+				printf("stress test not supported currently\n");
+				return 0;
+			case 't':
+				if (!strcmp(optarg, "SIMPLE_OVERLAY"))
+					active_tests[SIMPLE_OVERLAY].run = 1;
+				else if (!strcmp(optarg, "ROT_0"))
+					active_tests[ROT_0].run = 1;
+				else if (!strcmp(optarg, "ROT_90"))
+					active_tests[ROT_90].run = 1;
+				else if (!strcmp(optarg, "ROT_180"))
+					active_tests[ROT_180].run = 1;
+				else if (!strcmp(optarg, "ROT_270"))
+					active_tests[ROT_270].run = 1;
+				else if (!strcmp(optarg, "HFLIP"))
+					active_tests[HFLIP].run = 1;
+				else if (!strcmp(optarg, "VFLIP"))
+					active_tests[VFLIP].run = 1;
+				else if (!strcmp(optarg, "SCALE"))
+					active_tests[SCALE].run = 1;
+				else if (!strcmp(optarg, "V4L2_MEMORY_USERPTR_TEST"))
+					active_tests[V4L2_MEMORY_USERPTR_TEST].run = 1;
+				else if (!strcmp(optarg, "ALL")) {
+					active_tests[SIMPLE_OVERLAY].run = 1;
+					active_tests[ROT_0].run = 1;
+					active_tests[ROT_90].run = 1;
+					active_tests[ROT_180].run = 1;
+					active_tests[ROT_270].run = 1;
+					active_tests[HFLIP].run = 1;
+					active_tests[VFLIP].run = 1;
+					active_tests[SCALE].run = 1;
+				} else {
+					printf("Not a valid test\n");
+					showUsage();
+					return 0;
+				}
+				break;
+			default :
+				printf("Invalid argument: %c\n", opt);
+				showUsage();
+				return 0;
 		}
-		else
-			--nr_tests;
 	}
-
-	if (!nr_tests)
-		usage(argv[0]);
-
-	return nr_tests;
+	return 1;
 }
 
 int main(int argc, char *argv[])

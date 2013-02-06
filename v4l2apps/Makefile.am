@@ -14,3 +14,6 @@ libv4l2ops_la_SOURCES = v4l2ops.c
 
 pixmapsdir            = $(datadir)/pixmaps
 pixmaps_DATA          = yuv420.raw rgb565.raw
+
+dist_v4l2overlay_SCRIPTS = run.sh
+dist_v4l2overlay_DATA = README.txt
