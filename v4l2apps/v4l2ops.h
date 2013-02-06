@@ -33,6 +33,7 @@
 #define __V4L2_H__
 
 #include <linux/videodev2.h>
+#include <linux/ion.h>
 
 struct mem_buffer
 {
@@ -40,6 +41,38 @@ struct mem_buffer
 	int     size;
 	void   *buf;
 };
+
+struct v4l2_overlay_userptr_buffer {
+	unsigned int base[3];//base address of plane or frame
+	size_t offset[3];//offset of plane or frame in multi buffer use case
+};
+struct v4l2_overlay_userptr_buffer *userptr;
+/* ION: start */
+#define MEM_NAME_STR_LEN  (25)
+#define ION_NAME_STR "/dev/ion"
+#define ION_NAME_STR_LEN sizeof(ION_NAME_STR)
+#define ION_NUM_DEFAULT 0
+#define MAX_PLANE 3
+struct memDev {
+	int fd;
+	int mem_fd;
+	char mem_name[MEM_NAME_STR_LEN];
+	int mem_page_size;
+	int mem_size;
+	unsigned char *mem_buf;
+
+};
+struct memDev * MEM[MAX_PLANE];
+struct memDev * ION;
+struct memDev ion[MAX_PLANE];
+struct ion_handle_data handle_data[MAX_PLANE];
+// MEM functions
+int chooseMEMDev(void);
+int openMEMDev(void);
+int allocMEM(unsigned int, unsigned int);
+void free_buffer(unsigned int);
+void close_ion_device(void);
+/* ION: end */
 
 int v4l2_set_src (int fd,
                   int width, int height,
@@ -65,6 +98,6 @@ int v4l2_set_flip (int fd, int hflip, int vflip);
 int v4l2_stream_on (int fd);
 int v4l2_stream_off (int fd);
 int v4l2_dequeue (int fd, enum v4l2_memory memory, int *index);
-int v4l2_queue (int fd, int index, enum v4l2_memory memory, unsigned long *userptr, __u32 bytes);
+int v4l2_queue (int fd, int index, enum v4l2_memory memory, __u32 bytes);
 
 #endif //__V4L2_H__

@@ -77,7 +77,8 @@ struct platform_parameters {
 
 /* Fixed image parameters, depend on platform */
 struct image_parameters {
-	const char *image_file;
+	const char *image_file[3];//for multi-plane use case only on user ptr
+	unsigned int num_plane;//for multi-plane use case only on user ptr
 	unsigned int pixelformat;
 	struct Rect dimensions;
 	struct Rect default_crop;
@@ -95,6 +96,102 @@ struct test_parameters {
 	int run;
 };
 
+/* ION API's: start */
+int chooseMEMDev()
+{
+	ION = &(ion[ION_NUM_DEFAULT]);
+	strcpy(ION->mem_name, ION_NAME_STR);
+
+	return 0;
+}
+
+int openMEMDev()
+{
+	int i = 0;
+	ION->fd = open(ION->mem_name, O_RDWR|O_DSYNC);
+	if (ION->fd < 0) {
+		printf("ERROR: Can't open ion %s\n", ION->mem_name);
+		return -1;
+	}
+	else
+		printf("[%s(%d)]: %s opened ION successfully!\n",__func__ ,
+					__LINE__, ION->mem_name);
+	for (i; i < MAX_PLANE; i++) {
+		MEM[i] = &ion[i];
+		MEM[i]->fd = ION->fd;
+	}
+	return 0;
+}
+
+int allocMEM(unsigned int size, unsigned int i)
+{
+	int result = -1;
+	struct ion_fd_data fd_data;
+	struct ion_allocation_data ionAllocData;
+	fd_data.fd = 0;
+
+	// First Allocate MEM
+	MEM[i]->mem_page_size = sysconf(_SC_PAGESIZE);
+	MEM[i]->mem_size = size;
+	MEM[i]->mem_size = (MEM[i]->mem_size + MEM[i]->mem_page_size - 1) &
+			(~(MEM[i]->mem_page_size - 1));
+	ionAllocData.len = MEM[i]->mem_size;
+	ionAllocData.align = sysconf(_SC_PAGESIZE);
+	ionAllocData.flags =
+		ION_HEAP(ION_IOMMU_HEAP_ID) |
+		ION_HEAP(ION_CP_MM_HEAP_ID) |
+		ION_HEAP(ION_CP_WB_HEAP_ID) |
+		ION_HEAP(ION_SF_HEAP_ID)    |
+		ION_HEAP(ION_CAMERA_HEAP_ID);
+	result = ioctl(MEM[i]->fd, ION_IOC_ALLOC,  &ionAllocData);
+	if (result) {
+		printf("ERROR! MEM_ALLOCATE failed.\n");
+		free_buffer(i);
+		return -1;
+	} else {
+		fd_data.handle = ionAllocData.handle;
+		handle_data[i].handle = ionAllocData.handle;
+
+		if (ioctl(MEM[i]->fd, ION_IOC_MAP, &fd_data)) {
+			printf("ERROR! ION_IOC_MAP failed.\n");
+			free_buffer(i);
+			return -1;
+		} else {
+			MEM[i]->mem_buf = mmap(NULL, MEM[i]->mem_size, PROT_READ |
+					PROT_WRITE, MAP_SHARED, fd_data.fd, 0);
+			MEM[i]->mem_fd = fd_data.fd;
+			if (MEM[i]->mem_buf == MAP_FAILED) {
+				printf("ERROR: MEM MMAP failed!\n");
+				free_buffer(i);
+				return -1;
+			}
+
+			memset(MEM[i]->mem_buf, 0x00, MEM[i]->mem_size);
+			printf("MEM Allocation successful (%d bytes at %p)\n",
+						MEM[i]->mem_size, MEM[i]->mem_buf);
+		}
+	}
+
+	return 0;
+}
+
+void free_buffer(unsigned int i)
+{
+	//unmap
+	if ((MEM[i]->mem_buf !=NULL) && (MEM[i]->mem_buf != MAP_FAILED)){
+		munmap(MEM[i]->mem_buf, MEM[i]->mem_size);
+		ioctl(MEM[i]->fd, ION_IOC_FREE, &handle_data[i]);
+		close(MEM[i]->mem_fd);
+	}
+}
+
+void close_ion_device()
+{
+	if (ION->fd >= 0)
+		close(ION->fd);
+}
+
+/* ION API: end*/
 
 static enum device get_hardware_device(void)
 {
@@ -301,13 +398,23 @@ static int runtest(struct platform_parameters *platform,
 	int v4l2_fd;
 	int fb_fd;
 	struct fb_var_screeninfo vinfo;
-	char *img_buffer = NULL;
-	long img_buf_size;
+	char *img_buffer[3] = {NULL , NULL, NULL};//single input frame or plane
+	long img_buf_size[3];//frame size or plane size
 	int err = 0;
 	struct mem_buffer *mem_buf;
-	int index = 0, count;
+	int index = 0, count, i;
 	int buffers_mapped = 0;
 	int streaming = 0;
+
+	for (i = 0; i < image->num_plane; i++) {
+		img_buffer[i] = read_image(image->image_file[i],
+					&img_buf_size[i]);
+
+		if(!img_buffer[i]) {
+			printf("ERROR: Could not read test image %d\n",i);
+			return -1;
+		}
+	}
 
 	printf("Opening V4L2 overlay device\n");
 	v4l2_fd = open_v4l2_overlay_device();
@@ -318,18 +425,15 @@ static int runtest(struct platform_parameters *platform,
 		return -1;
 	}
 
+	chooseMEMDev();
+	err = openMEMDev();
+	if (err < 0)
+		return -1;
+
 	fb_fd = setup_framebuffer(&vinfo);
 
 	if(fb_fd < 0) {
 		printf("ERROR: Could not setup framebuffer\n");
-		err = -1;
-		goto done;
-	}
-
-	img_buffer = read_image(image->image_file, &img_buf_size);
-
-	if(!img_buffer) {
-		printf("ERROR: Could not read test image\n");
 		err = -1;
 		goto done;
 	}
@@ -361,6 +465,24 @@ static int runtest(struct platform_parameters *platform,
 	if (err < 0)
 		goto done;
 
+	printf("allocate ION buffer\n");
+	if (test->memory == V4L2_MEMORY_USERPTR) {
+		for (i = 0; i < image->num_plane; i++) {
+			if (allocMEM(img_buf_size[i] * test->buf_count, i)) {
+				printf("allocMEM failed! for buffer %d\n",i);
+				return -1;
+			}
+		}
+		userptr = (struct v4l2_overlay_userptr_buffer *)
+			malloc(sizeof(struct v4l2_overlay_userptr_buffer));
+		if (userptr == NULL) {
+			printf("userptr memory allocation failed\n");
+			return -1;
+		}
+		for (i = 0; i < MAX_PLANE; i++) {
+			userptr->base[i]   = MEM[i]->mem_fd;
+		}
+	}
 	buffers_mapped = 1;
 	/* streaming on */
 	err = v4l2_stream_on(v4l2_fd);
@@ -371,19 +493,30 @@ static int runtest(struct platform_parameters *platform,
 
 	for (count = 0;count <= 5;count++) {
 		/* draw a frame */
-		int nbytes = (img_buf_size < mem_buf[index].size)
-			? img_buf_size : mem_buf[index].size;
-		memcpy(mem_buf[index].buf, img_buffer, nbytes);
+		int nbytes;
+		if (test->memory == V4L2_MEMORY_USERPTR) {
+			for (i = 0; i < image->num_plane; i++) {
+				memcpy((MEM[i]->mem_buf +
+				(index * img_buf_size[i])), img_buffer[i],
+				img_buf_size[i]);
+				nbytes = img_buf_size[i];
+				userptr->offset[i] = index * nbytes;
+			}
+		} else {
+			nbytes = (img_buf_size[0] < mem_buf[index].size) ?
+					img_buf_size[0] : mem_buf[index].size;
 
-		err = v4l2_queue(v4l2_fd, index, test->memory, NULL, nbytes);
+			memcpy(mem_buf[index].buf, img_buffer[0], nbytes);
+		}
+		err = v4l2_queue(v4l2_fd, index, test->memory, nbytes);
 		if (err < 0)
 			goto done;
 
 		if (platform->device_name == MSM7x27A) {
 			if (ioctl(fb_fd, FBIOPAN_DISPLAY, &vinfo) < 0)
-				printf("%s:ERROR: FBIOPAN_DISPLAY failed!\n", __func__);
+				printf("%s:ERROR: FBIOPAN_DISPLAY failed!\n",
+							__func__);
 		}
-
 		err = v4l2_dequeue(v4l2_fd, test->memory, &index);
 		if (err < 0)
 			goto done;
@@ -391,16 +524,31 @@ static int runtest(struct platform_parameters *platform,
 		if (++index >= test->buf_count)
 			index = 0;
 	}
+
 done:
 	if (streaming)
 		(void)v4l2_stream_off(v4l2_fd);
 
 	if(buffers_mapped)
-		(void)v4l2_clear_buffer(v4l2_fd, test->memory, test->buf_count, mem_buf);
+		(void)v4l2_clear_buffer(v4l2_fd, test->memory, test->buf_count,
+					mem_buf);
+	for (i = 0; i < MAX_PLANE; i++)
+		free_buffer(i);
+	close_ion_device();
 
-	if (img_buffer) release_image(img_buffer);
-	if (fb_fd > 0) close_framebuffer(fb_fd);
+	if (userptr != NULL) {
+		free(userptr);
+		userptr = NULL;
+	}
+	for (i = 0; i < image->num_plane; i++) {
+		if (img_buffer[i])
+			release_image(img_buffer[i]);
+	}
+	if (fb_fd > 0)
+		close_framebuffer(fb_fd);
+
 	close_v4l2_overlay_device(v4l2_fd);
+
 	return err;
 }
 
@@ -412,7 +560,8 @@ enum test_indices {
 	ROT_270,
 	HFLIP,
 	VFLIP,
-	SCALE
+	SCALE,
+	V4L2_MEMORY_USERPTR_TEST
 };
 
 void usage(char *prg_name)
@@ -428,6 +577,7 @@ void usage(char *prg_name)
 	printf("HFLIP\n");
 	printf("VFLIP\n");
 	printf("SCALE\n");
+	printf("V4L2_MEMORY_USERPTR_TEST\n");
 	printf("ALL\n");
 	printf("Empty TESTS_LIST runs SIMPLE_OVERLAY\n");
 	printf("ALL runs all the test cases\n");
@@ -470,6 +620,8 @@ static int select_tests(struct test_parameters *active_tests, int argc, char *ar
 			active_tests[VFLIP].run = 1;
 		else if (!strcmp(argv[i], "SCALE"))
 			active_tests[SCALE].run = 1;
+		else if (!strcmp(argv[i], "V4L2_MEMORY_USERPTR_TEST"))
+			active_tests[V4L2_MEMORY_USERPTR_TEST].run = 1;
 		else if (!strcmp(argv[i], "ALL")) {
 			active_tests[SIMPLE_OVERLAY].run = 1;
 			active_tests[ROT_0].run = 1;
@@ -479,6 +631,7 @@ static int select_tests(struct test_parameters *active_tests, int argc, char *ar
 			active_tests[HFLIP].run = 1;
 			active_tests[VFLIP].run = 1;
 			active_tests[SCALE].run = 1;
+			active_tests[V4L2_MEMORY_USERPTR_TEST].run = 1;
 		}
 		else
 			--nr_tests;
@@ -498,23 +651,33 @@ int main(int argc, char *argv[])
 	int test_nr, pass_cnt = 0, fail_cnt = 0;
 	int total_tests;
 	int nr_selected_tests;
-	int result;
+	int result = -1;
 	int i;
 
+	/*
+	 * multi-plane is supported only for user pointer memory.
+	 * Set num_plane and image_file to be used accordingly.
+	 * In memory map only single plane is supported.
+	 */
 	struct image_parameters test_image_8x55 = {
-		.image_file = "/usr/share/pixmaps/yuv420.raw",
+		.image_file[0] = "/usr/share/pixmaps/yuv420.raw",
+		.image_file[1] = "/usr/share/pixmaps/yuv420.raw",
+		.image_file[2] = "/usr/share/pixmaps/yuv420.raw",
+		.num_plane   = 1,
 		.pixelformat = V4L2_PIX_FMT_YUV420,
 		.dimensions = { 0, 0, 176, 144},
 		.default_crop = { 0, 0, 176, 144}
 	};
 
 	struct image_parameters test_image_7x27A = {
-		.image_file = "/usr/share/pixmaps/rgb565.raw",
+		.image_file[0] = "/usr/share/pixmaps/rgb565.raw",
+		.image_file[1] = "/usr/share/pixmaps/rgb565.raw",
+		.image_file[2] = "/usr/share/pixmaps/rgb565.raw",
+		.num_plane   = 1,
 		.pixelformat = V4L2_PIX_FMT_RGB565,
 		.dimensions = { 0, 0, 320, 240},
 		.default_crop = { 0, 0, 320, 240}
 	};
-
 
 	struct test_parameters tests_8x55[] = {
 		{
@@ -592,6 +755,16 @@ int main(int argc, char *argv[])
 			.destination = {0, 0, 300, 200},
 			.buf_count = 3,
 			.memory = V4L2_MEMORY_MMAP,
+			.rotation = -1,
+			.hflip = 0,
+			.vflip = 0,
+			.run = 0
+		},
+		{
+			.crop = test_image_8x55.default_crop,
+			.destination = test_image_8x55.dimensions,
+			.buf_count = 3,
+			.memory = V4L2_MEMORY_USERPTR,
 			.rotation = -1,
 			.hflip = 0,
 			.vflip = 0,
@@ -680,6 +853,16 @@ int main(int argc, char *argv[])
 			.vflip = 0,
 			.run = 0
 		},
+		{
+			.crop = test_image_7x27A.default_crop,
+			.destination = test_image_7x27A.dimensions,
+			.buf_count = 3,
+			.memory = V4L2_MEMORY_USERPTR,
+			.rotation = -1,
+			.hflip = 0,
+			.vflip = 0,
+			.run = 0
+		},
 	};
 
 	printf("=============================================\n");
@@ -703,7 +886,6 @@ int main(int argc, char *argv[])
 		total_tests = ARRAY_SIZE(tests_7x27A);
 	}
 
-
 	nr_selected_tests = select_tests(active_tests, argc, argv);
 	if (!nr_selected_tests) exit(0);
 
@@ -720,7 +902,7 @@ int main(int argc, char *argv[])
 			printf("Test FAILED.\n");
 			printf("Failed test parameters:\n");
 			printf("Source image %s, rect (%d, %d, %d, %d)\n",
-				active_image->image_file, active_image->dimensions.x,
+				active_image->image_file[0], active_image->dimensions.x,
 				active_image->dimensions.y, active_image->dimensions.w,
 				active_image->dimensions.h);
 			printf("Crop rect (%d, %d, %d, %d), dest rect (%d, %d, %d, %d)\n",
