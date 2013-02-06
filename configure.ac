@@ -11,6 +11,7 @@ AC_CONFIG_MACRO_DIR([m4])
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
+AC_PROG_LIBTOOL
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
@@ -67,6 +68,9 @@ ENABLE_KERNEL_TEST([msm-bus],[include the MSM bus test (default=yes)])
 # sps
 ENABLE_KERNEL_TEST([sps],[include the sps test (default=yes)])
 
+# v4l2apps
+ENABLE_KERNEL_TEST([v4l2apps],[include the v4l2apps test (default=no)],[no])
+
 # watchdog
 ENABLE_KERNEL_TEST([watchdog],[include the watchdog test (default=yes)])
 
@@ -82,6 +86,7 @@ AC_CONFIG_FILES([
 	msm_bus/Makefile
 	ocmem/Makefile
 	sps/Makefile
+	v4l2apps/Makefile
 	watchdog/Makefile
 	])
 AC_OUTPUT
