@@ -27,55 +27,31 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-echo "-----Coresight ETR Dump Test for STM Starting-----"
-echo "--------------------------------------------------"
+echo "-----Coresight ETR Switch Modes Test-----"
+echo "-----------------------------------------"
+#enable ETM and STM source
 source "$(dirname $0)/../cs_common.sh"
-stm_port=$stmpath"/port_enable"
-stm_hwevent=$stmpath"/hwevent_enable"
-if [ ! -d $debugfs ]
-then
-        mkdir $debufgs
-fi
-mount -t debugfs nodev $debugfs 2>/dev/null
-echo 0 > $debugfs"/tracing/events/enable"
-#make etr current trace sink
-echo 1 > $tmcetrpath"/curr_sink"
-stm_disable
-etm_disable_all_cores
+etm_enable_all_cores
 stm_enable
-#disable hwevents when stm is enabled
-echo 0 > $stm_hwevent
-echo "stm-dump" > "/dev/coresight-stm"
-stm_disable
-if [ ! -d "/data/coresight-test" ]
+etrmode=$tmcetrpath"/out_mode"
+#set etr mode to memory before starting test
+echo "mem" > $etrmode
+#change mode to usb
+echo "usb" > $etrmode
+read value <  $etrmode
+if [ $value -ne "usb" ]
 then
-        mkdir -p "/data/coresight-test"
-fi
-cat "/dev/coresight-tmc-etr" > "/data/coresight-test/stm_etr.bin"
-chmod a+x "/data/coresight-test/stm_etr.bin"
-hexdump -ve '1/1 "%.2X"' "/data/coresight-test/stm_etr.bin" > "/data/coresight-test/stm_etr.txt"
-brk=0
-skip=0
-size=0
-while [ $brk -eq 0 ]
-do
-        dd if="/data/coresight-test/stm_etr.txt" bs=1 skip=$skip count=16 of="/data/coresight-test/stm_etr.out" 2> /dev/null
-        if grep '0\{16\}' "/data/coresight-test/stm_etr.out" > /dev/null
-        then
-                brk=1
-        else
-                size=$(( size + 16 ))
-        fi
-        skip=$(( skip + 16 ))
-done
-if [ $size -eq 160 ]
-then
-        echo "PASS: STM ETR dump test"
+        echo "FAIL: Changing ETR mode from memory to usb failed ****"
 else
-        echo "FAIL: STM ETR dump test"
+        echo "mem" > $etrmode
+        read value <  $etrmode
+        if [ $value -ne "mem" ]
+        then
+             echo "FAIL: Changing ETR mode from usb to memory failed ****"
+        else
+              echo "PASS: Changed ETR modes successfully"
+        fi
 fi
-rm -r "/data/coresight-test"
-umount  "/sys/kernel/debug" 2>/dev/null
-echo "-----Coresight ETR Dump Test for STM Complete-----"
-echo "--------------------------------------------------"
+echo "----- Coresight ETR Switch Modes Test Complete-----"
+echo "---------------------------------------------------"
 echo ""

@@ -49,9 +49,9 @@ Tests STM tracing gets properly disabled.
 
 6. stm/stm_etf_dump.sh
 Tests ETF can be dumped with good data while STM is the only trace source. All ftrace,
-port and hw events are disabled while single string data is sent over STM. Once
-trailing zeros of output file is truncated, size is compared with reference size for
-same input data.
+hw events are disabled while single string data is sent over STM. Once trailing
+zeros of output file are truncated, size is compared with reference size for same
+input data.
 
 7. stm/stm_etr_dump.sh
 Please refer to stm/stm_etf_dump.sh. Here ETR is the trace sink instead of ETM.
@@ -68,7 +68,10 @@ at the same time.
 Tests that the device can switch between multiple Coresight tracesinks. Assumes etf,
 etr and tpiu sinks are present.
 
-11. cs_adversary.sh
+11. sink_switch/etr_modes.sh
+Tests that the modes of ETR can be changed from usb to memory and vice versa.
+
+12. cs_adversary.sh
 While having trace drivers enabled, enables and disables all cores in a loop.
 
 Targets supported: 8974
@@ -79,3 +82,4 @@ All tests prints:
  or
 "FAIL: <message>" otherwise
 
+Note: Tests assumes /data partition exists
