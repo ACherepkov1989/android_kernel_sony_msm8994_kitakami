@@ -60,6 +60,7 @@ cd $directory"/stm" && ./stm_etr_dump.sh
 cd $directory"/mult_trace" && ./mult_source_enable.sh
 cd $directory"/mult_trace" && ./mult_source_disable.sh
 cd $directory"/sink_switch" && ./sinkswitch.sh
+cd $directory"/sink_switch" && ./etr_modes.sh
 }
 
 cs_adversary(){
@@ -105,6 +106,11 @@ echo "Coresight sink switching repeat test started for $run iterations"
 for i in $(seq 1 $run)
 do
         cd $directory"/sink_switch" && ./sinkswitch.sh
+done
+echo "Coresight ETR modes change started for $run iterations"
+for i in $(seq 1 $run)
+do
+        cd $directory"/sink_switch" && ./etr_modes.sh
 done
 echo "CoreSight adversarial repeat test started for $run iterations"
 for i in $(seq 1 $run)

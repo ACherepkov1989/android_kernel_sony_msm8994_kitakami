@@ -37,18 +37,15 @@ then
         mkdir $debufgs
 fi
 mount -t debugfs nodev $debugfs 2>/dev/null
-#disable all ftrace events
-echo >  "/sys/kernel/debug/tracing/set_event"
+echo 0 > $debugfs"/tracing/events/enable"
 #make etf current trace sink
 echo 1 > $tmcetfpath"/curr_sink"
-stm_enable
-#disable port and hwevents when stm is enabled
-echo 0 > $stm_port
-echo 0 > $stm_hwevent
-etm_disable_all_cores
 stm_disable
+etm_disable_all_cores
 stm_enable
-        echo "stm-dump" > "/dev/coresight-stm"
+#disable hwevents when stm is enabled
+echo 0 > $stm_hwevent
+echo "stm-dump" > "/dev/coresight-stm"
 stm_disable
 if [ ! -d "/data/coresight-test" ]
 then
