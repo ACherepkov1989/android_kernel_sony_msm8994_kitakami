@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -78,10 +78,24 @@ static int other_os_notif_handler(struct notifier_block *this,
 	return NOTIFY_DONE;
 }
 
+static int test_client_notif_handler(struct notifier_block *this,
+		unsigned long event, void *data)
+{
+	struct ocmem_buf *buff = data;
+
+	OCMEM_LOG("ocmem_test: test_client notitification event %lu\n", event);
+	OCMEM_LOG("Notification buffer buff %p(addr %lx:len %lx)\n",
+			buff, buff->addr, buff->len);
+	return NOTIFY_DONE;
+}
+
 static struct notifier_block other_os_nb = {
 	.notifier_call = other_os_notif_handler,
 };
 
+static struct notifier_block test_client_nb = {
+	.notifier_call = test_client_notif_handler,
+};
 
 #ifdef CONFIG_MSM_OCMEM_NONSECURE
 static int ocmem_verify_access(int id, struct ocmem_buf *buffer)
@@ -205,11 +219,17 @@ static int ocmem_test_single_alloc_nowait(void)
 static int ocmem_test_single_alloc_range(void)
 {
 	struct ocmem_buf *buff = NULL;
+	void *gfx_hndl = NULL;
 	unsigned long min = 256 * SZ_1K;
 	unsigned long max = 2 * min;
 	unsigned long step = min;
 
 	num_test_cases++;
+
+	gfx_hndl = ocmem_notifier_register(TEST_OCMEM_CLIENT, &test_client_nb);
+
+	if (!gfx_hndl)
+		return -EINVAL;
 
 	buff = ocmem_allocate_range(TEST_OCMEM_CLIENT, min, max, step);
 
