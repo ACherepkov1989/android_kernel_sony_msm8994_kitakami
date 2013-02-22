@@ -52,15 +52,13 @@
 static struct ion_test_data mm_heap_test = {
 	.align = 0x1000,
 	.size = 0x1000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_SECURE,
+	.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
 };
 
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0x1000,
 	.size = 0xC0000000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_SECURE,
+	.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
 };
 
 static struct ion_test_data *mm_heap_data_settings[] = {
