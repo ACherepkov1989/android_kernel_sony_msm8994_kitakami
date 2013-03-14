@@ -52,6 +52,7 @@ static int verbose_mode;
 
 static int num_test_cases;
 static int num_success;
+static unsigned long test_ocmem_client_quota;
 
 #define OCMEM_LOG(msg, args...) do {					\
 			if (verbose_mode)	\
@@ -155,10 +156,10 @@ static int ocmem_verify_access(int id, struct ocmem_buf *buffer)
 static int ocmem_test_single_alloc(void)
 {
 	struct ocmem_buf *buff = NULL;
-	unsigned long size = 512 * SZ_1K;
+	unsigned long size = test_ocmem_client_quota;
 	num_test_cases++;
 
-	buff = ocmem_allocate(TEST_OCMEM_CLIENT, 512 * SZ_1K);
+	buff = ocmem_allocate(TEST_OCMEM_CLIENT, test_ocmem_client_quota);
 
 	if (!buff || !buff->len)
 		return -EINVAL;
@@ -186,7 +187,7 @@ static int ocmem_test_single_alloc(void)
 static int ocmem_test_single_alloc_nowait(void)
 {
 	struct ocmem_buf *buff = NULL;
-	unsigned long size = 512 * SZ_1K;
+	unsigned long size = test_ocmem_client_quota;
 
 	num_test_cases++;
 
@@ -220,8 +221,8 @@ static int ocmem_test_single_alloc_range(void)
 {
 	struct ocmem_buf *buff = NULL;
 	void *gfx_hndl = NULL;
-	unsigned long min = 256 * SZ_1K;
-	unsigned long max = 2 * min;
+	unsigned long min = test_ocmem_client_quota / 2;
+	unsigned long max = test_ocmem_client_quota;
 	unsigned long step = min;
 
 	num_test_cases++;
@@ -259,7 +260,7 @@ static int ocmem_test_single_alloc_nb(void)
 {
 	struct ocmem_buf *buff = NULL;
 	void *other_os_hndl;
-	unsigned long size = 128 * SZ_1K;
+	unsigned long size = test_ocmem_client_quota;
 
 	num_test_cases++;
 
@@ -331,7 +332,7 @@ static int msm_ocmem_nominal_test(void)
 static int ocmem_test_alloc_denied(void)
 {
 	struct ocmem_buf *buff = NULL;
-	unsigned long size = 512 * SZ_1K;
+	unsigned long size = test_ocmem_client_quota;
 	num_test_cases++;
 
 	buff = ocmem_allocate(OCMEM_VOICE, size);
@@ -474,10 +475,21 @@ static int __init ocmem_test_init(void)
 		return -ENODEV;
 	}
 
+	test_ocmem_client_quota = get_max_quota(TEST_OCMEM_CLIENT);
+	if (!test_ocmem_client_quota) {
+		pr_err("Couldn't do get_max_quota for TEST_OCMEM_CLIENT (id: %d)\n",
+			TEST_OCMEM_CLIENT);
+		ret = -EIO;
+		goto fail;
+	}
+
 	pr_info("OCMEM test: Module loaded\n");
 
 	ret = 0;
 
+	return ret;
+fail:
+	misc_deregister(&msm_ocmem_test_dev);
 	return ret;
 }
 
