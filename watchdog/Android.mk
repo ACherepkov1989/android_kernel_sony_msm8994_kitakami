@@ -1,4 +1,12 @@
+BUILD_WDOG_MODULE := false
+
 ifeq ($(call is-board-platform,msm8974),true)
+BUILD_WDOG_MODULE := true
+else ifeq ($(call is-board-platform,msm8226),true)
+BUILD_WDOG_MODULE := true
+endif
+
+ifeq ($(BUILD_WDOG_MODULE), true)
 
 LOCAL_PATH := $(call my-dir)
 
