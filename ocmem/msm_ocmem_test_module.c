@@ -263,12 +263,12 @@ static int ocmem_test_single_alloc_nb(void)
 
 	num_test_cases++;
 
-	other_os_hndl = ocmem_notifier_register(OCMEM_OTHER_OS, &other_os_nb);
+	other_os_hndl = ocmem_notifier_register(TEST_OCMEM_CLIENT, &other_os_nb);
 
 	if (!other_os_hndl)
 		return -EINVAL;
 
-	buff = ocmem_allocate_nb(OCMEM_OTHER_OS, size);
+	buff = ocmem_allocate_nb(TEST_OCMEM_CLIENT, size);
 
 	if (!buff || !buff->len)
 		return -EINVAL;
@@ -279,7 +279,7 @@ static int ocmem_test_single_alloc_nb(void)
 	if (buff->len != size)
 		return -EINVAL;
 
-	if (ocmem_free(OCMEM_OTHER_OS, buff))
+	if (ocmem_free(TEST_OCMEM_CLIENT, buff))
 		return -EINVAL;
 
 	if (ocmem_notifier_unregister(other_os_hndl, &other_os_nb))
