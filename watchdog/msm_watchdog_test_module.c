@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,7 +32,6 @@
 #define REG_VAL_WDOG_BITE_VAL		0x400
 
 #define SCM_SVC_SEC_WDOG_TRIG	0x8
-#define CPMR_ETMCLKEN		0x8
 
 #define MDELAY_TIME		15000
 
@@ -58,16 +57,6 @@ module_param_call(apps_wdog_bark, apps_wdog_bark_set, param_get_int,
 						&apps_wdog_bark, 0644);
 
 struct completion timeout_complete;
-
-static inline void etm_clk_enable(void)
-{
-	uint32_t cpmr;
-
-	asm volatile("mrc p15, 7, %0, c15, c0, 5" : "=r" (cpmr));
-	cpmr  |= CPMR_ETMCLKEN;
-	asm volatile("mcr p15, 7, %0, c15, c0, 5" : : "r" (cpmr));
-	isb();
-}
 
 static void timeout_work(struct work_struct *work)
 {
@@ -115,7 +104,6 @@ static void sec_wdog_bite_work(struct work_struct *work)
 		pr_info("unable to map sec wdog page\n");
 		goto err;
 	}
-	etm_clk_enable();
 	writel_relaxed(REG_VAL_WDOG_RESET_DO_RESET,
 		sec_wdog_virt + REG_OFFSET_MPM2_WDOG_RESET);
 	writel_relaxed(REG_VAL_WDOG_BITE_VAL,
