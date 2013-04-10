@@ -68,17 +68,6 @@ static inline int ocmem_phys_address(unsigned long addr)
 	return addr;
 }
 
-static int other_os_notif_handler(struct notifier_block *this,
-		unsigned long event, void *data)
-{
-	struct ocmem_buf *buff = data;
-
-	OCMEM_LOG("ocmem_test: other_os notification event %lu\n", event);
-	OCMEM_LOG("Notification buffer buff %p(addr %lx:len %lx)\n",
-			buff, buff->addr, buff->len);
-	return NOTIFY_DONE;
-}
-
 static int test_client_notif_handler(struct notifier_block *this,
 		unsigned long event, void *data)
 {
@@ -89,10 +78,6 @@ static int test_client_notif_handler(struct notifier_block *this,
 			buff, buff->addr, buff->len);
 	return NOTIFY_DONE;
 }
-
-static struct notifier_block other_os_nb = {
-	.notifier_call = other_os_notif_handler,
-};
 
 static struct notifier_block test_client_nb = {
 	.notifier_call = test_client_notif_handler,
@@ -220,35 +205,44 @@ static int ocmem_test_single_alloc_nowait(void)
 static int ocmem_test_single_alloc_range(void)
 {
 	struct ocmem_buf *buff = NULL;
-	void *gfx_hndl = NULL;
+	void *test_client_hndl = NULL;
 	unsigned long min = test_ocmem_client_quota / 2;
 	unsigned long max = test_ocmem_client_quota;
 	unsigned long step = min;
 
 	num_test_cases++;
 
-	gfx_hndl = ocmem_notifier_register(TEST_OCMEM_CLIENT, &test_client_nb);
+	test_client_hndl = ocmem_notifier_register(TEST_OCMEM_CLIENT, &test_client_nb);
 
-	if (!gfx_hndl)
-		return -EINVAL;
+	if (!test_client_hndl)
+		goto notifier_fail;
 
 	buff = ocmem_allocate_range(TEST_OCMEM_CLIENT, min, max, step);
 
 	if (!buff || !buff->len)
-		return -EINVAL;
+		goto test_case_fail;
 
 	OCMEM_LOG("ocmem test: single_alloc_range: buff %p(addr:%lx len:%lx)\n",
 					buff, buff->addr, buff->len);
 
 	if (buff->len != max)
-		return -EINVAL;
+		goto test_case_fail;
 
 	if (ocmem_free(TEST_OCMEM_CLIENT, buff))
+		goto test_case_fail;
+
+	if (ocmem_notifier_unregister(test_client_hndl, &test_client_nb))
 		return -EINVAL;
 
 	num_success++;
 	OCMEM_LOG("ocmem test: single_alloc_range succeeded\n");
 	return 0;
+
+test_case_fail:
+	if (ocmem_notifier_unregister(test_client_hndl, &test_client_nb))
+		return -EINVAL;
+notifier_fail:
+	return -EINVAL;
 }
 
 /*
@@ -259,36 +253,42 @@ static int ocmem_test_single_alloc_range(void)
 static int ocmem_test_single_alloc_nb(void)
 {
 	struct ocmem_buf *buff = NULL;
-	void *other_os_hndl;
+	void *test_client_hndl;
 	unsigned long size = test_ocmem_client_quota;
 
 	num_test_cases++;
 
-	other_os_hndl = ocmem_notifier_register(TEST_OCMEM_CLIENT, &other_os_nb);
+	test_client_hndl = ocmem_notifier_register(TEST_OCMEM_CLIENT, &test_client_nb);
 
-	if (!other_os_hndl)
-		return -EINVAL;
+	if (!test_client_hndl)
+		goto notifier_fail;
 
 	buff = ocmem_allocate_nb(TEST_OCMEM_CLIENT, size);
 
 	if (!buff || !buff->len)
-		return -EINVAL;
+		goto test_case_fail;
 
 	OCMEM_LOG("ocmem test: single_alloc_nb: buff %p(addr: %lx len:%lx)\n",
 					buff, buff->addr, buff->len);
 
 	if (buff->len != size)
-		return -EINVAL;
+		goto test_case_fail;
 
 	if (ocmem_free(TEST_OCMEM_CLIENT, buff))
-		return -EINVAL;
+		goto test_case_fail;
 
-	if (ocmem_notifier_unregister(other_os_hndl, &other_os_nb))
+	if (ocmem_notifier_unregister(test_client_hndl, &test_client_nb))
 		return -EINVAL;
 
 	num_success++;
 	OCMEM_LOG("ocmem test: single_alloc_nb succeeded\n");
 	return 0;
+
+test_case_fail:
+	if (ocmem_notifier_unregister(test_client_hndl, &test_client_nb))
+		return -EINVAL;
+notifier_fail:
+	return -EINVAL;
 }
 
 static int (*nominal_test_cases[]) (void) = {
