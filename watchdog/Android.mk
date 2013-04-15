@@ -1,12 +1,8 @@
-BUILD_WDOG_MODULE := false
+BOARD_PLATFORM_LIST := msm8974
+BOARD_PLATFORM_LIST += msm8226
+BOARD_PLATFORM_LIST += msm8610
 
-ifeq ($(call is-board-platform,msm8974),true)
-BUILD_WDOG_MODULE := true
-else ifeq ($(call is-board-platform,msm8226),true)
-BUILD_WDOG_MODULE := true
-endif
-
-ifeq ($(BUILD_WDOG_MODULE), true)
+ifeq ($(call is-board-platform-in-list,$(BOARD_PLATFORM_LIST)),true)
 
 LOCAL_PATH := $(call my-dir)
 
