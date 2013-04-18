@@ -9,6 +9,9 @@ if KERNELMODULES
 if USEION
 BUILD_TEST += ion
 endif
+if USEMEMORY_PROF
+BUILD_TEST += memory_prof
+endif
 if USEMSM_BUS
 BUILD_TEST += msm_bus
 endif
