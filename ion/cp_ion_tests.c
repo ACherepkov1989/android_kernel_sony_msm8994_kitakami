@@ -51,13 +51,13 @@ static struct ion_test_data mm_heap_test = {
 	.align = 0x100000,
 	.size = 0x100000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_FLAG_CACHED | ION_SECURE,
+	.flags = ION_FLAG_CACHED | ION_FLAG_SECURE,
 };
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0,
 	.size = 0x100000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_SECURE,
+	.flags = ION_FLAG_SECURE,
 };
 static struct ion_test_data *mm_heap_data_settings[] = {
 	[NOMINAL_TEST] = &mm_heap_test,
@@ -110,7 +110,7 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 	sec_alloc_data.heap_mask = test_data->heap_mask;
 	sec_alloc_data.flags = test_data->flags;
 	if (test_type == NOMINAL_TEST)
-		sec_alloc_data.flags |= ION_SECURE;
+		sec_alloc_data.flags |= ION_FLAG_SECURE;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &sec_alloc_data);
 	if (rc < 0 && test_type == NOMINAL_TEST) {
 		debug(ERR, "Nominal cp alloc buf failed\n");
@@ -138,7 +138,7 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 		addr = (unsigned long)mmap(NULL, alloc_data.len,
 					PROT_READ | PROT_WRITE,
 					MAP_SHARED , map_fd, 0);
-		sec_alloc_data.flags |= ION_SECURE;
+		sec_alloc_data.flags |= ION_FLAG_SECURE;
 		rc = ioctl(ion_fd, ION_IOC_ALLOC, &sec_alloc_data);
 		if (rc == 0) {
 			rc = -EIO;
