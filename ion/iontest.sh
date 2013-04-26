@@ -1,4 +1,4 @@
-# Copyright (c) 2012, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -42,7 +42,7 @@ ion_test_mod=${modpath}/msm_ion_test_module.ko
 ion_dev=/dev/ion
 ion_dev_misc=/sys/class/misc/ion/dev
 ion_test_dev=/dev/msm_ion_test
-ion_test_dev_misc=/sys/class/misc/msm_ion_test/dev
+ion_test_dev_sys=/sys/class/msm_ion_test/msm_ion_test/dev
 test_type=n
 level=0
 
@@ -82,7 +82,7 @@ if [ ! -e $ion_test_mod ]; then
 fi
 
 # insert msm_ion_test_module if needed
-if [ ! -e $ion_test_dev_misc ]; then
+if [ ! -e $ion_test_dev_sys ]; then
 	insmod $ion_test_mod
 
 	if [ $? -ne 0 ]; then
@@ -92,7 +92,7 @@ if [ ! -e $ion_test_dev_misc ]; then
 fi
 
 # create the ion test device if it doesn't exist
-maybe_make_node $ion_test_dev $ion_test_dev_misc
+maybe_make_node $ion_test_dev $ion_test_dev_sys
 
 
 #invoke test

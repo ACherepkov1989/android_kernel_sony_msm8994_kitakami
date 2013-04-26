@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,13 +22,18 @@
 #include <linux/msm_ion.h>
 #include "iontest.h"
 
+#define ION_TEST_DEV_NAME "msm_ion_test"
 #define CLIENT_NAME "ion_test_client"
+
 struct msm_ion_test {
 	struct ion_client *ion_client;
 	struct ion_handle *ion_handle;
 	struct ion_test_data test_data;
-	struct miscdevice *dev;
 };
+
+static struct class *ion_test_class;
+static int ion_test_major;
+static struct device *ion_test_dev;
 
 /*Utility apis*/
 static inline int create_ion_client(struct msm_ion_test *ion_test)
@@ -62,13 +67,11 @@ static inline void free_ion_buf(struct msm_ion_test *ion_test)
 
 static int ion_test_open(struct inode *inode, struct file *file)
 {
-	struct miscdevice *dev = file->private_data;
 	struct msm_ion_test *ion_test = kzalloc(sizeof(struct msm_ion_test),
 								GFP_KERNEL);
 	if (!ion_test)
 		return -ENOMEM;
 	pr_info("ion test device opened\n");
-	ion_test->dev = dev;
 	file->private_data = ion_test;
 	return 0;
 }
@@ -232,7 +235,7 @@ static int ion_test_release(struct inode *inode, struct file *file)
 }
 
 /*
- * Register ourselves as a misc device to be able to test the ion code
+ * Register ourselves as a device to be able to test the ion code
  * from userspace.
  */
 
@@ -243,27 +246,55 @@ static const struct file_operations ion_test_fops = {
 	.release = ion_test_release,
 };
 
-static struct miscdevice ion_test_dev = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "msm_ion_test",
-	.fops = &ion_test_fops,
-};
+static int ion_test_device_create(void)
+{
+	int ret_val = 0;
+
+	ion_test_major = register_chrdev(0, ION_TEST_DEV_NAME, &ion_test_fops);
+	if (ion_test_major < 0) {
+		pr_err("Unable to register chrdev: %d\n", ion_test_major);
+		ret_val = ion_test_major;
+		goto out;
+	}
+
+	ion_test_class = class_create(THIS_MODULE, ION_TEST_DEV_NAME);
+	if (IS_ERR(ion_test_class)) {
+		ret_val = PTR_ERR(ion_test_class);
+		pr_err("Unable to create class: %d\n", ret_val);
+		goto err_create_class;
+	}
+
+	ion_test_dev = device_create(ion_test_class, NULL, MKDEV(ion_test_major, 0), NULL, ION_TEST_DEV_NAME);
+	if (IS_ERR(ion_test_dev)) {
+		ret_val = PTR_ERR(ion_test_dev);
+		pr_err("Unable to create device: %d\n", ret_val);
+		goto err_create_device;
+	}
+	goto out;
+
+err_create_device:
+	class_destroy(ion_test_class);
+err_create_class:
+	unregister_chrdev(ion_test_major, ION_TEST_DEV_NAME);
+out:
+	return ret_val;
+}
+
+static void ion_test_device_destroy(void)
+{
+	device_destroy(ion_test_class, MKDEV(ion_test_major, 0));
+	class_destroy(ion_test_class);
+	unregister_chrdev(ion_test_major, ION_TEST_DEV_NAME);
+}
 
 static int ion_test_init(void)
 {
-	int ret;
-	ret = misc_register(&ion_test_dev);
-	if (ret < 0)
-		return ret;
-	pr_alert("%s, minor number %d\n", __func__,
-						ion_test_dev.minor);
-	return 0;
+	return ion_test_device_create();
 }
 
 static void ion_test_exit(void)
 {
-	misc_deregister(&ion_test_dev);
-	pr_alert("%s\n", __func__);
+	return ion_test_device_destroy();
 }
 
 MODULE_LICENSE("GPL v2");
