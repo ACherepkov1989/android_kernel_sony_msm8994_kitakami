@@ -795,6 +795,8 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 				"uncached", sMB,
 				alloc_stats, NULL, NULL,
 				free_stats, nreps);
+
+		fflush(stdout);
 	}
 }
 
