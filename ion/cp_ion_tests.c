@@ -48,32 +48,49 @@
 #define ARRAY_SIZE(arr)	(sizeof(arr) / sizeof((arr)[0]))
 
 static struct ion_test_data mm_heap_test = {
-	.align = 0x100000,
-	.size = 0x100000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_FLAG_CACHED | ION_FLAG_SECURE,
-};
-static struct ion_test_data adv_mm_heap_test = {
-	.align = 0,
-	.size = 0x100000,
+	.align = 0x1000,
+	.size = 0x1000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
 	.flags = ION_FLAG_SECURE,
+	.heap_type_req = CP,
 };
+static struct ion_test_data adv_mm_heap_test = {
+	.align = 0x1000,
+	.size = 0x1000,
+	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
+	.heap_type_req = CP,
+	.flags = 0,
+};
+
 static struct ion_test_data *mm_heap_data_settings[] = {
 	[NOMINAL_TEST] = &mm_heap_test,
 	[ADV_TEST] = &adv_mm_heap_test,
 };
 
 static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
-				struct ion_test_plan *ion_tp, int test_type)
+				struct ion_test_plan *ion_tp, int test_type,
+				int *test_skipped)
 {
 	int ion_fd, ion_kernel_fd, map_fd, rc;
 	unsigned long addr;
 	struct ion_allocation_data alloc_data, sec_alloc_data;
 	struct ion_fd_data fd_data;
 	struct ion_test_data ktest_data;
-	struct ion_test_data *test_data =
-		(struct ion_test_data *)ion_tp->test_plan_data;
+	struct ion_test_data *test_data;
+	struct ion_test_data **test_data_table =
+		(struct ion_test_data **)ion_tp->test_plan_data;
+
+	if (test_type == NOMINAL_TEST)
+		test_data = test_data_table[NOMINAL_TEST];
+	else
+		test_data = test_data_table[ADV_TEST];
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
 
 	ion_fd = open(ion_dev, O_RDONLY);
 	if (ion_fd < 0) {
@@ -91,7 +108,8 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
 	alloc_data.heap_mask = test_data->heap_mask;
-	alloc_data.flags = test_data->flags;
+	alloc_data.flags = ION_SECURE;
+
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &alloc_data);
 	if (rc) {
 		debug(ERR, "alloc buf failed\n");
@@ -103,14 +121,9 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 		goto cp_alloc_sec_err;
 	}
 	sec_alloc_data.len = test_data->size;
-	if (test_type == NOMINAL_TEST)
-		sec_alloc_data.align = test_data->align;
-	else
-		sec_alloc_data.align = 0;
 	sec_alloc_data.heap_mask = test_data->heap_mask;
 	sec_alloc_data.flags = test_data->flags;
-	if (test_type == NOMINAL_TEST)
-		sec_alloc_data.flags |= ION_FLAG_SECURE;
+	sec_alloc_data.align = test_data->align;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &sec_alloc_data);
 	if (rc < 0 && test_type == NOMINAL_TEST) {
 		debug(ERR, "Nominal cp alloc buf failed\n");
@@ -192,18 +205,21 @@ cp_alloc_sec_err:
 cp_alloc_err:
 	close(ion_kernel_fd);
 	close(ion_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan sec_alloc_test = {
 	.name = "CP ion alloc buf",
-	.test_plan_data = &mm_heap_test,
+	.test_plan_data = &mm_heap_data_settings,
+	.test_plan_data_len = 3,
 	.test_type_flags = NOMINAL_TEST | ADV_TEST,
 	.test_fn = test_sec_alloc,
 };
 
 static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_fd, rc, ion_kernel_fd, map_fd;
 	unsigned long addr;
@@ -212,6 +228,18 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 	struct ion_test_data *test_data, ktest_data;
 	struct ion_test_data **test_data_table =
 		(struct ion_test_data **)ion_tp->test_plan_data;
+
+	if (test_type == NOMINAL_TEST)
+		test_data = test_data_table[NOMINAL_TEST];
+	else
+		test_data = test_data_table[ADV_TEST];
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
 
 	ion_fd = open(ion_dev, O_RDONLY);
 	if (ion_fd < 0) {
@@ -226,10 +254,6 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 		close(ion_fd);
 		return -EIO;
 	}
-	if (test_type == NOMINAL_TEST)
-		test_data = test_data_table[NOMINAL_TEST];
-	else
-		test_data = test_data_table[ADV_TEST];
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
 	alloc_data.heap_mask = test_data->heap_mask;
@@ -283,15 +307,13 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 	rc = ioctl(ion_kernel_fd, IOC_ION_KMAP, NULL);
 	if (rc == 0 && test_type == ADV_TEST) {
 		rc = -EIO;
-		debug(INFO, "able to map ubuf to kernel space as cached\n");
+		debug(INFO, "able to map ubuf to kernel space\n");
 		ioctl(ion_kernel_fd, IOC_ION_KUMAP, NULL);
-	} else if (rc < 0 && test_type == ADV_TEST) {
+	} else if (rc < 0) {
 		rc = 0;
-	} else if (rc < 0 && test_type == NOMINAL_TEST) {
-		debug(INFO, "unable to map buf from secure heap to kernel\n");
-		goto sec_map_uimp_err;
-	} else
+	} else {
 		ioctl(ion_kernel_fd, IOC_ION_KUMAP, NULL);
+	}
 	ioctl(ion_kernel_fd, IOC_ION_KFREE, NULL);
 sec_map_uimp_err:
 	ioctl(ion_kernel_fd, IOC_ION_KCLIENT_DESTROY, NULL);
@@ -305,12 +327,14 @@ sec_map_alloc_err:
 	ioctl(ion_fd, ION_IOC_FREE, &alloc_data.handle);
 	close(ion_kernel_fd);
 	close(ion_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan sec_map_test = {
 	.name = "CP ion map test",
 	.test_plan_data = mm_heap_data_settings,
+	.test_plan_data_len = 3,
 	.test_type_flags = NOMINAL_TEST,
 	.test_fn = test_sec_map,
 };
@@ -319,8 +343,9 @@ static struct ion_test_plan *cp_tests[] = {
 	&sec_map_test,
 };
 
-struct ion_test_plan **get_cp_ion_tests(size_t *size)
+struct ion_test_plan **get_cp_ion_tests(const char *dev, size_t *size)
 {
 	*size = ARRAY_SIZE(cp_tests);
+	setup_heaps_for_tests(dev, cp_tests, *size);
 	return cp_tests;
 }

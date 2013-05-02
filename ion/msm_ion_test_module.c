@@ -20,6 +20,10 @@
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/msm_ion.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_device.h>
+
 #include "iontest.h"
 
 #define ION_TEST_DEV_NAME "msm_ion_test"
@@ -31,9 +35,17 @@ struct msm_ion_test {
 	struct ion_test_data test_data;
 };
 
+struct heap {
+	unsigned int id;
+	unsigned int size;
+	enum ion_test_heap_type type;
+};
+
 static struct class *ion_test_class;
 static int ion_test_major;
 static struct device *ion_test_dev;
+static struct heap *heap_list;
+static unsigned int heap_list_len;
 
 /*Utility apis*/
 static inline int create_ion_client(struct msm_ion_test *ion_test)
@@ -65,15 +77,134 @@ static inline void free_ion_buf(struct msm_ion_test *ion_test)
 	ion_free(ion_test->ion_client, ion_test->ion_handle);
 }
 
+static int heap_detected;
+
+#ifdef CONFIG_OF_DEVICE
+static int ion_find_heaps_available(void)
+{
+	struct device_node *ion_node;
+	struct device_node *ion_child;
+	unsigned int i = 0;
+	int ret = 0;
+	unsigned int val = 0;
+
+	ion_node = of_find_compatible_node(NULL, NULL, "qcom,msm-ion");
+
+	for_each_child_of_node(ion_node, ion_child)
+		heap_list_len++;
+
+	heap_list = kzalloc(sizeof(struct heap) * heap_list_len, GFP_KERNEL);
+	if (!heap_list) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	for_each_child_of_node(ion_node, ion_child) {
+		ret = of_property_read_u32(ion_child, "reg", &val);
+		if (ret) {
+			pr_err("%s: Unable to find reg key", __func__);
+			goto free_heaps;
+		}
+		heap_list[i].id = val;
+
+		switch (val) {
+			case ION_SYSTEM_HEAP_ID:
+			{
+				heap_list[i].type = SYSTEM_MEM;
+				break;
+			}
+			case ION_SYSTEM_CONTIG_HEAP_ID:
+			{
+				heap_list[i].type = SYSTEM_CONTIG;
+				break;
+			}
+			case ION_CP_MM_HEAP_ID:
+			{
+				ret = of_property_read_u32(ion_child,
+						"qcom,memory-reservation-size", &val);
+				if (ret) {
+					heap_list[i].type = CP;
+				} else {
+					heap_list[i].size = val;
+					heap_list[i].type = CP_CARVEOUT;
+				}
+				break;
+			}
+			case ION_IOMMU_HEAP_ID:
+			{
+				heap_list[i].type = SYSTEM_MEM2;
+				break;
+			}
+			case ION_QSECOM_HEAP_ID:
+			case ION_AUDIO_HEAP_ID:
+			{
+				ret = of_property_read_u32(ion_child,
+						"qcom,memory-reservation-size", &val);
+				if (ret) {
+					heap_list[i].type = 0;
+				} else {
+					heap_list[i].size = val;
+					heap_list[i].type = CARVEOUT;
+				}
+				break;
+			}
+			default:
+				break;
+		}
+		++i;
+	}
+	heap_detected = 1;
+	goto out;
+
+free_heaps:
+	kfree(heap_list);
+	heap_list = 0;
+out:
+	return ret;
+}
+#else
+static int ion_find_heaps_available(void)
+{
+	return 0;
+}
+#endif
+
 static int ion_test_open(struct inode *inode, struct file *file)
 {
 	struct msm_ion_test *ion_test = kzalloc(sizeof(struct msm_ion_test),
 								GFP_KERNEL);
 	if (!ion_test)
 		return -ENOMEM;
-	pr_info("ion test device opened\n");
+	pr_debug("ion test device opened\n");
 	file->private_data = ion_test;
-	return 0;
+
+	return ion_find_heaps_available();
+}
+
+static int get_proper_heap(struct ion_heap_data *data)
+{
+	int ret = -EINVAL;
+	unsigned int i;
+
+	if (!heap_detected) {
+		data->valid = 1;
+		ret = 0;
+	} else {
+		data->heap_mask  = 0;
+		data->size = 0;
+		data->valid = 0;
+
+		for (i = 0; i < heap_list_len; ++i) {
+			if (data->type == heap_list[i].type) {
+				data->size = heap_list[i].size;
+				data->heap_mask = ION_HEAP(heap_list[i].id);
+				data->valid = 1;
+				ret = 0;
+				break;
+			}
+		}
+	}
+	return ret;
 }
 
 static long ion_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
@@ -217,9 +348,24 @@ static long ion_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			pr_info("able to unsecure heap\n");
 		break;
 	}
+	case IOC_ION_FIND_PROPER_HEAP:
+	{
+		struct ion_heap_data data;
+
+		if (copy_from_user(&data, (void __user *)arg,
+						sizeof(struct ion_heap_data)))
+			return -EFAULT;
+		ret = get_proper_heap(&data);
+		if (!ret) {
+			if (copy_to_user((void __user *)arg, &data,
+						sizeof(struct ion_heap_data)))
+				ret = -EFAULT;
+		}
+		break;
+	}
 	default:
 	{
-		pr_info("command not supproted\n");
+		pr_info("command not supported\n");
 		ret = -EINVAL;
 	}
 	};
@@ -229,7 +375,7 @@ static long ion_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 static int ion_test_release(struct inode *inode, struct file *file)
 {
 	struct msm_ion_test *ion_test = file->private_data;
-	pr_info("ion test device closed\n");
+	pr_debug("ion test device closed\n");
 	kfree(ion_test);
 	return 0;
 }
@@ -285,6 +431,7 @@ static void ion_test_device_destroy(void)
 	device_destroy(ion_test_class, MKDEV(ion_test_major, 0));
 	class_destroy(ion_test_class);
 	unregister_chrdev(ion_test_major, ION_TEST_DEV_NAME);
+	kfree(heap_list);
 }
 
 static int ion_test_init(void)

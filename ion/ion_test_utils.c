@@ -94,3 +94,56 @@ int sock_read(int fd, char *buf, int size)
 	}
 	return 0;
 }
+
+static int get_heap_data(const char *msm_ion_dev, struct ion_test_data *data)
+{
+	int ion_kernel_fd, rc;
+	struct ion_heap_data heap_data;
+
+	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
+
+	if (ion_kernel_fd < 0) {
+		debug(ERR, "Failed to open msm ion test device\n");
+		perror("msm ion");
+		return -EIO;
+	}
+	heap_data.type = data->heap_type_req;
+	heap_data.heap_mask = data->heap_mask;
+
+	rc = ioctl(ion_kernel_fd, IOC_ION_FIND_PROPER_HEAP, &heap_data);
+
+	if (!rc) {
+		data->valid = heap_data.valid;
+		data->heap_mask =  heap_data.heap_mask;
+	} else {
+		data->valid = 0;
+	}
+
+	close(ion_kernel_fd);
+	return rc;
+
+}
+
+void setup_heaps_for_tests(const char *dev, struct ion_test_plan **tp_array,
+			   unsigned int len)
+{
+	unsigned int i;
+	unsigned int j;
+	struct ion_test_plan *tp;
+
+	for (i = 0; i < len; ++i) {
+		tp = tp_array[i];
+		for (j = 0; j < tp->test_plan_data_len; ++j) {
+			struct ion_test_data *test_data;
+			if (tp->test_plan_data_len > 1) {
+				struct ion_test_data **test_data_table =
+						tp->test_plan_data;
+				test_data = test_data_table[j];
+			} else {
+				test_data = tp->test_plan_data;
+			}
+			if (test_data)
+				get_heap_data(dev, test_data);
+		}
+	}
+}
