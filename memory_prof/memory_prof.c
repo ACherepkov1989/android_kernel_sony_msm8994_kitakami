@@ -534,6 +534,16 @@ static void heap_profiling(void)
 				ION_FLAG_CACHED, sz, quiet);
 		}
 		print_stats_results("ION_SYSTEM_HEAP_ID", "cached", sMB, stats);
+
+		for (i = 0, statsp = &stats[0]; i < nreps; ++i) {
+			*statsp++ = profile_alloc_for_heap(
+				"ION_SYSTEM_HEAP_ID uncached",
+				sMB,
+				ION_HEAP(ION_SYSTEM_HEAP_ID),
+				0, sz, quiet);
+		}
+		print_stats_results("ION_SYSTEM_HEAP_ID", "uncached", sMB, stats);
+
 	}
 }
 
