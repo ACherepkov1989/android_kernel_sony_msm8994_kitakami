@@ -49,20 +49,30 @@
 static struct ion_test_data mm_heap_test = {
 	.align = 0x1000,
 	.size = 0x1000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_FLAG_SECURE,
+	.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
+	.heap_type_req = SYSTEM_MEM,
+	.flags = ION_FLAG_CACHED,
+};
+static struct ion_test_data phys_heap_test = {
+	.align = 0x1000,
+	.size = 0x1000,
+	.heap_mask = ION_HEAP(ION_QSECOM_HEAP_ID),
+	.heap_type_req = CARVEOUT,
+	.flags = 0,
 };
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0x1000,
 	.size = 0xC0000000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_FLAG_SECURE,
+	.heap_mask = ION_HEAP(ION_QSECOM_HEAP_ID),
+	.heap_type_req = CARVEOUT,
+	.flags = 0,
 };
 static struct ion_test_data adv_system_heap_test = {
 	.align = 0x1000,
 	.size = 0x1000,
 	.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
-	.flags = ION_FLAG_SECURE,
+	.heap_type_req = SYSTEM_MEM,
+	.flags = 0,
 };
 
 static struct ion_test_data *mm_heap_data_settings[] = {
@@ -74,7 +84,8 @@ static struct ion_test_data *mm_heap_data_settings[] = {
  * Kernel ion client create test
  */
 int test_kclient(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_kernel_fd, rc;
 	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
@@ -90,12 +101,14 @@ int test_kclient(const char *ion_dev, const char *msm_ion_dev,
 	}
 	rc = ioctl(ion_kernel_fd, IOC_ION_KCLIENT_DESTROY, NULL);
 	close(ion_kernel_fd);
+	*test_skipped = 0;
 	return 0;
 }
 
 static struct ion_test_plan kclient_test = {
 	.name = "Kernel ion client",
 	.test_type_flags = NOMINAL_TEST,
+	.test_plan_data_len = 0,
 	.test_fn = test_kclient,
 };
 /*
@@ -104,12 +117,25 @@ static struct ion_test_plan kclient_test = {
  * ADV test: Invalid client, and erroneous alloc request
  */
 int test_kalloc(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+		struct ion_test_plan *ion_tp, int test_type,
+		int *test_skipped)
 {
 	int ion_kernel_fd, rc;
 	struct ion_test_data *test_data;
 	struct ion_test_data **test_data_table =
 		(struct ion_test_data **)ion_tp->test_plan_data;
+
+	if (test_type == NOMINAL_TEST)
+		test_data = test_data_table[NOMINAL_TEST];
+	else
+		test_data = test_data_table[ADV_TEST];
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
 	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 	if (ion_kernel_fd < 0) {
 		debug(ERR, "Failed to open msm ion test device\n");
@@ -122,10 +148,6 @@ int test_kalloc(const char *ion_dev, const char *msm_ion_dev,
 		close(ion_kernel_fd);
 		return -EIO;
 	}
-	if (test_type == NOMINAL_TEST)
-		test_data = test_data_table[NOMINAL_TEST];
-	else
-		test_data = test_data_table[ADV_TEST];
 	rc = ioctl(ion_kernel_fd, IOC_ION_KALLOC, test_data);
 	if (rc < 0 && test_type == NOMINAL_TEST) {
 		debug(ERR, "Nominal kernel alloc buf failed\n");
@@ -141,6 +163,7 @@ int test_kalloc(const char *ion_dev, const char *msm_ion_dev,
 alloc_err:
 	ioctl(ion_kernel_fd, IOC_ION_KCLIENT_DESTROY, NULL);
 	close(ion_kernel_fd);
+out:
 	return rc;
 
 }
@@ -148,6 +171,7 @@ alloc_err:
 static struct ion_test_plan kalloc_test = {
 	.name = "Kernel ion alloc buf",
 	.test_plan_data = mm_heap_data_settings,
+	.test_plan_data_len = 3,
 	.test_type_flags = NOMINAL_TEST | ADV_TEST,
 	.test_fn = test_kalloc,
 };
@@ -157,11 +181,21 @@ static struct ion_test_plan kalloc_test = {
  * Adeveserial test: Invalid handle and client
  */
 int test_kphys(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_kernel_fd, rc;
 	struct ion_test_data *test_data =
 		(struct ion_test_data *)ion_tp->test_plan_data;
+
+	*test_skipped = !test_data->valid;
+
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
+
 	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 	if (ion_kernel_fd < 0) {
 		debug(ERR, "Failed to open msm ion test device\n");
@@ -211,12 +245,14 @@ n_kphys_alloc_err:
 	ioctl(ion_kernel_fd, IOC_ION_KCLIENT_DESTROY, NULL);
 n_kphys_kc_err:
 	close(ion_kernel_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan kphys_test = {
 	.name = "Kernel ion buf phys attr test",
-	.test_plan_data = &mm_heap_test,
+	.test_plan_data = &phys_heap_test,
+	.test_plan_data_len = 1,
 	/*
 	 * TODO: Enable ADV test after ion phys api
 	 * can handle erroneous input
@@ -230,11 +266,20 @@ static struct ion_test_plan kphys_test = {
  * Adeveserial test: get phys attr from system heap
  */
 int test_ksystem_phys(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_kernel_fd, rc;
 	struct ion_test_data *test_data =
 		(struct ion_test_data *)ion_tp->test_plan_data;
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
+
 	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 	if (ion_kernel_fd < 0) {
 		debug(ERR, "Failed to open msm ion test device\n");
@@ -259,12 +304,14 @@ n_kphys_alloc_err:
 	ioctl(ion_kernel_fd, IOC_ION_KCLIENT_DESTROY, NULL);
 n_kphys_kc_err:
 	close(ion_kernel_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan ksystem_test = {
 	.name = "Kernel system buf phys attr test",
 	.test_plan_data = &adv_system_heap_test,
+	.test_plan_data_len = 1,
 	.test_type_flags = ADV_TEST,
 	.test_fn = test_ksystem_phys,
 };
@@ -272,12 +319,23 @@ static struct ion_test_plan ksystem_test = {
  * Kernel ion map
  */
 int test_kmap(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
+	*test_skipped = 0;
 	if (test_type == NOMINAL_TEST) {
 		int ion_kernel_fd, rc;
 		struct ion_test_data *test_data =
 			(struct ion_test_data *)ion_tp->test_plan_data;
+
+		*test_skipped = !test_data->valid;
+
+		if (!test_data->valid) {
+			rc = 0;
+			debug(INFO, "%s was skipped\n",__func__);
+			goto out;
+		}
+
 		ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 		if (ion_kernel_fd < 0) {
 			debug(ERR, "Failed to open msm ion test device\n");
@@ -308,11 +366,13 @@ n_kmap_kc_err:
 		close(ion_kernel_fd);
 		return rc;
 	}
+out:
 	return 0;
 }
 static struct ion_test_plan kmap_test = {
 	.name = "Kernel ion map test",
 	.test_plan_data = &mm_heap_test,
+	.test_plan_data_len = 1,
 	.test_type_flags = NOMINAL_TEST,
 	.test_fn = test_kmap,
 };
@@ -320,7 +380,8 @@ static struct ion_test_plan kmap_test = {
  * Kernel ion user import test
  */
 int test_kuimport(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_kernel_fd, rc, ion_fd, map_fd;
 	struct ion_allocation_data alloc_data;
@@ -328,6 +389,15 @@ int test_kuimport(const char *ion_dev, const char *msm_ion_dev,
 	unsigned long addr;
 	struct ion_test_data *test_data =
 		(struct ion_test_data *)ion_tp->test_plan_data;
+
+	*test_skipped = !test_data->valid;
+
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
+
 	ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 	if (ion_kernel_fd < 0) {
 		debug(ERR, "Failed to open msm ion test device\n");
@@ -405,12 +475,14 @@ kuimp_adv_test_close:
 kuimp_id_err:
 	ioctl(ion_kernel_fd, IOC_ION_KCLIENT_DESTROY, NULL);
 	close(ion_kernel_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan kuimp_test = {
 	.name = "Kernel ion uspace buffer import",
 	.test_plan_data = &mm_heap_test,
+	.test_plan_data_len = 1,
 	.test_type_flags = ADV_TEST,
 	.test_fn = test_kuimport,
 };
@@ -419,8 +491,10 @@ static struct ion_test_plan kuimp_test = {
  * Kernel ion imported user buf attributes test
  */
 int test_ubuf_attr(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
+	*test_skipped = 0;
 	if (test_type == NOMINAL_TEST)	{
 		int ion_kernel_fd, rc, ion_fd, map_fd;
 		struct ion_allocation_data alloc_data;
@@ -428,6 +502,14 @@ int test_ubuf_attr(const char *ion_dev, const char *msm_ion_dev,
 		unsigned long addr, flags, size;
 		struct ion_test_data *test_data =
 				(struct ion_test_data *)ion_tp->test_plan_data;
+
+		*test_skipped = !test_data->valid;
+		if (!test_data->valid) {
+			rc = 0;
+			debug(INFO, "%s was skipped (nom)\n",__func__);
+			goto out;
+		}
+
 		ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 		if (ion_kernel_fd < 0) {
 			debug(ERR, "Failed to open msm ion test device\n");
@@ -495,6 +577,15 @@ kubuf_id_err:
 		unsigned long addr, flags, size;
 		struct ion_test_data *test_data =
 				(struct ion_test_data *)ion_tp->test_plan_data;
+
+		*test_skipped = !test_data->valid;
+
+		if (!test_data->valid) {
+			rc = 0;
+			debug(INFO, "%s was skipped (adv)\n",__func__);
+			goto out;
+		}
+
 		ion_kernel_fd = open(msm_ion_dev, O_RDWR);
 		if (ion_kernel_fd < 0) {
 			debug(ERR, "Failed to open msm ion test device\n");
@@ -553,11 +644,13 @@ a_kubuf_alloc_err:
 		close(ion_fd);
 		close(ion_kernel_fd);
 	}
+out:
 	return 0;
 }
 static struct ion_test_plan kubuf_attr_test = {
 	.name = "Kernel ion uspace buffer size and flags",
 	.test_plan_data = &mm_heap_test,
+	.test_plan_data_len = 1,
 	/* TODO: ADV test causes crash in ion.
 	 * Needs to be fixed till then ADV test
 	 * diabled
@@ -575,8 +668,9 @@ static struct ion_test_plan *kernel_tests[] = {
 	&kubuf_attr_test,
 };
 
-struct ion_test_plan **get_kernel_ion_tests(size_t *size)
+struct ion_test_plan **get_kernel_ion_tests(const char *dev, size_t *size)
 {
 	*size = ARRAY_SIZE(kernel_tests);
+	setup_heaps_for_tests(dev, kernel_tests, *size);
 	return kernel_tests;
 }

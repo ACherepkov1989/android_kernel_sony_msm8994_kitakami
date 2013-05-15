@@ -52,13 +52,15 @@
 static struct ion_test_data mm_heap_test = {
 	.align = 0x1000,
 	.size = 0x1000,
+	.heap_type_req = SYSTEM_MEM2,
 	.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
 };
 
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0x1000,
 	.size = 0xC0000000,
-	.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
+	.heap_type_req = CARVEOUT,
+	.heap_mask = ION_HEAP(ION_QSECOM_HEAP_ID),
 };
 
 static struct ion_test_data *mm_heap_data_settings[] = {
@@ -67,23 +69,33 @@ static struct ion_test_data *mm_heap_data_settings[] = {
 };
 
 static int test_ualloc(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_fd, rc;
 	struct ion_allocation_data alloc_data;
 	struct ion_test_data *test_data;
 	struct ion_test_data **test_data_table =
 		(struct ion_test_data **)ion_tp->test_plan_data;
+
+	if (test_type == NOMINAL_TEST)
+		test_data = test_data_table[NOMINAL_TEST];
+	else
+		test_data = test_data_table[ADV_TEST];
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
+
 	ion_fd = open(ion_dev, O_RDONLY);
 	if (ion_fd < 0) {
 		debug(ERR, "Failed to open msm ion test device\n");
 		perror("msm ion");
 		return -EIO;
 	}
-	if (test_type == NOMINAL_TEST)
-		test_data = test_data_table[NOMINAL_TEST];
-	else
-		test_data = test_data_table[ADV_TEST];
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
 	alloc_data.heap_mask = test_data->heap_mask;
@@ -103,6 +115,7 @@ static int test_ualloc(const char *ion_dev, const char *msm_ion_dev,
 	ioctl(ion_fd, ION_IOC_FREE, &alloc_data.handle);
 ualloc_err:
 	close(ion_fd);
+out:
 	return rc;
 
 }
@@ -110,12 +123,14 @@ ualloc_err:
 static struct ion_test_plan ualloc_test = {
 	.name = "User ion alloc buf",
 	.test_plan_data = mm_heap_data_settings,
+	.test_plan_data_len = 3,
 	.test_type_flags = NOMINAL_TEST | ADV_TEST,
 	.test_fn = test_ualloc,
 };
 
 static int test_umap(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_fd, map_fd, rc;
 	void *addr;
@@ -123,6 +138,13 @@ static int test_umap(const char *ion_dev, const char *msm_ion_dev,
 	struct ion_fd_data fd_data;
 	struct ion_test_data *test_data =
 		(struct ion_test_data *)ion_tp->test_plan_data;
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
 	ion_fd = open(ion_dev, O_RDONLY);
 	if (ion_fd < 0) {
 		debug(INFO, "Failed to open ion device\n");
@@ -222,12 +244,14 @@ umap_map_err:
 	ioctl(ion_fd, ION_IOC_FREE, &alloc_data.handle);
 umap_alloc_err:
 	close(ion_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan umap_test = {
 	.name = "User ion buf map",
 	.test_plan_data = &mm_heap_test,
+	.test_plan_data_len = 1,
 	.test_type_flags = NOMINAL_TEST | ADV_TEST,
 	.test_fn = test_umap,
 };
@@ -312,7 +336,8 @@ static int uimp_spawn_process(pid_t *pid, int *wr_fd)
 }
 
 static int test_uimp(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type)
+			struct ion_test_plan *ion_tp, int test_type,
+			int *test_skipped)
 {
 	int ion_fd, map_fd, rc, wr_fd;
 	int sock_fd;
@@ -323,11 +348,20 @@ static int test_uimp(const char *ion_dev, const char *msm_ion_dev,
 	int child_status;
 	static char ubuf[100];
 	pid_t tpid, child_pid;
+	struct ion_test_data *test_data =
+		(struct ion_test_data *)ion_tp->test_plan_data;
+
+	*test_skipped = !test_data->valid;
+	if (!test_data->valid) {
+		rc = 0;
+		debug(INFO, "%s was skipped\n",__func__);
+		goto out;
+	}
+
 	rc = uimp_spawn_process(&child_pid, &wr_fd);
 	if (rc)
 		return -EIO;
-	struct ion_test_data *test_data =
-		(struct ion_test_data *)ion_tp->test_plan_data;
+
 	ion_fd = open(ion_dev, O_RDONLY);
 	if (ion_fd < 0) {
 		debug(INFO, "Failed to open ion device\n");
@@ -397,12 +431,14 @@ uimp_map_err:
 uimp_alloc_err:
 	close(ion_fd);
 	close(wr_fd);
+out:
 	return rc;
 }
 
 static struct ion_test_plan uimp_test = {
 	.name = "User ion import test ",
 	.test_plan_data = &mm_heap_test,
+	.test_plan_data_len = 1,
 	.test_type_flags = ADV_TEST,
 	.test_fn = test_uimp,
 };
@@ -413,8 +449,9 @@ static struct ion_test_plan *user_tests[] = {
 	&uimp_test,
 };
 
-struct ion_test_plan **get_user_ion_tests(size_t *size)
+struct ion_test_plan **get_user_ion_tests(const char *dev, size_t *size)
 {
 	*size = ARRAY_SIZE(user_tests);
+	setup_heaps_for_tests(dev, user_tests, *size);
 	return user_tests;
 }

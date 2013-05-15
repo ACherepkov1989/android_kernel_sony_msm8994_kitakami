@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -52,12 +52,15 @@
 
 unsigned int TEST_TYPE = NOMINAL_TEST;
 
-int run_tests(struct ion_test_plan **table, const char *test_plan,
-					unsigned int type, size_t size)
+static int run_tests(struct ion_test_plan **table, const char *test_plan,
+					unsigned int type, size_t size,
+					unsigned int *total_tests,
+					unsigned int *tests_skipped)
 {
 	struct ion_test_plan *test;
 	unsigned int i;
 	int ret = 0;
+	int skipped = 0;
 
 	for (i = 0; i < size; i++) {
 		test = table[i];
@@ -65,9 +68,10 @@ int run_tests(struct ion_test_plan **table, const char *test_plan,
 			printf("%s test table size mismatch\n", test_plan);
 			break;
 		}
+
 		if (test->test_type_flags & type) {
 			ret = test->test_fn(MSM_ION, MSM_ION_TEST, test,
-									type);
+					    type, &skipped);
 			if (ret) {
 				debug(INFO, "%s test failed, stopping\n",
 								test->name);
@@ -75,6 +79,9 @@ int run_tests(struct ion_test_plan **table, const char *test_plan,
 			} else {
 				debug(INFO, "%s test passed\n", test->name);
 			}
+			++(*total_tests);
+			if (skipped)
+				++(*tests_skipped);
 		}
 	}
 	return ret;
@@ -109,25 +116,27 @@ int parse_args(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	unsigned int i = 0, type;
-	int ret;
+	int ret = 0;
 	size_t usize, ksize, cpsize;
 	struct ion_test_plan **utable, **ktable, **cptable;
+	unsigned int total_tests_run = 0;
+	unsigned int total_skipped = 0;
 	if (parse_args(argc, argv)) {
 		debug(ERR, "incorrect arguments passed\n");
 		return -EINVAL;
 	}
 	/* Get test tables */
-	utable = get_user_ion_tests(&usize);
+	utable = get_user_ion_tests(MSM_ION_TEST, &usize);
 	if (!utable) {
 		debug(ERR, "no user tests\n");
 		return -EIO;
 	}
-	ktable = get_kernel_ion_tests(&ksize);
+	ktable = get_kernel_ion_tests(MSM_ION_TEST, &ksize);
 	if (!ktable) {
 		debug(ERR, "no kernel tests\n");
 		return -EIO;
 	}
-	cptable = get_cp_ion_tests(&cpsize);
+	cptable = get_cp_ion_tests(MSM_ION_TEST, &cpsize);
 	if (!cptable) {
 		debug(ERR, "no user tests\n");
 		return -EIO;
@@ -135,20 +144,23 @@ int main(int argc, char **argv)
 	/* Run tests */
 	if (TEST_TYPE == NOMINAL_TEST) {
 		debug(INFO, "\n\nRunning Nominal user space ion tests :\n\n");
-		ret = run_tests(utable, "user space", NOMINAL_TEST, usize);
+		ret = run_tests(utable, "user space", NOMINAL_TEST, usize,
+				&total_tests_run, &total_skipped);
 		if (ret) {
 			debug(INFO, "user space Nominal tests failed\n");
 			return ret;
 		}
 		type = NOMINAL_TEST;
 		debug(INFO, "\n\nRunning Nominal kernel space ion tests :\n\n");
-		ret = run_tests(ktable, "kernel space", type, ksize);
+		ret = run_tests(ktable, "kernel space", type, ksize,
+				&total_tests_run, &total_skipped);
 		if (ret) {
 			debug(INFO, "kernel space Nominal tests failed\n");
 			return ret;
 		}
 		debug(INFO, "\n\nRunning Nominal cp ion tests :\n\n");
-		ret = run_tests(cptable, "CP", type, cpsize);
+		ret = run_tests(cptable, "CP", type, cpsize,
+				&total_tests_run, &total_skipped);
 		if (ret) {
 			debug(INFO, "cp ion Nominal tests failed\n");
 			return ret;
@@ -157,24 +169,29 @@ int main(int argc, char **argv)
 	if (TEST_TYPE == ADV_TEST) {
 		type = ADV_TEST;
 		debug(INFO, "\n\nRunning Adversarial user space ion tests:\n");
-		ret = run_tests(utable, "user space", type, usize);
+		ret = run_tests(utable, "user space", type, usize,
+				&total_tests_run, &total_skipped);
 		if (ret) {
 			debug(INFO, "user space Adversarial tests failed\n");
 			return ret;
 		}
 		debug(INFO,
 			"\n\nRunning Adversarial kernel space ion tests:\n");
-		ret = run_tests(ktable, "kernel space", type, ksize);
+		ret = run_tests(ktable, "kernel space", type, ksize,
+				&total_tests_run, &total_skipped);
 		if (ret) {
 			debug(INFO, "kernel space Adversarial tests failed\n");
 			return ret;
 		}
 		debug(INFO, "\n\nRunning Adversarial cp ion tests :\n\n");
-		ret = run_tests(cptable, "CP", type, cpsize);
+		ret = run_tests(cptable, "CP", type, cpsize,
+				&total_tests_run, &total_skipped);
 		if (ret) {
 			debug(INFO, "cp ion Adversarial tests failed\n");
 			return ret;
 		}
 	}
+	printf("Ran %u tests out of which %u were skipped\n",
+	      total_tests_run, total_skipped);
 	return ret;
 }

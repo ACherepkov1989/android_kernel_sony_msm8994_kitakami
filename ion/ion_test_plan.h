@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,12 +40,13 @@
 struct ion_test_plan {
 	const char *name;
 	void *test_plan_data;
+	unsigned int test_plan_data_len;
 	unsigned long test_type_flags;
 	int (*test_fn)(const char *ion_dev, const char *msm_ion_test,
-			struct ion_test_plan *, int test_type);
+			struct ion_test_plan *, int test_type, int *skipped);
 };
 
-struct ion_test_plan **get_kernel_ion_tests(size_t *size);
-struct ion_test_plan **get_user_ion_tests(size_t *size);
-struct ion_test_plan **get_cp_ion_tests(size_t *size);
+struct ion_test_plan **get_kernel_ion_tests(const char *dev, size_t *size);
+struct ion_test_plan **get_user_ion_tests(const char *dev, size_t *size);
+struct ion_test_plan **get_cp_ion_tests(const char *dev, size_t *size);
 #endif

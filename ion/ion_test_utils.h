@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,4 +46,6 @@ void set_debug_level(int level);
 int sock_read(int sock_fd, char *buf, int size);
 int sock_write(int sock_fd, const char *buf, int size);
 char *itoa(int num, char *buf, size_t len);
+void setup_heaps_for_tests(const char *dev, struct ion_test_plan **tp_array,
+			   unsigned int len);
 #endif
