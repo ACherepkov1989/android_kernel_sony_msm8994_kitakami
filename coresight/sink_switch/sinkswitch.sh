@@ -33,10 +33,22 @@ tpiusink="/sys/bus/coresight/devices/coresight-tpiu/curr_sink"
 
 echo "-----Coresight Sink Switching Test-----"
 echo "---------------------------------------"
+source=`echo "$*" | sed -n 's/.*--source \(\w*\).*/\1/p'`
+source=`echo $source | tr '[A-Z]' '[a-z]'`
 #enable ETM and STM source
 source "$(dirname $0)/../cs_common.sh"
-etm_enable_all_cores
-stm_enable
+if [[ -z "$source" ]]
+then
+        source="all"
+fi
+if [[ $source != "stm" ]]
+then
+        etm_enable_all_cores
+fi
+if [[ $source != "etm" ]]
+then
+        stm_enable
+fi
 echo 1 > $etrsink
 read etfstatus < $etfsink
 read etrstatus < $etrsink
@@ -68,17 +80,31 @@ else
         echo "FAIL: Sink Switching to ETF failed ****"
 fi
 #test if trace sources are still enabled
-etm_test_if_enabled
-retval=$?
-if [ $retval -eq 0 ]
+if [[ $source != "stm" ]]
 then
-        echo "PASS: All ETM devices enabled after sink switch"
+        etm_test_if_enabled
+        retval=$?
+        if [ $retval -eq 0 ]
+        then
+                echo "PASS: All ETM devices enabled after sink switch"
+        fi
 fi
-stm_test_if_enabled
-retval=$?
-if [ $retval -eq 0 ]
+if [[ $source != "etm" ]]
 then
-        echo "PASS: STM Enabled after sink switch"
+        stm_test_if_enabled
+        retval=$?
+        if [ $retval -eq 0 ]
+        then
+                echo "PASS: STM Enabled after sink switch"
+        fi
+fi
+if [[ $source != "stm" ]]
+then
+        etm_disable_all_cores
+fi
+if [[ $source != "etm" ]]
+then
+        stm_disable
 fi
 echo "----- Coresight Sink Switching Test Complete-----"
 echo "-------------------------------------------------"

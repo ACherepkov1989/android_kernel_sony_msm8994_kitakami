@@ -2,26 +2,29 @@ Test: coresight
 
 Usage: cs_test.sh [-n | --nominal] [-a | --adversarial] [-r | --repeatability]\
        [-s | stress ]
-       Runs the tests for Coresight trace drivers.
+       Runs the tests for CoreSight trace drivers.
 
 
 Options:
 The following options can be used:
--n | --nominal                                 nominal test, run by default
--a | --adversarial                             adversarial test cases
--r | --repeatability iterations                repeatability tests, runs 10
+-n | --nominal                                 nominal test, runs by default
+-a | --adversarial                             adversarial test
+-r | --repeatability iterations                repeatability test, runs 10
                                                iterations by default
 -s | --stress                                  stress test
+--source trace_source                          trace source, supported
+                                               trace_source values are 'etm'
+                                               and 'stm'
 
 Requirement:
-All CoreSight trace functionality is initially disabled before running any test.
+CoreSight ETM and STM sources are initially disabled before running any test.
 
 Description:
 Nominal Test:
-All Coresight tests are invoked.
+All CoreSight tests are invoked.
 
 Adversarial Test:
-Runs cs_adversary.sh. This test enables all trace drivers, all ftrace events and
+Runs cs_adversary.sh. This test enables all trace sources, all ftrace events and
 toggles the cpu cores on/off.
 
 Repeatability Tests:
@@ -33,7 +36,7 @@ All test cases except probe test are invoked for 100 iterations.
 
 Test case description:
 1. platform/platform.sh
-Tests that Coresight trace drivers are probed without failures.
+Tests that CoreSight trace drivers are probed without failures.
 
 2. etm/etm_enable.sh
 Tests ETM tracing gets properly enabled.
@@ -49,7 +52,7 @@ Tests STM tracing gets properly disabled.
 
 6. stm/stm_etf_dump.sh
 Tests ETF can be dumped with good data while STM is the only trace source. All ftrace,
-hw events are disabled while single string data is sent over STM. Once trailing
+hardware events are disabled while single string data is sent over STM. Once trailing
 zeros of output file are truncated, size is compared with reference size for same
 input data.
 
@@ -57,7 +60,7 @@ input data.
 Please refer to stm/stm_etf_dump.sh. Here ETR is the trace sink instead of ETM.
 
 8. mult_trace/mult_source_enable.sh
-Tests that multiple Coresight trace sources (ETM and STM) can be successfully enabled
+Tests that multiple CoreSight trace sources (ETM and STM) can be successfully enabled
 at the same time.
 
 9. mult_trace/mult_source_disable.sh
@@ -65,14 +68,14 @@ Tests that multiple CoreSight trace sources (ETM and STM) can be successfully di
 at the same time.
 
 10. sink_switch/sinkswitch.sh
-Tests that the device can switch between multiple Coresight tracesinks. Assumes etf,
+Tests that the device can switch between multiple CoreSight tracesinks. Assumes etf,
 etr and tpiu sinks are present.
 
 11. sink_switch/etr_modes.sh
 Tests that the modes of ETR can be changed from usb to memory and vice versa.
 
 12. cs_adversary.sh
-While having trace drivers enabled, enables and disables all cores in a loop.
+While having trace sources enabled, enables and disables all cores in a loop.
 
 Targets supported: 8974
 
@@ -82,4 +85,4 @@ All tests prints:
  or
 "FAIL: <message>" otherwise
 
-Note: Tests assumes /data partition exists
+Note: Tests assume /data partition exists

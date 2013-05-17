@@ -34,9 +34,13 @@ directory=$(cd `dirname $0` && pwd)
 #Requirement: Before running test, ensure STM/ETM is initially disabled
 cs_test_setup(){
 source "$(dirname $0)/cs_common.sh"
-stm_disable
-retval=$?
-if [ $retval -eq 0 ]
+retval=0
+if [ $stm -eq 1 ]
+then
+        stm_disable
+        retval=$?
+fi
+if [ $retval -eq 0 ] && [ $etm -eq 1 ]
 then
         etm_disable_all_cores
         retval=$?
@@ -51,20 +55,34 @@ fi
 
 cs_nominal(){
 cd $directory"/platform" && sh platform.sh
-cd $directory"/etm" && sh etm_enable.sh
-cd $directory"/etm" && sh etm_disable.sh
-cd $directory"/stm" && sh stm_enable.sh
-cd $directory"/stm" && sh stm_disable.sh
-cd $directory"/stm" && sh stm_etf_dump.sh
-cd $directory"/stm" && sh stm_etr_dump.sh
-cd $directory"/mult_trace" && sh mult_source_enable.sh
-cd $directory"/mult_trace" && sh mult_source_disable.sh
-cd $directory"/sink_switch" && sh sinkswitch.sh
-cd $directory"/sink_switch" && sh etr_modes.sh
+if [ $etm -eq 1 ]
+then
+        cd $directory"/etm" && sh etm_enable.sh
+        cd $directory"/etm" && sh etm_disable.sh
+fi
+if [ $stm -eq 1 ]
+then
+        cd $directory"/stm" && sh stm_enable.sh
+        cd $directory"/stm" && sh stm_disable.sh
+        cd $directory"/stm" && sh stm_etf_dump.sh
+        cd $directory"/stm" && sh stm_etr_dump.sh
+fi
+if [ $stm -eq 1 ] && [ $etm -eq 1 ]
+then
+        cd $directory"/mult_trace" && sh mult_source_enable.sh
+        cd $directory"/mult_trace" && sh mult_source_disable.sh
+fi
+cd $directory"/sink_switch" && sh sinkswitch.sh "--source $source"
+cd $directory"/sink_switch" && sh etr_modes.sh "--source $source"
 }
 
 cs_adversary(){
-cd $directory && sh cs_adversary.sh
+if [ $stm -eq 1 ] && [ $etm -eq 1 ]
+then
+        cd $directory && sh cs_adversary.sh
+else
+        echo "Both STM and ETM required as trace source."
+fi
 }
 
 cs_repeatability(){
@@ -74,49 +92,64 @@ then
 else
         run=10
 fi
-echo "Coresight ETM enable/disable repeat test started for $run iterations"
-for i in $(seq 1 $run)
-do
-        cd $directory"/etm" && sh etm_enable.sh
-        cd $directory"/etm" && sh etm_disable.sh
-done
-echo "Coresight STM enable/disable repeat test started for $run iterations"
-for i in $(seq 1 $run)
-do
-        cd $directory"/stm" && sh stm_enable.sh
-        cd $directory"/stm" && sh stm_disable.sh
-done
-echo "Coresight STM ETF dump test started for $run iterations"
-for i in  $(seq 1 $run)
-do
-        cd $directory"/stm" && sh stm_etf_dump.sh
-done
-echo "Coresight STM ETR dump test started for $run iterations"
-for i in  $(seq 1 $run)
-do
-        cd $directory"/stm" && sh stm_etr_dump.sh
-done
-echo "Coresight multi trace enable/disable repeat started test for $run iterations"
-for i in $(seq 1 $run)
-do
-        cd $directory"/mult_trace" && sh mult_source_enable.sh
-        cd $directory"/mult_trace" && sh mult_source_disable.sh
-done
+if [ $etm -eq 1 ]
+then
+        echo "Coresight ETM enable/disable repeat test started for $run
+              iterations"
+        for i in $(seq 1 $run)
+        do
+                cd $directory"/etm" && sh etm_enable.sh
+                cd $directory"/etm" && sh etm_disable.sh
+        done
+fi
+if [ $stm -eq 1 ]
+then
+        echo "Coresight STM enable/disable repeat test started for $run
+              iterations"
+        for i in $(seq 1 $run)
+        do
+                cd $directory"/stm" && sh stm_enable.sh
+                cd $directory"/stm" && sh stm_disable.sh
+        done
+        echo "Coresight STM ETF dump test started for $run iterations"
+        for i in  $(seq 1 $run)
+        do
+                cd $directory"/stm" && sh stm_etf_dump.sh
+        done
+        echo "Coresight STM ETR dump test started for $run iterations"
+        for i in  $(seq 1 $run)
+        do
+                cd $directory"/stm" && sh stm_etr_dump.sh
+        done
+fi
+if [ $stm -eq 1 ] && [ $etm -eq 1 ]
+then
+        echo "Coresight multi trace enable/disable repeat test started for
+              $run iterations"
+        for i in $(seq 1 $run)
+        do
+                cd $directory"/mult_trace" && sh mult_source_enable.sh
+                cd $directory"/mult_trace" && sh mult_source_disable.sh
+        done
+fi
 echo "Coresight sink switching repeat test started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/sink_switch" && sh sinkswitch.sh
+        cd $directory"/sink_switch" && sh sinkswitch.sh "--source $source"
 done
 echo "Coresight ETR modes change started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/sink_switch" && sh etr_modes.sh
+        cd $directory"/sink_switch" && sh etr_modes.sh "--source $source"
 done
-echo "CoreSight adversarial repeat test started for $run iterations"
-for i in $(seq 1 $run)
-do
-        cd $directory && sh cs_adversary.sh
-done
+if [ $stm -eq 1 ] && [ $etm -eq 1 ]
+then
+        echo "CoreSight adversarial repeat test started for $run iterations"
+        for i in $(seq 1 $run)
+        do
+                cd $directory && sh cs_adversary.sh
+        done
+fi
 }
 
 cs_stress(){
@@ -128,7 +161,26 @@ do
 done
 }
 
-if [ $# -eq 0 ]
+source=`echo "$*" | sed -n 's/.*--source \(\w*\).*/\1/p'`
+source=`echo $source | tr '[A-Z]' '[a-z]'`
+if [[ "$source" ]]
+then
+        if [[ $source == "stm" ]]
+        then
+                echo "All STM tests will be run"
+                stm=1
+                etm=0
+        elif [[ $source == "etm" ]]
+        then
+                echo "All ETM tests will be run"
+                stm=0
+                etm=1
+        fi
+else
+        stm=1
+        etm=1
+fi
+if [[ $# -le 2 && -n "$source" || $# -eq 0 ]]
 then
         cs_test_setup
         cs_nominal
@@ -169,12 +221,18 @@ else
                         cs_repeatability 100
                         shift 1
                         ;;
+                --source)
+                        shift 1
+                        shift 1
+                        ;;
                 -h | --help | *)
                         echo "Usage: $0 [-n | --nominal] [-a | --adversarial ] \\ "
-                        echo "       [-r | --repeatability] [iterations] [-s | --stress ] "
-                        echo "Runs the coresight trace driver tests. If no options are provided "
-                        echo "then nominal tests are run. If no iterations are provided for     "
-                        echo "repeatability tests, 10 is the default iteration."
+                        echo "       [-r | --repeatability] [iterations] [-s | --stress ] \\"
+                        echo "       [--source] [trace_source]"
+                        echo "Runs the coresight driver tests. If no options are provided "
+                        echo "then nominal tests are run. If no iterations are provided for "
+                        echo "repeatability tests, 10 is the default iteration. By default "
+                        echo "both ETM and STM are enabled"
                         exit 1
                         ;;
                 esac
