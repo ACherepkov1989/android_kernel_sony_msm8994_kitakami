@@ -50,21 +50,21 @@ fi
 }
 
 cs_nominal(){
-cd $directory"/platform" && ./platform.sh
-cd $directory"/etm" && ./etm_enable.sh
-cd $directory"/etm" && ./etm_disable.sh
-cd $directory"/stm" && ./stm_enable.sh
-cd $directory"/stm" && ./stm_disable.sh
-cd $directory"/stm" && ./stm_etf_dump.sh
-cd $directory"/stm" && ./stm_etr_dump.sh
-cd $directory"/mult_trace" && ./mult_source_enable.sh
-cd $directory"/mult_trace" && ./mult_source_disable.sh
-cd $directory"/sink_switch" && ./sinkswitch.sh
-cd $directory"/sink_switch" && ./etr_modes.sh
+cd $directory"/platform" && sh platform.sh
+cd $directory"/etm" && sh etm_enable.sh
+cd $directory"/etm" && sh etm_disable.sh
+cd $directory"/stm" && sh stm_enable.sh
+cd $directory"/stm" && sh stm_disable.sh
+cd $directory"/stm" && sh stm_etf_dump.sh
+cd $directory"/stm" && sh stm_etr_dump.sh
+cd $directory"/mult_trace" && sh mult_source_enable.sh
+cd $directory"/mult_trace" && sh mult_source_disable.sh
+cd $directory"/sink_switch" && sh sinkswitch.sh
+cd $directory"/sink_switch" && sh etr_modes.sh
 }
 
 cs_adversary(){
-cd $directory && ./cs_adversary.sh
+cd $directory && sh cs_adversary.sh
 }
 
 cs_repeatability(){
@@ -77,45 +77,45 @@ fi
 echo "Coresight ETM enable/disable repeat test started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/etm" && ./etm_enable.sh
-        cd $directory"/etm" && ./etm_disable.sh
+        cd $directory"/etm" && sh etm_enable.sh
+        cd $directory"/etm" && sh etm_disable.sh
 done
 echo "Coresight STM enable/disable repeat test started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/stm" && ./stm_enable.sh
-        cd $directory"/stm" && ./stm_disable.sh
+        cd $directory"/stm" && sh stm_enable.sh
+        cd $directory"/stm" && sh stm_disable.sh
 done
 echo "Coresight STM ETF dump test started for $run iterations"
 for i in  $(seq 1 $run)
 do
-        cd $directory"/stm" && ./stm_etf_dump.sh
+        cd $directory"/stm" && sh stm_etf_dump.sh
 done
 echo "Coresight STM ETR dump test started for $run iterations"
 for i in  $(seq 1 $run)
 do
-        cd $directory"/stm" && ./stm_etr_dump.sh
+        cd $directory"/stm" && sh stm_etr_dump.sh
 done
 echo "Coresight multi trace enable/disable repeat started test for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/mult_trace" && ./mult_source_enable.sh
-        cd $directory"/mult_trace" && ./mult_source_disable.sh
+        cd $directory"/mult_trace" && sh mult_source_enable.sh
+        cd $directory"/mult_trace" && sh mult_source_disable.sh
 done
 echo "Coresight sink switching repeat test started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/sink_switch" && ./sinkswitch.sh
+        cd $directory"/sink_switch" && sh sinkswitch.sh
 done
 echo "Coresight ETR modes change started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory"/sink_switch" && ./etr_modes.sh
+        cd $directory"/sink_switch" && sh etr_modes.sh
 done
 echo "CoreSight adversarial repeat test started for $run iterations"
 for i in $(seq 1 $run)
 do
-        cd $directory && ./cs_adversary.sh
+        cd $directory && sh cs_adversary.sh
 done
 }
 
