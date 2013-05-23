@@ -50,6 +50,9 @@
 #define ION_PRE_ALLOC_SIZE_DEFAULT 0 //0 MB
 #define MAX_PRE_ALLOC_SIZE 5000 // 5000 MB
 
+#define MEMORY_PROF_DEV "/dev/memory_prof"
+#define ION_DEV		"/dev/ion"
+
 #define SZ_1K				0x00000400
 #define SZ_2K				0x00000800
 #define SZ_4K				0x00001000
@@ -73,8 +76,6 @@
 #define SZ_512M				0x20000000
 
 static unsigned int sleepiness;
-
-static int memory_prof_fd;
 
 static void sleepy()
 {
@@ -101,9 +102,9 @@ static int alloc_me_up_some_ion(int *ionfd,
 				struct ion_allocation_data *alloc_data)
 {
 	int rc = 0;
-	*ionfd = open("/dev/ion", O_RDONLY);
+	*ionfd = open(ION_DEV, O_RDONLY);
 	if (*ionfd < 0) {
-		perror("couldn't open /dev/ion");
+		perror("couldn't open " ION_DEV);
 		return *ionfd;
 	}
 
@@ -276,7 +277,7 @@ static void basic_sanity_tests(unsigned long size_mb)
 static int do_map_extra_test(void)
 {
 	int rc = 0;
-	int ionfd;
+	int ionfd, memory_prof_fd;
 	struct memory_prof_map_extra_args args;
 	size_t buffer_length = SZ_1M;
 	struct ion_allocation_data alloc_data = {
@@ -287,16 +288,29 @@ static int do_map_extra_test(void)
 	};
 	struct ion_fd_data fd_data;
 
+	memory_prof_fd = open(MEMORY_PROF_DEV, 0);
+	if (memory_prof_fd < 0) {
+		perror("couldn't open " MEMORY_PROF_DEV);
+		rc = memory_prof_fd;
+		goto out;
+	}
+
+	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_CREATE);
+	if (rc) {
+		perror("couldn't do MEMORY_PROF_IOC_CLIENT_CREATE");
+		goto close_memory_prof_fd;
+	}
+
 	rc = alloc_me_up_some_ion(&ionfd, &alloc_data);
 	if (rc)
-		goto out;
+		goto destroy_ion_client;
 
 	fd_data.handle = alloc_data.handle;
 
 	rc = ioctl(ionfd, ION_IOC_SHARE, &fd_data);
 	if (rc) {
 		perror("Couldn't do ION_IOC_SHARE");
-		goto err0;
+		goto ion_free_and_close;
 	}
 
 	args.ionfd = fd_data.fd;
@@ -306,12 +320,16 @@ static int do_map_extra_test(void)
 	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_TEST_MAP_EXTRA, &args);
 	if (rc) {
 		perror("couldn't do MEMORY_PROF_IOC_TEST_MAP_EXTRA");
-		goto err0;
+		goto ion_free_and_close;
 	}
 
-err0:
+ion_free_and_close:
 	rc |= ioctl(ionfd, ION_IOC_FREE, &alloc_data.handle);
 	close(ionfd);
+destroy_ion_client:
+	rc |= ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_DESTROY);
+close_memory_prof_fd:
+	close(memory_prof_fd);
 out:
 	return rc;
 }
@@ -414,9 +432,9 @@ static long profile_alloc_for_heap(const char *name, const char *size_string,
 		goto out;
 	}
 
-	ionfd = open("/dev/ion", O_RDONLY);
+	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
-		perror("couldn't open /dev/ion");
+		perror("couldn't open " ION_DEV);
 		goto out;
 	}
 
@@ -463,10 +481,17 @@ static void map_extra_test(void)
 
 static void profile_kernel_alloc(void)
 {
-	int rc;
+	int rc, memory_prof_fd;
+
+	memory_prof_fd = open(MEMORY_PROF_DEV, 0);
+	if (memory_prof_fd < 0) {
+		perror("couldn't open " MEMORY_PROF_DEV);
+		return;
+	}
 	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_TEST_KERNEL_ALLOCS);
 	if (rc)
 		perror("couldn't do MEMORY_PROF_IOC_TEST_KERNEL_ALLOCS");
+	close(memory_prof_fd);
 }
 
 static void print_stats_results(const char *name, const char *cached,
@@ -630,9 +655,9 @@ static void oom_test(void)
 	} *np;
 	LIST_INIT(&head);
 
-	ionfd = open("/dev/ion", O_RDONLY);
+	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
-		perror("couldn't open /dev/ion");
+		perror("couldn't open " ION_DEV);
 		return;
 	}
 
@@ -703,9 +728,9 @@ static void leak_test(void)
 	"  -b         Do basic sanity tests\n"				\
 	"  -z         Size (in MB) of buffer for basic sanity tests (default=1)\n" \
 	"  -e         Do Ion heap profiling\n"				\
-	"  -k         Do kernel alloc profiling\n"			\
+	"  -k         Do kernel alloc profiling (requires kernel module)\n"			\
 	"  -l         Do leak test (leak an ion handle)\n"		\
-	"  -m         Do map extra test\n"				\
+	"  -m         Do map extra test (requires kernel module)\n"				\
 	"  -n         Do the nominal test (same as -b)\n"		\
 	"  -o         Do OOM test (alloc from Ion Iommu heap until OOM)\n" \
 	"  -p MS      Sleep for MS milliseconds between stuff (for debugging)\n" \
@@ -774,18 +799,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	memory_prof_fd = open("/dev/memory_prof", 0);
-	if (memory_prof_fd < 0) {
-		perror("couldn't open /dev/memory_prof");
-		return memory_prof_fd;
-	}
-
-	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_CREATE);
-	if (rc) {
-		perror("couldn't do MEMORY_PROF_IOC_CLIENT_CREATE");
-		goto err0;
-	}
-
 	if (do_basic_sanity_tests)
 		for (i = 0; i < num_reps; ++i)
 			basic_sanity_tests(basic_sanity_size_mb);
@@ -805,11 +818,5 @@ int main(int argc, char *argv[])
 		for (i = 0; i < num_reps; ++i)
 			leak_test();
 
-	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_DESTROY);
-	if (rc)
-		perror("couldn't do MEMORY_PROF_IOC_CLIENT_DESTROY");
-
-err0:
-	close(memory_prof_fd);
 	return rc;
 }
