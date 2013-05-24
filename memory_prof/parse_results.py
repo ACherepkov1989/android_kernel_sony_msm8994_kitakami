@@ -97,14 +97,14 @@ def extract_all_data(data):
 
     return timings
 
-def compare_heaps_for_a_size(data, target_sz, num_reps, ion_op, text_only=False, target=None):
+def compare_heaps_for_a_size(data, target_sz, num_reps, pre_alloc_size, ion_op, text_only=False, target=None):
     (heaps, cached_timings, uncached_timings) = extract_data_for_size(data, target_sz)
     cached_timings = cached_timings[ion_op]
     uncached_timings = uncached_timings[ion_op]
 
     title = ('Ion %s times\n' % ion_op) \
             + ('Target: %s' % ("%s\n" % target) if target is not None else "") \
-            + ('(%s with ION_IOC_ALLOC, average of %d reps)' % (target_sz, num_reps))
+            + ('(%s with ION_IOC_ALLOC, average of %d reps, %dMB pre-allocation)' % (target_sz, num_reps, pre_alloc_size))
 
     print title
     print
@@ -137,7 +137,7 @@ def first_key_element(d):
     "Returns the first element found in the dict `d'."
     return d[d.keys()[0]]
 
-def compare_times_for_heaps(data, num_reps, ion_op, text_only=False, target=None):
+def compare_times_for_heaps(data, num_reps, pre_alloc_size, ion_op, text_only=False, target=None):
     timings = extract_all_data(data)[ion_op]
 
     # we need to sort the size strings, which are a few levels in
@@ -151,7 +151,8 @@ def compare_times_for_heaps(data, num_reps, ion_op, text_only=False, target=None
 
     for target_heap in timings.keys():
         heap_timings = timings[target_heap]
-        print '%s times for %s\n' % (ion_op, target_heap)
+        print '%s times for %s (%d reps, %dMB pre-allocation)\n' \
+            % (ion_op, target_heap, num_reps, pre_alloc_size)
 
         format_str = '%6s %10s %10s'
         print format_str % (
@@ -233,12 +234,23 @@ if __name__ == "__main__":
     repsline = [line for line in data if line.startswith(ST_PREFIX_NUM_REPS)][0]
     num_reps = int(repsline.split(' ')[-1])
 
+    # get the pre-alloc size:
+    prealloclines = [line for line in data if line.startswith(ST_PREFIX_PREALLOC_SIZE)]
+    if len(prealloclines) > 0:
+        pre_alloc_size = int(prealloclines[0].split(' ')[-1])
+    else:
+        pre_alloc_size = 0
+
     if options.compare_heaps:
         compare_heaps_for_a_size(data, options.size, num_reps,
+                                 pre_alloc_size,
+                                 options.ion_op,
                                  text_only=options.text_only,
                                  target=options.target)
 
     if options.compare_alloc_sizes:
         compare_times_for_heaps(data, num_reps,
+                                pre_alloc_size,
+                                options.ion_op,
                                 text_only=options.text_only,
                                 target=options.target)
