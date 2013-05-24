@@ -76,11 +76,6 @@ def extract_data_for_size(data, target_sz):
             heaps.append(heap_id)
         if caching == 'cached':
             cached_timings[ion_op].append(av)
-            # we don't do measure for uncached from
-            # ION_SYSTEM_HEAP_ID. Just add a 0 to keep the number of bars
-            # even.
-            if heap_id == "ION_SYSTEM_HEAP_ID":
-                uncached_timings.append(0)
         else:
             uncached_timings[ion_op].append(av)
 
