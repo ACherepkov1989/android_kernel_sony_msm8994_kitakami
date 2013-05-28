@@ -439,6 +439,8 @@ int alloc_mem_list(char **alloc_list, int sizemb)
  * @quiet - whether we should suppress alloc failures
  * @pre_alloc_size - size of memory to malloc before doing the ion alloc
  * @alloc_ms - [output] time taken (in MS) to complete the ION_IOC_ALLOC
+ * @map_ms - [output] time taken (in MS) to complete the ION_IOC_MAP + mmap
+ * @memset_ms - [output] time taken (in MS) to memset the Ion buffer
  * @free_ms - [output] time taken (in MS) to complete the ION_IOC_FREE
  *
  * Returns 0 on success, 1 on failure.
@@ -447,9 +449,12 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 				unsigned int flags, unsigned int size,
 				bool quiet,
 				int pre_alloc_size,
-				double *alloc_ms, double *free_ms)
+				double *alloc_ms, double *map_ms,
+				double *memset_ms, double *free_ms)
 {
 	int ionfd, rc, rc2;
+	uint8_t *buf = MAP_FAILED;
+	struct ion_fd_data fd_data;
 	struct timeval tv_before, tv_after, tv_result;
 	struct ion_allocation_data alloc_data = {
 		.align	   = SZ_4K,
@@ -462,6 +467,8 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 
 	*alloc_ms = 0;
 	*free_ms = 0;
+	if (map_ms) *map_ms = 0;
+	if (memset_ms) *memset_ms = 0;
 
 	if (alloc_mem_list(pre_alloc_list, pre_alloc_size) < 0) {
 		perror("couldn't create pre-allocated buffer");
@@ -482,18 +489,75 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 
 	rc2 = ioctl(ionfd, ION_IOC_ALLOC, &alloc_data);
 	rc = gettimeofday(&tv_after, NULL);
-	if (rc) {
-		perror("couldn't get time of day");
-		goto close_ion;
-	}
 	if (rc2) {
 		if (!quiet)
 			perror("couldn't do ion alloc");
 		rc = rc2;
 		goto close_ion;
 	}
+	if (rc) {
+		perror("couldn't get time of day");
+		goto free;
+	}
 
 	*alloc_ms = timeval_ms_diff(tv_after, tv_before);
+
+	if (map_ms) {
+		rc = gettimeofday(&tv_before, NULL);
+		if (rc) {
+			perror("couldn't get time of day");
+			goto free;
+		}
+
+		fd_data.handle = alloc_data.handle;
+
+		rc = ioctl(ionfd, ION_IOC_MAP, &fd_data);
+		if (rc) {
+			perror("couldn't do ION_IOC_MAP");
+			goto free;
+		}
+
+		buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+			fd_data.fd, 0);
+
+		rc2 = gettimeofday(&tv_after, NULL);
+
+		if (buf == MAP_FAILED) {
+			perror("couldn't do mmap");
+			goto fd_data_close;
+		}
+
+		if (rc2) {
+			perror("couldn't get time of day");
+			goto munmap;
+		}
+
+		*map_ms = timeval_ms_diff(tv_after, tv_before);
+	}
+
+	if (memset_ms && buf != MAP_FAILED) {
+		rc = gettimeofday(&tv_before, NULL);
+		if (rc) {
+			perror("couldn't get time of day");
+			goto munmap;
+		}
+
+		memset(buf, 0xA5, size);
+		rc2 = gettimeofday(&tv_after, NULL);
+		if (rc2) {
+			perror("couldn't get time of day");
+			goto munmap;
+		}
+		*memset_ms = timeval_ms_diff(tv_after, tv_before);
+	}
+
+munmap:
+	if (buf != MAP_FAILED)
+		if (munmap(buf, size))
+			perror("couldn't do munmap");
+
+fd_data_close:
+	close(fd_data.fd);
 
 	/*
 	 * Okay, things are about to get messy. We're profiling our
@@ -548,23 +612,46 @@ static void profile_kernel_alloc(void)
 
 static void print_stats_results(const char *name, const char *cached,
 				const char *size_string,
-				double alloc_stats[], int reps)
+				double stats[], int reps)
 {
 	int i;
 	double sum = 0, sum_of_squares = 0, average, std_dev;
 
 	for (i = 0; i < reps; ++i) {
-		sum += alloc_stats[i];
+		sum += stats[i];
 	}
 	average = sum / reps;
 
 	for (i = 0; i < reps; ++i) {
-		sum_of_squares += pow(alloc_stats[i] - average, 2);
+		sum_of_squares += pow(stats[i] - average, 2);
 	}
 	std_dev = sqrt(sum_of_squares / reps);
 
 	printf(ST_PREFIX_DATA_ROW " %s %s %s average: %.2f std_dev: %.2f\n",
 		name, cached, size_string, average, std_dev);
+}
+
+static void print_a_bunch_of_stats_results(const char *name, const char *cached,
+					const char *size_string,
+					double alloc_stats[],
+					double map_stats[],
+					double memset_stats[],
+					double free_stats[],
+					int reps)
+{
+	char sbuf[70];
+	snprintf(sbuf, 70, "ION_IOC_ALLOC %s", name);
+	print_stats_results(sbuf, cached, size_string, alloc_stats, reps);
+	if (map_stats) {
+		snprintf(sbuf, 70, "mmap %s", name);
+		print_stats_results(sbuf, cached, size_string, map_stats, reps);
+	}
+	if (memset_stats) {
+		snprintf(sbuf, 70, "memset %s", name);
+		print_stats_results(sbuf, cached, size_string, memset_stats, reps);
+	}
+	snprintf(sbuf, 70, "ION_IOC_FREE %s", name);
+	print_stats_results(sbuf, cached, size_string, free_stats, reps);
 }
 
 static void heap_profiling(int pre_alloc_size, const int nreps)
@@ -629,6 +716,8 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 		const char *sMB = szp->sMB;
 		bool quiet = szp->quiet;
 		double alloc_stats[nreps];
+		double map_stats[nreps];
+		double memset_stats[nreps];
 		double free_stats[nreps];
 		printf("\n============PROFILING FOR %s MB=============\n",
 			sMB);
@@ -637,13 +726,14 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 				ION_HEAP(ION_CP_MM_HEAP_ID),
 				ION_SECURE, sz, quiet,
 				pre_alloc_size,
-				&alloc_stats[i], &free_stats[i]);
+				&alloc_stats[i],
+				NULL,
+				NULL,
+				&free_stats[i]);
 		}
-		print_stats_results("ION_IOC_ALLOC ION_CP_MM_HEAP_ID",
+		print_a_bunch_of_stats_results("ION_CP_MM_HEAP_ID",
 				"uncached", sMB,
-				alloc_stats, nreps);
-		print_stats_results("ION_IOC_FREE ION_CP_MM_HEAP_ID",
-				"uncached", sMB,
+				alloc_stats, NULL, NULL,
 				free_stats, nreps);
 
 		for (i = 0; i < nreps; ++i) {
@@ -651,13 +741,14 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 				ION_HEAP(ION_IOMMU_HEAP_ID),
 				0, sz, quiet,
 				pre_alloc_size,
-				&alloc_stats[i], &free_stats[i]);
+				&alloc_stats[i],
+				&map_stats[i],
+				&memset_stats[i],
+				&free_stats[i]);
 		}
-		print_stats_results("ION_IOC_ALLOC ION_IOMMU_HEAP_ID",
+		print_a_bunch_of_stats_results("ION_IOMMU_HEAP_ID",
 				"uncached", sMB,
-				alloc_stats, nreps);
-		print_stats_results("ION_IOC_FREE ION_IOMMU_HEAP_ID",
-				"uncached", sMB,
+				alloc_stats, map_stats, memset_stats,
 				free_stats, nreps);
 
 		for (i = 0; i < nreps; ++i) {
@@ -665,13 +756,14 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 				ION_HEAP(ION_IOMMU_HEAP_ID),
 				ION_FLAG_CACHED, sz, quiet,
 				pre_alloc_size,
-				&alloc_stats[i], &free_stats[i]);
+				&alloc_stats[i],
+				&map_stats[i],
+				&memset_stats[i],
+				&free_stats[i]);
 		}
-		print_stats_results("ION_IOC_ALLOC ION_IOMMU_HEAP_ID",
+		print_a_bunch_of_stats_results("ION_IOMMU_HEAP_ID",
 				"cached", sMB,
-				alloc_stats, nreps);
-		print_stats_results("ION_IOC_FREE ION_IOMMU_HEAP_ID",
-				"cached", sMB,
+				alloc_stats, map_stats, memset_stats,
 				free_stats, nreps);
 
 		for (i = 0; i < nreps; ++i) {
@@ -679,13 +771,14 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 				ION_HEAP(ION_SYSTEM_HEAP_ID),
 				ION_FLAG_CACHED, sz, quiet,
 				pre_alloc_size,
-				&alloc_stats[i], &free_stats[i]);
+				&alloc_stats[i],
+				&map_stats[i],
+				&memset_stats[i],
+				&free_stats[i]);
 		}
-		print_stats_results("ION_IOC_ALLOC ION_SYSTEM_HEAP_ID",
+		print_a_bunch_of_stats_results("ION_SYSTEM_HEAP_ID",
 				"cached", sMB,
-				alloc_stats, nreps);
-		print_stats_results("ION_IOC_FREE ION_SYSTEM_HEAP_ID",
-				"cached", sMB,
+				alloc_stats, map_stats, memset_stats,
 				free_stats, nreps);
 
 		for (i = 0; i < nreps; ++i) {
@@ -693,13 +786,14 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 				ION_HEAP(ION_SYSTEM_HEAP_ID),
 				0, sz, quiet,
 				pre_alloc_size,
-				&alloc_stats[i], &free_stats[i]);
+				&alloc_stats[i],
+				NULL,
+				NULL,
+				&free_stats[i]);
 		}
-		print_stats_results("ION_IOC_ALLOC ION_SYSTEM_HEAP_ID",
+		print_a_bunch_of_stats_results("ION_SYSTEM_HEAP_ID",
 				"uncached", sMB,
-				alloc_stats, nreps);
-		print_stats_results("ION_IOC_FREE ION_SYSTEM_HEAP_ID",
-				"uncached", sMB,
+				alloc_stats, NULL, NULL,
 				free_stats, nreps);
 	}
 }
