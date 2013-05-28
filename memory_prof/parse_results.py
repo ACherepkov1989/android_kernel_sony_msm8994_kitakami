@@ -212,7 +212,7 @@ if __name__ == "__main__":
     # parser.add_option("-e", "--heap", metavar="HEAP",
     #                   help="Heap to plot (e.g. 'ION_CP_MM_HEAP_ID'), or 'ALL'. Only used with -z")
     parser.add_option("-t", "--text-only", action="store_true")
-    parser.add_option("--target")
+    parser.add_option("--target", help="Name of the device (used for plot titles)")
     parser.add_option("-o", "--ion-op",
                       default="ION_IOC_ALLOC",
                       help="Ion operation to display (currently supported: ION_IOC_ALLOC, ION_IOC_FREE)")
