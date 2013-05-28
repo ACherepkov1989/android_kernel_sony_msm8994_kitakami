@@ -472,7 +472,7 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
 		perror("couldn't open " ION_DEV);
-		goto out;
+		goto free_mem_list;
 	}
 
 	rc = gettimeofday(&tv_before, NULL);
@@ -517,8 +517,9 @@ free:
 	}
 close_ion:
 	close(ionfd);
-out:
+free_mem_list:
 	free_mem_list(pre_alloc_list);
+out:
 	return rc;
 }
 
