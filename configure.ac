@@ -80,6 +80,10 @@ ENABLE_KERNEL_TEST([watchdog],[include the watchdog test (default=yes)])
 # ocmem
 ENABLE_KERNEL_TEST([ocmem],[include the ocmem test (default=yes)])
 
+# iommu
+ENABLE_KERNEL_TEST([iommu],[include the iommu test (default=yes)])
+
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -89,6 +93,7 @@ AC_CONFIG_FILES([
 	memory_prof/Makefile
 	msm_bus/Makefile
 	ocmem/Makefile
+	msm_iommu/Makefile
 	sps/Makefile
 	v4l2apps/Makefile
 	watchdog/Makefile
