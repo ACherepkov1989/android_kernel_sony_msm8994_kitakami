@@ -66,6 +66,7 @@ then
         cd $directory"/stm" && sh stm_disable.sh
         cd $directory"/stm" && sh stm_etf_dump.sh
         cd $directory"/stm" && sh stm_etr_dump.sh
+        cd $directory"/byte-cntr" && sh byte_cntr.sh
 fi
 if [ $stm -eq 1 ] && [ $etm -eq 1 ]
 then

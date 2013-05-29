@@ -81,6 +81,11 @@ While having trace sources enabled, enables and disables all cores in a loop.
 This test enables STM tracing and echoes fixed amount of data(4KB) over stm. It
 calculates the time taken to send that data.
 
+14. byte-cntr/byte_cntr.sh
+Enables the byte counter feature and tests if data can be streamed to a file
+using the feature. Sends 2MB of data and checks if the data collected is
+greater than the sent data. Target supported: 8x26
+
 Targets supported: 8974
 
 Test output:
