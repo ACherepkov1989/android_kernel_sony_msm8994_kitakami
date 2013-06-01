@@ -40,8 +40,6 @@ mount -t debugfs nodev $debugfs 2>/dev/null
 echo 0 > $debugfs"/tracing/events/enable"
 #make etr current trace sink
 echo 1 > $tmcetrpath"/curr_sink"
-stm_disable
-etm_disable_all_cores
 stm_enable
 #disable hwevents when stm is enabled
 echo 0 > $stm_hwevent

@@ -29,28 +29,48 @@
 
 echo "-----Coresight ETR Switch Modes Test-----"
 echo "-----------------------------------------"
+source=`echo "$*" | sed -n 's/.*--source \(\w*\).*/\1/p'`
+source=`echo $source | tr '[A-Z]' '[a-z]'`
 #enable ETM and STM source
 source "$(dirname $0)/../cs_common.sh"
-etm_enable_all_cores
-stm_enable
+if [[ -z "$source" ]]
+then
+        source="all"
+fi
+if [[ $source != "stm" ]]
+then
+        etm_enable_all_cores
+fi
+if [[ $source != "etm" ]]
+then
+        stm_enable
+fi
 etrmode=$tmcetrpath"/out_mode"
 #set etr mode to memory before starting test
 echo "mem" > $etrmode
 #change mode to usb
 echo "usb" > $etrmode
-read value <  $etrmode
-if [ $value -ne "usb" ]
+value=`cat $etrmode`
+if [[ $value != "usb" ]]
 then
         echo "FAIL: Changing ETR mode from memory to usb failed ****"
 else
         echo "mem" > $etrmode
-        read value <  $etrmode
-        if [ $value -ne "mem" ]
+        value=`cat $etrmode`
+        if [[ $value != "mem" ]]
         then
-             echo "FAIL: Changing ETR mode from usb to memory failed ****"
+              echo "FAIL: Changing ETR mode from usb to memory failed ****"
         else
               echo "PASS: Changed ETR modes successfully"
         fi
+fi
+if [[ $source != "stm" ]]
+then
+        etm_disable_all_cores
+fi
+if [[ $source != "etm" ]]
+then
+        stm_disable
 fi
 echo "----- Coresight ETR Switch Modes Test Complete-----"
 echo "---------------------------------------------------"
