@@ -47,6 +47,8 @@
 
 #define NUM_REPS_FOR_HEAP_PROFILING 100
 #define NUM_REPS_FOR_REPEATABILITY 100
+#define ION_PRE_ALLOC_SIZE_DEFAULT 0 //0 MB
+#define MAX_PRE_ALLOC_SIZE 5000 // 5000 MB
 
 #define SZ_1K				0x00000400
 #define SZ_2K				0x00000800
@@ -338,12 +340,62 @@ static struct timeval timeval_sub(struct timeval t1, struct timeval t2)
 }
 
 /**
+ * Free memory in alloc_list
+ */
+void free_mem_list(char **alloc_list)
+{
+	int i = 0;
+	for (i = 0; i < MAX_PRE_ALLOC_SIZE; i++) {
+		if (alloc_list[i] != NULL) {
+			free(alloc_list[i]);
+			alloc_list[i] = NULL;
+		}
+	}
+}
+
+
+/**
+ * Allocate sizemb in alloc_list
+ */
+int alloc_mem_list(char **alloc_list, int sizemb)
+{
+	int i = 0;
+	int alloc_size = 1*1024*1024 * sizeof(char);
+
+	if (sizemb > MAX_PRE_ALLOC_SIZE) {
+		return -1;
+	}
+
+	// Break allocation into 1 MB pieces to ensure
+	// we easily find enough virtually contigous memory
+	for (i = 0; i < sizemb; i++)
+	{
+		alloc_list[i] =(char *) malloc(alloc_size);
+		if (alloc_list[i] == NULL)
+		{
+		    perror("couldn't allocate 1MB");
+		    free_mem_list(alloc_list);
+		    return -1;
+		}
+
+		// Memory must be accessed for it to be page backed.
+		// We may want to randomize the data in the future
+		// to prevent features such as KSM returning memory
+		// to the system.
+		memset(alloc_list[i], 1, alloc_size);
+	}
+	return 0;
+}
+
+
+/**
  * Returns the total time taken for ION_IOC_ALLOC
  */
 static long profile_alloc_for_heap(const char *name, const char *size_string,
 				unsigned int heap_mask,
 				unsigned int flags, unsigned int size,
-				bool quiet)
+				bool quiet,
+				int pre_alloc_size)
 {
 	long ms = -1;
 	int ionfd, rc, rc_ioctl;
@@ -354,6 +406,14 @@ static long profile_alloc_for_heap(const char *name, const char *size_string,
 		.heap_mask = heap_mask,
 		.flags	   = flags,
 	};
+	char *pre_alloc_list[MAX_PRE_ALLOC_SIZE];
+	memset(pre_alloc_list, 0, MAX_PRE_ALLOC_SIZE * sizeof(char *));
+
+	if (alloc_mem_list(pre_alloc_list, pre_alloc_size) < 0) {
+		perror("couldn't create pre-allocated buffer");
+		goto out;
+	}
+
 	ionfd = open("/dev/ion", O_RDONLY);
 	if (ionfd < 0) {
 		perror("couldn't open /dev/ion");
@@ -388,6 +448,7 @@ free:
 close_ion:
 	close(ionfd);
 out:
+	free_mem_list(pre_alloc_list);
 	return ms;
 }
 
@@ -429,7 +490,7 @@ static void print_stats_results(const char *name, const char *cached,
 		name, cached, size_string, average, std_dev);
 }
 
-static void heap_profiling(void)
+static void heap_profiling(int pre_alloc_size)
 {
 	int i;
 	const int nreps = NUM_REPS_FOR_HEAP_PROFILING;
@@ -502,7 +563,8 @@ static void heap_profiling(void)
 				"ION_CP_MM_HEAP_ID uncached",
 				sMB,
 				ION_HEAP(ION_CP_MM_HEAP_ID),
-				ION_SECURE, sz, quiet);
+				ION_SECURE, sz, quiet,
+				pre_alloc_size);
 		}
 		print_stats_results("ION_CP_MM_HEAP_ID", "uncached", sMB,
 				stats);
@@ -512,7 +574,8 @@ static void heap_profiling(void)
 				"ION_IOMMU_HEAP_ID uncached",
 				sMB,
 				ION_HEAP(ION_IOMMU_HEAP_ID),
-				0, sz, quiet);
+				0, sz, quiet,
+				pre_alloc_size);
 		}
 		print_stats_results("ION_IOMMU_HEAP_ID", "uncached", sMB,
 				stats);
@@ -522,7 +585,8 @@ static void heap_profiling(void)
 				"ION_IOMMU_HEAP_ID cached",
 				sMB,
 				ION_HEAP(ION_IOMMU_HEAP_ID),
-				ION_FLAG_CACHED, sz, quiet);
+				ION_FLAG_CACHED, sz, quiet,
+				pre_alloc_size);
 		}
 		print_stats_results("ION_IOMMU_HEAP_ID", "cached", sMB, stats);
 
@@ -531,7 +595,8 @@ static void heap_profiling(void)
 				"ION_SYSTEM_HEAP_ID cached",
 				sMB,
 				ION_HEAP(ION_SYSTEM_HEAP_ID),
-				ION_FLAG_CACHED, sz, quiet);
+				ION_FLAG_CACHED, sz, quiet,
+				pre_alloc_size);
 		}
 		print_stats_results("ION_SYSTEM_HEAP_ID", "cached", sMB, stats);
 
@@ -540,7 +605,8 @@ static void heap_profiling(void)
 				"ION_SYSTEM_HEAP_ID uncached",
 				sMB,
 				ION_HEAP(ION_SYSTEM_HEAP_ID),
-				0, sz, quiet);
+				0, sz, quiet,
+				pre_alloc_size);
 		}
 		print_stats_results("ION_SYSTEM_HEAP_ID", "uncached", sMB, stats);
 
@@ -644,7 +710,8 @@ static void leak_test(void)
 	"  -o         Do OOM test (alloc from Ion Iommu heap until OOM)\n" \
 	"  -p MS      Sleep for MS milliseconds between stuff (for debugging)\n" \
 	"  -r         Do the repeatability test\n"			\
-	"  -s         Do the stress test (same as -e)\n"
+	"  -s         Do the stress test (same as -e)\n"		\
+	"  -t MB      Size (in MB) of temp buffer pre-allocated before Ion allocations (default 0 MB)\n"
 
 static void usage(char *progname)
 {
@@ -662,9 +729,13 @@ int main(int argc, char *argv[])
 	bool do_oom_test = false;
 	bool do_leak_test = false;
 	int num_reps = 1;
+	int ion_pre_alloc_size = ION_PRE_ALLOC_SIZE_DEFAULT;
 
-	while (-1 != (opt = getopt(argc, argv, "abehklmnop:rsz:"))) {
+	while (-1 != (opt = getopt(argc, argv, "abehklmnop:rst:z:"))) {
 		switch (opt) {
+		case 't':
+			ion_pre_alloc_size = atoi(optarg);
+			break;
 		case 'n':
 		case 'b':
 			do_basic_sanity_tests = true;
@@ -723,7 +794,7 @@ int main(int argc, char *argv[])
 			map_extra_test();
 	if (do_heap_profiling)
 		for (i = 0; i < num_reps; ++i)
-			heap_profiling();
+			heap_profiling(ion_pre_alloc_size);
 	if (do_kernel_alloc_profiling)
 		for (i = 0; i < num_reps; ++i)
 			profile_kernel_alloc();
