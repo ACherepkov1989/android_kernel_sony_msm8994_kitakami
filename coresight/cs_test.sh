@@ -74,6 +74,7 @@ then
 fi
 cd $directory"/sink_switch" && sh sinkswitch.sh "--source $source"
 cd $directory"/sink_switch" && sh etr_modes.sh "--source $source"
+cd $directory"/profile" && sh cs_profile.sh "--source $source"
 }
 
 cs_adversary(){
