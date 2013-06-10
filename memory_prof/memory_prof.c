@@ -496,29 +496,28 @@ static void profile_kernel_alloc(void)
 
 static void print_stats_results(const char *name, const char *cached,
 				const char *size_string,
-				long stats[])
+				long alloc_stats[], int reps)
 {
 	int i;
 	float sum = 0, sum_of_squares = 0, average, std_dev;
 
-	for (i = 0; i < NUM_REPS_FOR_HEAP_PROFILING; ++i) {
-		sum += stats[i];
+	for (i = 0; i < reps; ++i) {
+		sum += alloc_stats[i];
 	}
-	average = sum / NUM_REPS_FOR_HEAP_PROFILING;
+	average = sum / reps;
 
-	for (i = 0; i < NUM_REPS_FOR_HEAP_PROFILING; ++i) {
-		sum_of_squares += pow(stats[i] - average, 2);
+	for (i = 0; i < reps; ++i) {
+		sum_of_squares += pow(alloc_stats[i] - average, 2);
 	}
-	std_dev = sqrt(sum_of_squares / NUM_REPS_FOR_HEAP_PROFILING);
+	std_dev = sqrt(sum_of_squares / reps);
 
 	printf(" > %s %s %s average: %.2f std_dev: %.2f\n",
 		name, cached, size_string, average, std_dev);
 }
 
-static void heap_profiling(int pre_alloc_size)
+static void heap_profiling(int pre_alloc_size, const int nreps)
 {
 	int i;
-	const int nreps = NUM_REPS_FOR_HEAP_PROFILING;
 	struct sizes_struct {
 		unsigned long size;
 		const char *sMB;
@@ -592,7 +591,7 @@ static void heap_profiling(int pre_alloc_size)
 				pre_alloc_size);
 		}
 		print_stats_results("ION_CP_MM_HEAP_ID", "uncached", sMB,
-				stats);
+				stats, nreps);
 
 		for (i = 0, statsp = &stats[0]; i < nreps; ++i) {
 			*statsp++ = profile_alloc_for_heap(
@@ -603,7 +602,7 @@ static void heap_profiling(int pre_alloc_size)
 				pre_alloc_size);
 		}
 		print_stats_results("ION_IOMMU_HEAP_ID", "uncached", sMB,
-				stats);
+				stats, nreps);
 
 		for (i = 0, statsp = &stats[0]; i < nreps; ++i) {
 			*statsp++ = profile_alloc_for_heap(
@@ -613,7 +612,8 @@ static void heap_profiling(int pre_alloc_size)
 				ION_FLAG_CACHED, sz, quiet,
 				pre_alloc_size);
 		}
-		print_stats_results("ION_IOMMU_HEAP_ID", "cached", sMB, stats);
+		print_stats_results("ION_IOMMU_HEAP_ID", "cached", sMB,
+				stats, nreps);
 
 		for (i = 0, statsp = &stats[0]; i < nreps; ++i) {
 			*statsp++ = profile_alloc_for_heap(
@@ -623,7 +623,8 @@ static void heap_profiling(int pre_alloc_size)
 				ION_FLAG_CACHED, sz, quiet,
 				pre_alloc_size);
 		}
-		print_stats_results("ION_SYSTEM_HEAP_ID", "cached", sMB, stats);
+		print_stats_results("ION_SYSTEM_HEAP_ID", "cached", sMB,
+				stats, nreps);
 
 		for (i = 0, statsp = &stats[0]; i < nreps; ++i) {
 			*statsp++ = profile_alloc_for_heap(
@@ -633,7 +634,8 @@ static void heap_profiling(int pre_alloc_size)
 				0, sz, quiet,
 				pre_alloc_size);
 		}
-		print_stats_results("ION_SYSTEM_HEAP_ID", "uncached", sMB, stats);
+		print_stats_results("ION_SYSTEM_HEAP_ID", "uncached", sMB,
+				stats, nreps);
 
 	}
 }
@@ -727,8 +729,9 @@ static void leak_test(void)
 	"  -a         Do the adversarial test (same as -l)\n"		\
 	"  -b         Do basic sanity tests\n"				\
 	"  -z         Size (in MB) of buffer for basic sanity tests (default=1)\n" \
-	"  -e         Do Ion heap profiling\n"				\
 	"  -k         Do kernel alloc profiling (requires kernel module)\n"			\
+	"  -e[REPS]   Do Ion heap profiling. Optionally specify number of reps\n" \
+	"             E.g.: -e10 would do 10 reps (default=100)\n"	\
 	"  -l         Do leak test (leak an ion handle)\n"		\
 	"  -m         Do map extra test (requires kernel module)\n"				\
 	"  -n         Do the nominal test (same as -b)\n"		\
@@ -754,9 +757,10 @@ int main(int argc, char *argv[])
 	bool do_oom_test = false;
 	bool do_leak_test = false;
 	int num_reps = 1;
+	int num_heap_prof_reps = NUM_REPS_FOR_HEAP_PROFILING;
 	int ion_pre_alloc_size = ION_PRE_ALLOC_SIZE_DEFAULT;
 
-	while (-1 != (opt = getopt(argc, argv, "abehklmnop:rst:z:"))) {
+	while (-1 != (opt = getopt(argc, argv, "abe::hklmnop:rs::t:z:"))) {
 		switch (opt) {
 		case 't':
 			ion_pre_alloc_size = atoi(optarg);
@@ -767,6 +771,8 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 		case 'e':
+			if (optarg)
+				num_heap_prof_reps = atoi(optarg);
 			do_heap_profiling = true;
 			break;
 		case 'k':
@@ -807,7 +813,8 @@ int main(int argc, char *argv[])
 			map_extra_test();
 	if (do_heap_profiling)
 		for (i = 0; i < num_reps; ++i)
-			heap_profiling(ion_pre_alloc_size);
+			heap_profiling(ion_pre_alloc_size,
+				num_heap_prof_reps);
 	if (do_kernel_alloc_profiling)
 		for (i = 0; i < num_reps; ++i)
 			profile_kernel_alloc();
