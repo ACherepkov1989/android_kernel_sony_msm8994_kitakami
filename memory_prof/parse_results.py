@@ -36,6 +36,8 @@
 # Dependencies: matplotlib, numpy
 
 
+# NOTE: THIS HAS GOTTEN UNWIELDY. YOU HAVE BEEN WARNED.
+
 
 import sys
 import fileinput
@@ -46,53 +48,66 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+ST_PREFIX_DATA_ROW      = "=> "
+ST_PREFIX_PREALLOC_SIZE = "==> "
+ST_PREFIX_NUM_REPS      = "===> "
+
 
 def get_data_lines(data):
-    return [line[3:].replace('\n', '') for line in data if line.startswith(' > ')]
+    return [line.lstrip(ST_PREFIX_DATA_ROW).rstrip('\n') for line in data if line.startswith(ST_PREFIX_DATA_ROW)]
 
 def extract_data_for_size(data, target_sz):
-    cached_timings = []
-    uncached_timings = []
+    cached_timings = {
+        'ION_IOC_ALLOC': [],
+        'ION_IOC_FREE': [],
+    }
+    uncached_timings = {
+        'ION_IOC_ALLOC': [],
+        'ION_IOC_FREE': [],
+    }
     heaps = []
 
     for line in get_data_lines(data):
         # for the format, see print_stats_results in memory_prof.c
-        (heap_id, caching, sz, lbl_av, average, lbl_std, std_dev) = line.split(' ')
+        (ion_op, heap_id, caching, sz, lbl_av, average, lbl_std, std_dev) = line.split(' ')
         if sz != target_sz: continue
         av = max(float(average), 0)
         if heap_id not in heaps:
             heaps.append(heap_id)
         if caching == 'cached':
-            cached_timings.append(av)
+            cached_timings[ion_op].append(av)
             # we don't do measure for uncached from
             # ION_SYSTEM_HEAP_ID. Just add a 0 to keep the number of bars
             # even.
             if heap_id == "ION_SYSTEM_HEAP_ID":
                 uncached_timings.append(0)
         else:
-            uncached_timings.append(av)
+            uncached_timings[ion_op].append(av)
 
     return (heaps, cached_timings, uncached_timings)
 
 def extract_all_data(data):
-    cached_timings = []
-    uncached_timings = []
-    timings = {}
+    timings = {
+        'ION_IOC_ALLOC': {},
+        'ION_IOC_FREE': {},
+    }
 
     for line in get_data_lines(data):
         # for the format, see print_stats_results in memory_prof.c
-        (heap_id, caching, sz, lbl_av, average, lbl_std, std_dev) = line.split(' ')
-        timings.setdefault(heap_id, {})
+        (ion_op, heap_id, caching, sz, lbl_av, average, lbl_std, std_dev) = line.split(' ')
+        timings[ion_op].setdefault(heap_id, {})
         av = max(float(average), 0)
-        timings[heap_id].setdefault(caching, {})
-        timings[heap_id][caching][sz] = float(average)
+        timings[ion_op][heap_id].setdefault(caching, {})
+        timings[ion_op][heap_id][caching][sz] = float(average)
 
     return timings
 
-def compare_heaps_for_a_size(data, target_sz, num_reps, text_only=False, target=None):
+def compare_heaps_for_a_size(data, target_sz, num_reps, ion_op, text_only=False, target=None):
     (heaps, cached_timings, uncached_timings) = extract_data_for_size(data, target_sz)
+    cached_timings = cached_timings[ion_op]
+    uncached_timings = uncached_timings[ion_op]
 
-    title = 'Ion allocations times\n' \
+    title = ('Ion %s times\n' % ion_op) \
             + ('Target: %s' % ("%s\n" % target) if target is not None else "") \
             + ('(%s with ION_IOC_ALLOC, average of %d reps)' % (target_sz, num_reps))
 
@@ -123,16 +138,25 @@ def compare_heaps_for_a_size(data, target_sz, num_reps, text_only=False, target=
 
     plt.show()
 
-def compare_times_for_heaps(data, num_reps, text_only=False, target=None):
-    timings = extract_all_data(data)
+def first_key_element(d):
+    "Returns the first element found in the dict `d'."
+    return d[d.keys()[0]]
+
+def compare_times_for_heaps(data, num_reps, ion_op, text_only=False, target=None):
+    timings = extract_all_data(data)[ion_op]
+
+    # we need to sort the size strings, which are a few levels in
+    # (through some keys that might or might not exist)
+    first_heap_timing = first_key_element(timings)
+    sizes_for_heap_timing = first_key_element(first_heap_timing)
     sorted_keys = sorted(
-        timings[timings.keys()[0]]['cached'].keys(),
+        sizes_for_heap_timing.keys(),
         key=lambda v: float(v.split('MB')[0])
     )
 
     for target_heap in timings.keys():
         heap_timings = timings[target_heap]
-        print 'Allocation times for %s\n' % target_heap
+        print '%s times for %s\n' % (ion_op, target_heap)
 
         format_str = '%6s %10s %10s'
         print format_str % (
@@ -168,10 +192,9 @@ def compare_times_for_heaps(data, num_reps, text_only=False, target=None):
                         next(shapes_cycler) + '-',
                         label=lbl)
 
-    title = "Ion allocation times\n" \
+    title = ("Ion %s times\n" % ion_op) \
             + ('%s' % ("Target: %s\n" % target) if target is not None else "") \
-            + "(with ION_IOC_ALLOC, average of %d reps)" \
-            % num_reps
+            + ("(average of %d reps)" % num_reps)
 
     ax.set_ylabel("Time (ms)")
     ax.set_xlabel("Allocation size (MB)")
@@ -194,6 +217,9 @@ if __name__ == "__main__":
     #                   help="Heap to plot (e.g. 'ION_CP_MM_HEAP_ID'), or 'ALL'. Only used with -z")
     parser.add_option("-t", "--text-only", action="store_true")
     parser.add_option("--target")
+    parser.add_option("-o", "--ion-op",
+                      default="ION_IOC_ALLOC",
+                      help="Ion operation to display (currently supported: ION_IOC_ALLOC, ION_IOC_FREE)")
 
     (options, args) = parser.parse_args()
 
@@ -201,11 +227,15 @@ if __name__ == "__main__":
         print "You must provide a size (-s) when comparing same-sized allocations across heaps (-c)"
         sys.exit(1)
 
+    if not options.compare_heaps and not options.compare_alloc_sizes:
+        print "You must specify either -c or -z"
+        sys.exit(1)
+
     # snarf:
     data = [line for line in fileinput.input(args)]
 
     # get the num reps:
-    repsline = [line for line in data if line.startswith("===>>>")][0]
+    repsline = [line for line in data if line.startswith(ST_PREFIX_NUM_REPS)][0]
     num_reps = int(repsline.split(' ')[-1])
 
     if options.compare_heaps:
