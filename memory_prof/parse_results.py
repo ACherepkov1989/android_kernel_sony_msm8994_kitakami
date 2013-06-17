@@ -52,19 +52,26 @@ ST_PREFIX_DATA_ROW      = "=> "
 ST_PREFIX_PREALLOC_SIZE = "==> "
 ST_PREFIX_NUM_REPS      = "===> "
 
+# copy me:
+template_list_timings_dict = {
+        'ION_IOC_ALLOC': [],
+        'mmap': [],
+        'memset': [],
+        'ION_IOC_FREE': [],
+}
+template_dict_timings_dict = {
+        'ION_IOC_ALLOC': {},
+        'mmap': {},
+        'memset': {},
+        'ION_IOC_FREE': {},
+}
 
 def get_data_lines(data):
     return [line.lstrip(ST_PREFIX_DATA_ROW).rstrip('\n') for line in data if line.startswith(ST_PREFIX_DATA_ROW)]
 
 def extract_data_for_size(data, target_sz):
-    cached_timings = {
-        'ION_IOC_ALLOC': [],
-        'ION_IOC_FREE': [],
-    }
-    uncached_timings = {
-        'ION_IOC_ALLOC': [],
-        'ION_IOC_FREE': [],
-    }
+    cached_timings = template_list_timings_dict.copy()
+    uncached_timings = template_list_timings_dict.copy()
     heaps = []
 
     for line in get_data_lines(data):
@@ -82,10 +89,7 @@ def extract_data_for_size(data, target_sz):
     return (heaps, cached_timings, uncached_timings)
 
 def extract_all_data(data):
-    timings = {
-        'ION_IOC_ALLOC': {},
-        'ION_IOC_FREE': {},
-    }
+    timings = template_dict_timings_dict.copy()
 
     for line in get_data_lines(data):
         # for the format, see print_stats_results in memory_prof.c
@@ -135,6 +139,9 @@ def compare_heaps_for_a_size(data, target_sz, num_reps, pre_alloc_size, ion_op, 
 
 def first_key_element(d):
     "Returns the first element found in the dict `d'."
+    keys = d.keys()
+    if len(keys) < 1:
+        return None
     return d[d.keys()[0]]
 
 def compare_times_for_heaps(data, num_reps, pre_alloc_size, ion_op, text_only=False, target=None):
@@ -215,7 +222,7 @@ if __name__ == "__main__":
     parser.add_option("--target", help="Name of the device (used for plot titles)")
     parser.add_option("-o", "--ion-op",
                       default="ION_IOC_ALLOC",
-                      help="Ion operation to display (currently supported: ION_IOC_ALLOC, ION_IOC_FREE)")
+                      help="Ion (etc) operation to display (currently supported: ION_IOC_ALLOC, mmap, memset, ION_IOC_FREE)")
 
     (options, args) = parser.parse_args()
 
