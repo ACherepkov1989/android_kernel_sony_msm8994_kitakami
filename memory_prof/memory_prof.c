@@ -43,45 +43,8 @@
 #include <sys/mman.h>
 #include <sys/queue.h>
 #include <linux/msm_ion.h>
-#include <memory_prof_module.h>
-
-#define NUM_REPS_FOR_HEAP_PROFILING 100
-#define NUM_REPS_FOR_REPEATABILITY 100
-#define ION_PRE_ALLOC_SIZE_DEFAULT 0 //0 MB
-#define MAX_PRE_ALLOC_SIZE 5000 // 5000 MB
-
-#define MEMORY_PROF_DEV "/dev/memory_prof"
-#define ION_DEV		"/dev/ion"
-
-/*
- * Don't change the format of the following line strings. We need to
- * rely on them for parsing.
- */
-#define ST_PREFIX_DATA_ROW	"=> "
-#define ST_PREFIX_PREALLOC_SIZE "==> "
-#define ST_PREFIX_NUM_REPS	"===> "
-
-#define SZ_1K				0x00000400
-#define SZ_2K				0x00000800
-#define SZ_4K				0x00001000
-#define SZ_8K				0x00002000
-#define SZ_16K				0x00004000
-#define SZ_32K				0x00008000
-#define SZ_64K				0x00010000
-#define SZ_128K				0x00020000
-#define SZ_256K				0x00040000
-#define SZ_512K				0x00080000
-
-#define SZ_1M				0x00100000
-#define SZ_2M				0x00200000
-#define SZ_4M				0x00400000
-#define SZ_8M				0x00800000
-#define SZ_16M				0x01000000
-#define SZ_32M				0x02000000
-#define SZ_64M				0x04000000
-#define SZ_128M				0x08000000
-#define SZ_256M				0x10000000
-#define SZ_512M				0x20000000
+#include "memory_prof.h"
+#include "memory_prof_module.h"
 
 static unsigned int sleepiness;
 
@@ -178,12 +141,12 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 				continue;
 			}
 			printf("  Data integrity error at "
-				"offset 0x%x from 0x%p!!!!\n", i, buf);
+				"offset 0x%lx from 0x%p!!!!\n", i, buf);
 			integrity_good = false;
 		}
 	}
 	if (squelched)
-		printf("  (squelched %d additional integrity error%s)\n",
+		printf("  (squelched %ld additional integrity error%s)\n",
 			squelched, squelched == 1 ? "" : "s");
 
 	if (integrity_good)
@@ -348,6 +311,7 @@ out:
 #define S_TO_MS(s) (s * 1000.0)
 #define MS_TO_US(ms) (ms * 1000.0)
 #define S_TO_US(s) (s * 1000 * 1000.0)
+#define TV_TO_MS(tv) (S_TO_MS(tv.tv_sec) + US_TO_MS(tv.tv_usec))
 
 /**
  * timeval_sub - subtracts t2 from t1
@@ -436,7 +400,6 @@ int alloc_mem_list(char **alloc_list, int sizemb)
  * @heap_mask - passed to ION_IOC_ALLOC
  * @flags - passed to ION_IOC_ALLOC
  * @size - passed to ION_IOC_ALLOC
- * @quiet - whether we should suppress alloc failures
  * @pre_alloc_size - size of memory to malloc before doing the ion alloc
  * @alloc_ms - [output] time taken (in MS) to complete the ION_IOC_ALLOC
  * @map_ms - [output] time taken (in MS) to complete the ION_IOC_MAP + mmap
@@ -447,12 +410,11 @@ int alloc_mem_list(char **alloc_list, int sizemb)
  */
 static int profile_alloc_for_heap(unsigned int heap_mask,
 				unsigned int flags, unsigned int size,
-				bool quiet,
 				int pre_alloc_size,
 				double *alloc_ms, double *map_ms,
 				double *memset_ms, double *free_ms)
 {
-	int ionfd, rc, rc2;
+	int ionfd, rc = 0, rc2;
 	uint8_t *buf = MAP_FAILED;
 	struct ion_fd_data fd_data;
 	struct timeval tv_before, tv_after, tv_result;
@@ -471,12 +433,14 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 	if (memset_ms) *memset_ms = 0;
 
 	if (alloc_mem_list(pre_alloc_list, pre_alloc_size) < 0) {
+		rc = 1;
 		perror("couldn't create pre-allocated buffer");
 		goto out;
 	}
 
 	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
+		rc = 1;
 		perror("couldn't open " ION_DEV);
 		goto free_mem_list;
 	}
@@ -490,8 +454,6 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 	rc2 = ioctl(ionfd, ION_IOC_ALLOC, &alloc_data);
 	rc = gettimeofday(&tv_after, NULL);
 	if (rc2) {
-		if (!quiet)
-			perror("couldn't do ion alloc");
 		rc = rc2;
 		goto close_ion;
 	}
@@ -610,11 +572,13 @@ static void profile_kernel_alloc(void)
 	close(memory_prof_fd);
 }
 
-static void print_stats_results(const char *name, const char *cached,
+static void print_stats_results(const char *name, const char *flags_label,
 				const char *size_string,
 				double stats[], int reps)
 {
 	int i;
+	struct timeval tv;
+	unsigned long long time_ms;
 	double sum = 0, sum_of_squares = 0, average, std_dev;
 
 	for (i = 0; i < reps; ++i) {
@@ -627,11 +591,15 @@ static void print_stats_results(const char *name, const char *cached,
 	}
 	std_dev = sqrt(sum_of_squares / reps);
 
-	printf(ST_PREFIX_DATA_ROW " %s %s %s average: %.2f std_dev: %.2f\n",
-		name, cached, size_string, average, std_dev);
+	gettimeofday(&tv, NULL);
+	time_ms = TV_TO_MS(tv);
+	printf("%s %llu %s %s %s average: %.2f std_dev: %.2f reps: %d\n",
+		ST_PREFIX_DATA_ROW, time_ms,
+		name, flags_label, size_string, average, std_dev, reps);
 }
 
-static void print_a_bunch_of_stats_results(const char *name, const char *cached,
+static void print_a_bunch_of_stats_results(const char *name,
+					const char *flags_label,
 					const char *size_string,
 					double alloc_stats[],
 					double map_stats[],
@@ -641,163 +609,119 @@ static void print_a_bunch_of_stats_results(const char *name, const char *cached,
 {
 	char sbuf[70];
 	snprintf(sbuf, 70, "ION_IOC_ALLOC %s", name);
-	print_stats_results(sbuf, cached, size_string, alloc_stats, reps);
+	print_stats_results(sbuf, flags_label, size_string, alloc_stats, reps);
 	if (map_stats) {
 		snprintf(sbuf, 70, "mmap %s", name);
-		print_stats_results(sbuf, cached, size_string, map_stats, reps);
+		print_stats_results(sbuf, flags_label, size_string,
+				map_stats, reps);
 	}
 	if (memset_stats) {
 		snprintf(sbuf, 70, "memset %s", name);
-		print_stats_results(sbuf, cached, size_string, memset_stats, reps);
+		print_stats_results(sbuf, flags_label, size_string,
+				memset_stats, reps);
 	}
 	snprintf(sbuf, 70, "ION_IOC_FREE %s", name);
-	print_stats_results(sbuf, cached, size_string, free_stats, reps);
+	print_stats_results(sbuf, flags_label, size_string, free_stats, reps);
 }
 
-static void heap_profiling(int pre_alloc_size, const int nreps)
+static void heap_profiling(int pre_alloc_size, const int nreps,
+			const char *alloc_profile_path)
 {
-	int i;
-	struct sizes_struct {
-		unsigned long size;
-		const char *sMB;
-		bool quiet;
-	};
-	struct sizes_struct *szp;
-	struct sizes_struct sizes[] = {
-		{
-			.size = SZ_1M * 1,
-			.sMB = "1MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 3,
-			.sMB = "3MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 5,
-			.sMB = "5MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 8,
-			.sMB = "8MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 10,
-			.sMB = "10MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 13,
-			.sMB = "13MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 20,
-			.sMB = "20MB",
-			.quiet = false,
-		}, {
-			.size = SZ_1M * 50,
-			.sMB = "50MB",
-			.quiet = true,
-		}, {
-			.size = SZ_1M * 100,
-			.sMB = "100MB",
-			.quiet = true,
-		}, {
-			/* SENTINEL */
-			.size = 0,
-		}
-	};
+	int max_reps = 0;
+	double *alloc_stats;
+	double *map_stats;
+	double *memset_stats;
+	double *free_stats;
+	bool using_default = false;
+	struct alloc_profile_entry *pp;
+	struct alloc_profile_entry *alloc_profile;
+	if (alloc_profile_path) {
+		alloc_profile = get_alloc_profile(alloc_profile_path);
+	} else {
+		alloc_profile = get_default_alloc_profile();
+		using_default = true;
+	}
 
 	puts("All times are in milliseconds unless otherwise indicated");
-	printf(ST_PREFIX_PREALLOC_SIZE "pre-alloc size (MB): %d\n",
+	printf(ST_PREFIX_PREALLOC_SIZE " pre-alloc size (MB): %d\n",
 		pre_alloc_size);
-	printf(ST_PREFIX_NUM_REPS "num reps: %d\n", nreps);
+	/* printf(ST_PREFIX_NUM_REPS "num reps: %d\n", nreps); */
 
-	for (szp = &sizes[0]; szp->size; ++szp) {
-		unsigned int sz = szp->size;
-		const char *sMB = szp->sMB;
-		bool quiet = szp->quiet;
-		double alloc_stats[nreps];
-		double map_stats[nreps];
-		double memset_stats[nreps];
-		double free_stats[nreps];
-		printf("\n============PROFILING FOR %s MB=============\n",
-			sMB);
-		for (i = 0; i < nreps; ++i) {
-			profile_alloc_for_heap(
-				ION_HEAP(ION_CP_MM_HEAP_ID),
-				ION_SECURE, sz, quiet,
-				pre_alloc_size,
-				&alloc_stats[i],
-				NULL,
-				NULL,
-				&free_stats[i]);
+	/*
+	 * Rather than malloc'ing and free'ing just enough space on
+	 * each iteration, let's get the max needed up front. This
+	 * will help keep things a little more equal during the actual
+	 * timings.
+	 */
+	for (pp = alloc_profile; pp->op != OP_NONE; ++pp)
+		if (pp->op == OP_ALLOC)
+			max_reps = MAX(max_reps, pp->u.alloc_op.reps);
+	if (max_reps == 0)
+		errx(1, "No data lines found in profile: %s",
+			alloc_profile_path);
+
+	MALLOC(double *, alloc_stats, sizeof(double) * max_reps);
+	MALLOC(double *, map_stats, sizeof(double) * max_reps);
+	MALLOC(double *, memset_stats, sizeof(double) * max_reps);
+	MALLOC(double *, free_stats, sizeof(double) * max_reps);
+
+	for (pp = alloc_profile; pp->op != OP_NONE; ++pp) {
+		int i;
+		int reps;
+
+		switch (pp->op) {
+		case OP_ALLOC:
+		{
+			if (using_default && nreps > 0)
+				reps = nreps;
+			else
+				reps = pp->u.alloc_op.reps;
+			for (i = 0; i < reps; ++i) {
+				if (profile_alloc_for_heap(
+					pp->u.alloc_op.heap_id,
+					pp->u.alloc_op.flags,
+					pp->u.alloc_op.size,
+					pre_alloc_size,
+					&alloc_stats[i],
+					pp->u.alloc_op.profile_mmap
+					? &map_stats[i] : NULL,
+					pp->u.alloc_op.profile_memset
+					? &memset_stats[i] : NULL,
+					&free_stats[i])
+					&& !pp->u.alloc_op.quiet)
+					warn("Couldn't allocate %s from %s",
+						pp->u.alloc_op.size_string,
+						pp->u.alloc_op.heap_id_string);
+			}
+			print_a_bunch_of_stats_results(
+				pp->u.alloc_op.heap_id_string,
+				pp->u.alloc_op.flags_string,
+				pp->u.alloc_op.size_string,
+				alloc_stats,
+				pp->u.alloc_op.profile_mmap
+				? map_stats : NULL,
+				pp->u.alloc_op.profile_memset
+				? memset_stats : NULL,
+				free_stats,
+				reps);
+			putchar('\n');
+			fflush(stdout);
+			break;
 		}
-		print_a_bunch_of_stats_results("ION_CP_MM_HEAP_ID",
-				"uncached", sMB,
-				alloc_stats, NULL, NULL,
-				free_stats, nreps);
-
-		for (i = 0; i < nreps; ++i) {
-			profile_alloc_for_heap(
-				ION_HEAP(ION_IOMMU_HEAP_ID),
-				0, sz, quiet,
-				pre_alloc_size,
-				&alloc_stats[i],
-				&map_stats[i],
-				&memset_stats[i],
-				&free_stats[i]);
+		case OP_SLEEP:
+		{
+			usleep(pp->u.sleep_op.time_us);
+			break;
 		}
-		print_a_bunch_of_stats_results("ION_IOMMU_HEAP_ID",
-				"uncached", sMB,
-				alloc_stats, map_stats, memset_stats,
-				free_stats, nreps);
-
-		for (i = 0; i < nreps; ++i) {
-			profile_alloc_for_heap(
-				ION_HEAP(ION_IOMMU_HEAP_ID),
-				ION_FLAG_CACHED, sz, quiet,
-				pre_alloc_size,
-				&alloc_stats[i],
-				&map_stats[i],
-				&memset_stats[i],
-				&free_stats[i]);
+		default:
+			errx(1, "Unknown op: %d", pp->op);
 		}
-		print_a_bunch_of_stats_results("ION_IOMMU_HEAP_ID",
-				"cached", sMB,
-				alloc_stats, map_stats, memset_stats,
-				free_stats, nreps);
-
-		for (i = 0; i < nreps; ++i) {
-			profile_alloc_for_heap(
-				ION_HEAP(ION_SYSTEM_HEAP_ID),
-				ION_FLAG_CACHED, sz, quiet,
-				pre_alloc_size,
-				&alloc_stats[i],
-				&map_stats[i],
-				&memset_stats[i],
-				&free_stats[i]);
-		}
-		print_a_bunch_of_stats_results("ION_SYSTEM_HEAP_ID",
-				"cached", sMB,
-				alloc_stats, map_stats, memset_stats,
-				free_stats, nreps);
-
-		for (i = 0; i < nreps; ++i) {
-			profile_alloc_for_heap(
-				ION_HEAP(ION_SYSTEM_HEAP_ID),
-				0, sz, quiet,
-				pre_alloc_size,
-				&alloc_stats[i],
-				NULL,
-				NULL,
-				&free_stats[i]);
-		}
-		print_a_bunch_of_stats_results("ION_SYSTEM_HEAP_ID",
-				"uncached", sMB,
-				alloc_stats, NULL, NULL,
-				free_stats, nreps);
-
-		fflush(stdout);
 	}
+
+	free(alloc_stats);
+	free(map_stats);
+	free(memset_stats);
+	free(free_stats);
 }
 
 static void oom_test(void)
@@ -880,6 +804,12 @@ static void leak_test(void)
 	sleep(5);
 }
 
+static int file_exists(const char const *fname)
+{
+	struct stat tmp;
+	return stat(fname, &tmp) == 0;
+}
+
 #define USAGE_STRING							\
 	"Usage: %s [options]\n"						\
 	"\n"								\
@@ -888,9 +818,13 @@ static void leak_test(void)
 	"  -h         Print this message and exit\n"			\
 	"  -a         Do the adversarial test (same as -l)\n"		\
 	"  -b         Do basic sanity tests\n"				\
-	"  -z         Size (in MB) of buffer for basic sanity tests (default=1)\n" \
+	"  -z MB      Size (in MB) of buffer for basic sanity tests (default=1)\n" \
 	"  -e[REPS]   Do Ion heap profiling. Optionally specify number of reps\n" \
-	"             E.g.: -e10 would do 10 reps (default=100)\n"	\
+	"             E.g.: -e10 would do 10 reps (default=100). The number\n" \
+	"             of reps is only used when the default allocation profile\n" \
+	"             is used (i.e. when -i is not given)\n"		\
+	"  -i file    Input `alloc profile' for heap profiling (-e)\n"	\
+	"             (Runs a general default profile if omitted)\n"	\
 	"  -k         Do kernel alloc profiling (requires kernel module)\n" \
 	"  -l         Do leak test (leak an ion handle)\n"		\
 	"  -m         Do map extra test (requires kernel module)\n"	\
@@ -916,11 +850,12 @@ int main(int argc, char *argv[])
 	bool do_map_extra_test = false;
 	bool do_oom_test = false;
 	bool do_leak_test = false;
+	const char *alloc_profile = NULL;
 	int num_reps = 1;
-	int num_heap_prof_reps = NUM_REPS_FOR_HEAP_PROFILING;
+	int num_heap_prof_reps = -1;
 	int ion_pre_alloc_size = ION_PRE_ALLOC_SIZE_DEFAULT;
 
-	while (-1 != (opt = getopt(argc, argv, "abe::hklmnop:rs::t:z:"))) {
+	while (-1 != (opt = getopt(argc, argv, "abe::hi:klmnop:rs::t:z:"))) {
 		switch (opt) {
 		case 't':
 			ion_pre_alloc_size = atoi(optarg);
@@ -934,6 +869,12 @@ int main(int argc, char *argv[])
 			if (optarg)
 				num_heap_prof_reps = atoi(optarg);
 			do_heap_profiling = true;
+			break;
+		case 'i':
+			alloc_profile = optarg;
+			if (!file_exists(alloc_profile))
+				err(1, "Can't read alloc profile file: %s\n",
+					alloc_profile);
 			break;
 		case 'k':
 			do_kernel_alloc_profiling = true;
@@ -974,7 +915,7 @@ int main(int argc, char *argv[])
 	if (do_heap_profiling)
 		for (i = 0; i < num_reps; ++i)
 			heap_profiling(ion_pre_alloc_size,
-				num_heap_prof_reps);
+				num_heap_prof_reps, alloc_profile);
 	if (do_kernel_alloc_profiling)
 		for (i = 0; i < num_reps; ++i)
 			profile_kernel_alloc();

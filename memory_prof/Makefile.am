@@ -1,8 +1,9 @@
 memory_profdir = $(prefix)/memory_prof
 memory_prof_PROGRAMS = memory_prof
-memory_prof_SOURCES	= memory_prof.c
+memory_prof_SOURCES	= memory_prof.c alloc_profiles.c
 memory_prof_CFLAGS = -lm
 dist_memory_prof_SCRIPTS  = memory_prof.sh run.sh
+dist_memory_prof_DATA = README.txt $(wildcard alloc_profiles/*)
 
 KERNEL_FLAGS ?= ARCH=arm
 
