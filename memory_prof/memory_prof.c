@@ -343,11 +343,11 @@ out:
 }
 
 
-#define US_TO_MS(us) (us / 1000)
-#define MS_TO_S(ms) (ms / 1000)
-#define S_TO_MS(s) (s * 1000)
-#define MS_TO_US(ms) (ms * 1000)
-#define S_TO_US(s) (s * 1000 * 1000)
+#define US_TO_MS(us) (us / 1000.0)
+#define MS_TO_S(ms) (ms / 1000.0)
+#define S_TO_MS(s) (s * 1000.0)
+#define MS_TO_US(ms) (ms * 1000.0)
+#define S_TO_US(s) (s * 1000 * 1000.0)
 
 /**
  * timeval_sub - subtracts t2 from t1
@@ -375,7 +375,7 @@ static struct timeval timeval_sub(struct timeval t1, struct timeval t2)
  *
  * Returns the MS diff between t1 and t2 (t2 - t1)
  */
-static long timeval_ms_diff(struct timeval t1, struct timeval t2)
+static double timeval_ms_diff(struct timeval t1, struct timeval t2)
 {
 	struct timeval tv_result = timeval_sub(t1, t2);
 	return US_TO_MS(tv_result.tv_usec) + S_TO_MS(tv_result.tv_sec);
@@ -438,8 +438,8 @@ int alloc_mem_list(char **alloc_list, int sizemb)
  * @size - passed to ION_IOC_ALLOC
  * @quiet - whether we should suppress alloc failures
  * @pre_alloc_size - size of memory to malloc before doing the ion alloc
- * @alloc_ms - [output] time taken to complete the ION_IOC_ALLOC
- * @free_ms - [output] time taken to complete the ION_IOC_FREE
+ * @alloc_ms - [output] time taken (in MS) to complete the ION_IOC_ALLOC
+ * @free_ms - [output] time taken (in MS) to complete the ION_IOC_FREE
  *
  * Returns 0 on success, 1 on failure.
  */
@@ -447,9 +447,8 @@ static int profile_alloc_for_heap(unsigned int heap_mask,
 				unsigned int flags, unsigned int size,
 				bool quiet,
 				int pre_alloc_size,
-				long *alloc_ms, long *free_ms)
+				double *alloc_ms, double *free_ms)
 {
-	long ms = -1;
 	int ionfd, rc, rc2;
 	struct timeval tv_before, tv_after, tv_result;
 	struct ion_allocation_data alloc_data = {
@@ -549,10 +548,10 @@ static void profile_kernel_alloc(void)
 
 static void print_stats_results(const char *name, const char *cached,
 				const char *size_string,
-				long alloc_stats[], int reps)
+				double alloc_stats[], int reps)
 {
 	int i;
-	float sum = 0, sum_of_squares = 0, average, std_dev;
+	double sum = 0, sum_of_squares = 0, average, std_dev;
 
 	for (i = 0; i < reps; ++i) {
 		sum += alloc_stats[i];
@@ -629,8 +628,8 @@ static void heap_profiling(int pre_alloc_size, const int nreps)
 		unsigned int sz = szp->size;
 		const char *sMB = szp->sMB;
 		bool quiet = szp->quiet;
-		long alloc_stats[nreps];
-		long free_stats[nreps];
+		double alloc_stats[nreps];
+		double free_stats[nreps];
 		printf("\n============PROFILING FOR %s MB=============\n",
 			sMB);
 		for (i = 0; i < nreps; ++i) {
