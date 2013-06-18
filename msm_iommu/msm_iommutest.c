@@ -66,13 +66,15 @@ struct test_results {
 unsigned int TEST_TYPE = NOMINAL_TEST;
 unsigned int no_repeats = 1;
 unsigned int force = 0;
+static unsigned int do_basic_va2pa_test;
+
 #define PRINT_FORMAT "%15s (%20s)"
 
 int parse_args(int argc, char **argv)
 {
 	unsigned int level;
 
-	if (argc != 5)
+	if (argc != 6)
 		return 1;
 
 	switch (argv[1][0]) {
@@ -108,6 +110,7 @@ int parse_args(int argc, char **argv)
 	debug_level = level;
 
 	force = atoi(argv[4]);
+	do_basic_va2pa_test = atoi(argv[5]);
 	return 0;
 }
 
@@ -168,6 +171,7 @@ int do_bfb_test(int iommu_test_fd, struct get_next_cb *gnc,
 
 	tst_iommu.iommu_no = gnc->iommu_no;
 	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = 0;
 
 	ret = read_bfb_settings(&tst_iommu, target, gnc->iommu_name);
 	if (ret) {
@@ -218,6 +222,7 @@ int do_int_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 
 	tst_iommu.iommu_no = gnc->iommu_no;
 	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = 0;
 
 	ret = ioctl(iommu_test_fd, IOC_IOMMU_TEST_IOMMU_INT, &tst_iommu);
 
@@ -246,6 +251,7 @@ int do_va2pa_htw_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 
 	tst_iommu.iommu_no = gnc->iommu_no;
 	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = do_basic_va2pa_test ? TEST_FLAG_BASIC : 0;
 
 	if (gnc->iommu_secure && !force) {
 		debug(INFO, PRINT_FORMAT ": Testing VA2PA (HTW): SKIPPED! (Secure)\n",

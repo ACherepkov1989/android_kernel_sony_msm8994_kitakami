@@ -563,22 +563,6 @@ static int do_advanced_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
 	unsigned int i,j,k;
 	int ret;
 
-	ret = do_lpae_VA2PA_HTW(domain_id, domain, ctx_name);
-	if (ret) {
-		pr_err("%s: VA2PA LPAE HTW FAILED\n", __func__);
-		goto out;
-	}
-
-	for(i = 0; i < ARRAY_SIZE(MAP_SIZES); ++i) {
-		ret = do_VA2PA_HTW(MAP_SIZES[i], MAP_SIZES[i], domain_id,
-				   domain, ctx_name);
-		if (ret) {
-			pr_err("%s: VA2PA HTW for various page sizes FAILED\n",
-				__func__);
-			goto out;
-		}
-	}
-
 	pr_debug("Do mapping test\n");
 	for(i = 0; i < 2; ++i) {
 		for(j = 0; j < 20; ++j) {
@@ -598,7 +582,7 @@ out:
 	return ret;
 }
 
-static int do_basic_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+static int do_two_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
 		const char *ctx_name)
 {
 	int ret;
@@ -642,6 +626,35 @@ out:
 	return ret;
 }
 
+static int do_basic_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+		const char *ctx_name)
+{
+	int ret;
+	int i;
+
+	ret = do_two_VA2PA_HTW(domain_id, domain, ctx_name);
+	if (ret)
+		goto out;
+
+	ret = do_lpae_VA2PA_HTW(domain_id, domain, ctx_name);
+	if (ret) {
+		pr_err("%s: VA2PA LPAE HTW FAILED\n", __func__);
+		goto out;
+	}
+
+	for(i = 0; i < ARRAY_SIZE(MAP_SIZES); ++i) {
+		ret = do_VA2PA_HTW(MAP_SIZES[i], MAP_SIZES[i], domain_id,
+				   domain, ctx_name);
+		if (ret) {
+			pr_err("%s: VA2PA HTW for various page sizes FAILED\n",
+				__func__);
+			goto out;
+		}
+	}
+out:
+	return ret;
+}
+
 static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 			  struct test_iommu *tst_iommu)
 {
@@ -681,11 +694,12 @@ static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 		goto detach;
 	}
 
-	pr_debug("Do advanced test\n");
-	ret = do_advanced_VA2PA_HTW(domain_id, domain, ctx_name);
-	if (ret == -EBUSY)
-		ret = -EINVAL;
-
+	if (!(tst_iommu->flags & TEST_FLAG_BASIC)) {
+		pr_debug("Do advanced test\n");
+		ret = do_advanced_VA2PA_HTW(domain_id, domain, ctx_name);
+		if (ret == -EBUSY)
+			ret = -EINVAL;
+	}
 detach:
 	iommu_detach_device(domain, dev);
 unreg_dom:

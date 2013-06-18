@@ -7,6 +7,8 @@
 
 #define NAME_LEN 30
 
+#define TEST_FLAG_BASIC 1
+
 struct get_next_cb {
 	unsigned int iommu_no;
 	unsigned int cb_no;
@@ -27,6 +29,7 @@ struct test_iommu {
 	unsigned int bfb_data[MAX_BFB_REGS];
 	unsigned int bfb_size;
 	int ret_code;
+	unsigned int flags;
 };
 
 struct target_struct {
