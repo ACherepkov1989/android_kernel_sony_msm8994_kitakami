@@ -62,6 +62,9 @@ AM_CONDITIONAL(KERNELMODULES, [test -n "${with_kernel}"])
 # ion
 ENABLE_KERNEL_TEST([ion],[include the ion test (default=yes)])
 
+# ipc_logging
+ENABLE_KERNEL_TEST([ipc_logging],[include the ipc_logging test (default=yes)])
+
 # memory_prof
 ENABLE_KERNEL_TEST([memory_prof],[include the memory profiling test (default=yes)])
 
@@ -90,6 +93,7 @@ AC_SUBST([CC])
 AC_CONFIG_FILES([
 	Makefile
 	ion/Makefile
+	ipc_logging/Makefile
 	memory_prof/Makefile
 	msm_bus/Makefile
 	ocmem/Makefile

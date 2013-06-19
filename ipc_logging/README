@@ -1,0 +1,46 @@
+IPC Logging Documentation
+
+Usage:
+
+Insert module:
+  cd /system/lib/modules
+  insmod ipc_logging_test.ko
+
+Run unit tests:
+  cd /d/ipc_logging_test
+  cat <Test>
+
+Test: ut_local_basic
+
+Inputs: No user inputs.
+
+Description:
+
+The test perform the following stpes.
+
+1. Create the IPC LOGGING context
+2. Write the sample test logs to the IPC context.
+3. Read the sample logs from the IPC context.
+4. Compare the read dat with sample data.
+5. Destroy the IPC LOGGING context.
+
+OPTIONS: None
+
+TEST BEHAVIOR:
+
+Runs various unit tests.  See the individual unit tests for details.
+
+LIMITATIONS: None
+
+TARGETS: All
+
+Automation
+
+Test: run.sh
+
+Parameters:
+ -n: Nominal test case (tests all standard ioctl interfaces.
+ -a: Adversarial test case (tests using incorrect ioctl entries)
+ -r: Repeatability test case (Run -n and -a 10 times each)
+ -s: Stress test case (invokes many simultaneous threads that all try and access the device at once)
+ --custom_flag: Specifies bitfield passed to the device 'example' for configuration.
