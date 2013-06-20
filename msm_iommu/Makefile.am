@@ -3,7 +3,7 @@ iommu_PROGRAMS		= msm_iommutest
 msm_iommutest_SOURCES	= msm_iommutest.c
 dist_iommu_SCRIPTS	= iommutest.sh run.sh
 module			= msm_iommu_test_module.ko
-dist_iommu_DATA		= README.txt apq8084_bfb.txt msm8974_bfb.txt msm8226_bfb.txt $(module)
+dist_iommu_DATA		= README.txt apq8084_lpae_bfb.txt apq8084_bfb.txt msm8974_bfb.txt msm8226_bfb.txt $(module)
 
 KERNEL_FLAGS ?= ARCH=arm
 

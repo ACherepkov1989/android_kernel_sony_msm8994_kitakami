@@ -37,6 +37,12 @@ static struct class *iommu_test_class;
 static int iommu_test_major;
 static struct device *iommu_test_dev;
 
+#ifdef CONFIG_IOMMU_LPAE
+static const unsigned int LPAE_ENABLED = 1;
+#else
+static const unsigned int LPAE_ENABLED;
+#endif
+
 struct iommu_cb {
 	const char *name;
 	unsigned int secure_context;
@@ -272,6 +278,7 @@ static int iommu_test_release(struct inode *inode, struct file *file)
 static void get_next_cb(const struct msm_iommu_test *iommu_test,
 			struct get_next_cb *gnc)
 {
+	gnc->lpae_enabled = LPAE_ENABLED;
 	if (gnc->iommu_no < iommu_test->no_iommu) {
 		gnc->valid_iommu = 1;
 		gnc->iommu_secure =
@@ -402,9 +409,14 @@ out:
 
 }
 
-#ifdef CONFIG_IOMMU_LPAE
+/*
+ *  We can only try to use addresses greater than 32 bits
+ * if LPAE is enabled in the CPU in addition to in the IOMMU
+ */
+#if defined(CONFIG_IOMMU_LPAE) && defined(CONFIG_ARM_LPAE)
 const unsigned int MAP_SIZES[] = {SZ_4K, SZ_64K, SZ_2M, SZ_32M, SZ_1G};
 const unsigned int PAGE_LEVEL_SIZES[] = {SZ_2M, SZ_4K};
+
 
 int do_lpae_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
 		      const char *ctx_name)

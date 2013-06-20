@@ -18,6 +18,7 @@ struct get_next_cb {
 	unsigned int cb_secure;
 	unsigned int valid_iommu;
 	unsigned int valid_cb;
+	unsigned int lpae_enabled;
 };
 
 #define MAX_BFB_REGS 30
