@@ -77,6 +77,10 @@ Tests that the modes of ETR can be changed from usb to memory and vice versa.
 12. cs_adversary.sh
 While having trace sources enabled, enables and disables all cores in a loop.
 
+13. profile/cs_profile.sh
+This test enables STM tracing and echoes fixed amount of data(4KB) over stm. It
+calculates the time taken to send that data.
+
 Targets supported: 8974
 
 Test output:
