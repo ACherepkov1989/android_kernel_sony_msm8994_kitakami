@@ -44,8 +44,39 @@ import fileinput
 import operator
 from itertools import cycle
 from optparse import OptionParser
-import numpy as np
-import matplotlib.pyplot as plt
+
+force_text_only = False
+
+try:
+    import numpy as np
+except:
+    print """WARNING: Couldn't import numpy. Please install it to get plots.
+One of these should do it:
+
+    sudo apt-get install python-numpy
+    sudo yum install numpy
+    sudo pip install numpy
+    sudo easy_install numpy
+
+For now, we'll just disable plotting and go to text-only mode
+"""
+    force_text_only = True
+else:
+    # only try to import matplotlib if we have numpy
+    try:
+        import matplotlib.pyplot as plt
+    except:
+        print """WARNING: Couldn't import matplotlib. Please install it to get plots.
+One of these should do it:
+
+    sudo apt-get install python-matplotlib
+    sudo yum install python-matplotlib
+    sudo pip install matplotlib
+    sudo easy_install matplotlib
+
+For now, we'll just disable plotting and go to text-only mode
+    """
+        force_text_only = True
 
 
 ST_PREFIX_DATA_ROW      = "=> "
@@ -117,7 +148,7 @@ def compare_heaps_for_a_size(data, target_sz, num_reps, pre_alloc_size, ion_op, 
         print "%25s   (cached): %f" % (heap, cached)
         print "%25s (uncached): %s" % (heap, str(uncached) if uncached != 0 else "N/A")
 
-    if text_only:
+    if text_only or force_text_only:
         return
 
     ind = np.arange(len(heaps))
@@ -175,7 +206,7 @@ def compare_times_for_heaps(data, num_reps, pre_alloc_size, ion_op, text_only=Fa
 
         print '\n'
 
-    if text_only:
+    if text_only or force_text_only:
         return
 
     fig = plt.figure()
