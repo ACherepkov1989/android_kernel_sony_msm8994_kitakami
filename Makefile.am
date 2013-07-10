@@ -21,8 +21,10 @@ endif
 if USEOCMEM
 BUILD_TEST += ocmem
 endif
+if USEIOMMU
+BUILD_TEST += msm_iommu
 endif
-
+endif
 if USESPS
 BUILD_TEST += sps
 endif
