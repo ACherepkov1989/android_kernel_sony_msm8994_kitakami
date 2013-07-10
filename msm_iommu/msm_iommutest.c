@@ -66,13 +66,15 @@ struct test_results {
 unsigned int TEST_TYPE = NOMINAL_TEST;
 unsigned int no_repeats = 1;
 unsigned int force = 0;
+static unsigned int do_basic_va2pa_test;
+
 #define PRINT_FORMAT "%15s (%20s)"
 
 int parse_args(int argc, char **argv)
 {
 	unsigned int level;
 
-	if (argc != 5)
+	if (argc != 6)
 		return 1;
 
 	switch (argv[1][0]) {
@@ -108,12 +110,13 @@ int parse_args(int argc, char **argv)
 	debug_level = level;
 
 	force = atoi(argv[4]);
+	do_basic_va2pa_test = atoi(argv[5]);
 	return 0;
 }
 
 int read_bfb_settings(struct test_iommu *tst_iommu,
 		      struct target_struct *target,
-		      const char *iommu_name)
+		      struct get_next_cb *gnc)
 {
 	char file_name[101];
 	FILE *fp;
@@ -123,7 +126,10 @@ int read_bfb_settings(struct test_iommu *tst_iommu,
 	unsigned int reg;
 	unsigned int value;
 
-	snprintf(file_name, 100, "%s_bfb.txt", target->name);
+	if (gnc->lpae_enabled)
+		snprintf(file_name, 100, "%s_lpae_bfb.txt", target->name);
+	else
+		snprintf(file_name, 100, "%s_bfb.txt", target->name);
 	fp = fopen(file_name, "r");
 
 	if (fp == NULL) {
@@ -133,7 +139,7 @@ int read_bfb_settings(struct test_iommu *tst_iommu,
 	tst_iommu->bfb_size = 0;
 	while (fgets(line, 100, fp) != NULL) {
 		sscanf(line, "%s %x %x", i_name, &reg, &value);
-		if (strcmp(i_name, iommu_name) == 0) {
+		if (strcmp(i_name, gnc->iommu_name) == 0) {
 			if (tst_iommu->bfb_size < MAX_BFB_REGS) {
 				unsigned int sz = tst_iommu->bfb_size;
 				tst_iommu->bfb_regs[sz] = reg;
@@ -168,8 +174,9 @@ int do_bfb_test(int iommu_test_fd, struct get_next_cb *gnc,
 
 	tst_iommu.iommu_no = gnc->iommu_no;
 	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = 0;
 
-	ret = read_bfb_settings(&tst_iommu, target, gnc->iommu_name);
+	ret = read_bfb_settings(&tst_iommu, target, gnc);
 	if (ret) {
 		if (ret == -ENOMEM) {
 			debug(INFO, PRINT_FORMAT ": Testing BFB: FAILED! (Unit test needs update)\n",
@@ -218,6 +225,7 @@ int do_int_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 
 	tst_iommu.iommu_no = gnc->iommu_no;
 	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = 0;
 
 	ret = ioctl(iommu_test_fd, IOC_IOMMU_TEST_IOMMU_INT, &tst_iommu);
 
@@ -246,6 +254,7 @@ int do_va2pa_htw_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 
 	tst_iommu.iommu_no = gnc->iommu_no;
 	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = do_basic_va2pa_test ? TEST_FLAG_BASIC : 0;
 
 	if (gnc->iommu_secure && !force) {
 		debug(INFO, PRINT_FORMAT ": Testing VA2PA (HTW): SKIPPED! (Secure)\n",
@@ -280,7 +289,6 @@ struct test_results run_nominal_tests(void)
 	int iommu_test_fd;
 	unsigned int iommu_idx = 0;
 	unsigned int cb_idx = 0;
-	int valid = 1;
 	struct get_next_cb gnc;
 	int skipped;
 	struct test_results result = { 0, 0, 0 };
@@ -302,9 +310,56 @@ struct test_results run_nominal_tests(void)
 		result.no_failed = 1;
 		return result;
 	}
-	debug(INFO, "Running on target: %s\n", target.name);
 
-	while (valid) {
+	gnc.iommu_no = iommu_idx;
+	gnc.cb_no = cb_idx;
+	gnc.cb_secure = 0;
+	gnc.valid_cb = 0;
+	gnc.valid_iommu = 0;
+	gnc.lpae_enabled = 0;
+
+	ret = ioctl(iommu_test_fd, IOC_IOMMU_GET_NXT_IOMMU_CB, &gnc);
+	if (ret) {
+		debug(ERR, "Failed to get IOMMU CTX: %d\n", ret);
+		goto out;
+	}
+	debug(INFO, "Running on target: %s (%s)\n", target.name,
+		gnc.lpae_enabled ? "LPAE" : "VMSA");
+
+	while (gnc.valid_iommu) {
+		if (current_iommu != gnc.iommu_no) {
+			ret = do_bfb_test(iommu_test_fd, &gnc, &target,
+					  &skipped);
+			if (ret)
+				++result.no_failed;
+
+			result.no_skipped += skipped;
+			++result.no_tests;
+
+			current_iommu = gnc.iommu_no;
+		}
+		if (gnc.valid_cb) {
+			ret = do_int_test(iommu_test_fd, &gnc, &skipped);
+
+			if (ret)
+				++result.no_failed;
+
+			result.no_skipped += skipped;
+			++result.no_tests;
+
+			ret = do_va2pa_htw_test(iommu_test_fd, &gnc, &skipped);
+			if (ret)
+				++result.no_failed;
+
+			result.no_skipped += skipped;
+			++result.no_tests;
+
+			++cb_idx;
+		} else {
+			++iommu_idx;
+			cb_idx = 0;
+		}
+
 		gnc.iommu_no = iommu_idx;
 		gnc.cb_no = cb_idx;
 		gnc.cb_secure = 0;
@@ -316,47 +371,8 @@ struct test_results run_nominal_tests(void)
 			debug(ERR, "Failed to get IOMMU CTX: %d\n", ret);
 			break;
 		}
-
-		if (gnc.valid_iommu) {
-			if (current_iommu != gnc.iommu_no) {
-				ret = do_bfb_test(iommu_test_fd, &gnc, &target,
-						  &skipped);
-				if (ret)
-					++result.no_failed;
-
-				result.no_skipped += skipped;
-				++result.no_tests;
-
-				current_iommu = gnc.iommu_no;
-			}
-			if (gnc.valid_cb) {
-				ret = do_int_test(iommu_test_fd, &gnc,
-						  &skipped);
-
-				if (ret)
-					++result.no_failed;
-
-				result.no_skipped += skipped;
-				++result.no_tests;
-
-				ret = do_va2pa_htw_test(iommu_test_fd, &gnc,
-							&skipped);
-				if (ret)
-					++result.no_failed;
-
-				result.no_skipped += skipped;
-				++result.no_tests;
-
-				++cb_idx;
-			} else {
-				++iommu_idx;
-				cb_idx = 0;
-			}
-
-		} else {
-			valid = 0;
-		}
 	}
+out:
 	close(iommu_test_fd);
 	return result;
 }

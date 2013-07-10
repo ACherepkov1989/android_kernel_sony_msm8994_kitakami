@@ -22,6 +22,8 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/iommu.h>
+#include <linux/vmalloc.h>
+#include <asm/sizes.h>
 #include <mach/socinfo.h>
 #include <mach/iommu.h>
 #include <mach/iommu_domains.h>
@@ -34,6 +36,12 @@
 static struct class *iommu_test_class;
 static int iommu_test_major;
 static struct device *iommu_test_dev;
+
+#ifdef CONFIG_IOMMU_LPAE
+static const unsigned int LPAE_ENABLED = 1;
+#else
+static const unsigned int LPAE_ENABLED;
+#endif
 
 struct iommu_cb {
 	const char *name;
@@ -270,6 +278,7 @@ static int iommu_test_release(struct inode *inode, struct file *file)
 static void get_next_cb(const struct msm_iommu_test *iommu_test,
 			struct get_next_cb *gnc)
 {
+	gnc->lpae_enabled = LPAE_ENABLED;
 	if (gnc->iommu_no < iommu_test->no_iommu) {
 		gnc->valid_iommu = 1;
 		gnc->iommu_secure =
@@ -308,7 +317,7 @@ static int create_domain(struct iommu_domain **domain)
 
 	struct msm_iova_partition partition = {
 		.start = 0x1000,
-		.size = 0xFFFF0000,
+		.size = 0xFFFFF000,
 	};
 	struct msm_iova_layout layout = {
 		.partitions = &partition,
@@ -322,6 +331,341 @@ static int create_domain(struct iommu_domain **domain)
 	return domain_id;
 }
 
+static int test_map_phys_range(struct iommu_domain *domain,
+			 unsigned long iova,
+			 phys_addr_t phys,
+			 unsigned long size,
+			 int cached)
+{
+	int ret;
+	struct scatterlist *sglist;
+	int prot = IOMMU_WRITE | IOMMU_READ;
+	prot |= cached ? IOMMU_CACHE : 0;
+
+	sglist = vmalloc(sizeof(*sglist));
+	if (!sglist) {
+		ret = -ENOMEM;
+		pr_err("Unable to allocate memory for sglist: %s\n", __func__);
+		goto out;
+	}
+
+	sg_init_table(sglist, 1);
+	sg_dma_len(sglist) = size;
+	sglist->offset = 0;
+	sg_dma_address(sglist) = phys;
+
+	ret = iommu_map_range(domain, iova, sglist, size, prot);
+	if (ret) {
+		pr_err("%s: could not map %lx in domain %p\n",
+			__func__, iova, domain);
+	}
+
+	vfree(sglist);
+out:
+	return ret;
+}
+
+static int test_map_phys(struct iommu_domain *domain,
+			 unsigned long iova,
+			 phys_addr_t phys,
+			 unsigned long size,
+			 int cached)
+{
+	int ret;
+	int prot = IOMMU_WRITE | IOMMU_READ;
+	prot |= cached ? IOMMU_CACHE : 0;
+
+	ret = iommu_map(domain, iova, phys, size, prot);
+	if (ret) {
+		pr_err("%s: could not map %lx in domain %p\n",
+			__func__, iova, domain);
+	}
+	return ret;
+}
+
+static int do_VA2PA_HTW(phys_addr_t pa, unsigned int sz, int domain_id,
+			struct iommu_domain *domain, const char *ctx_name)
+{
+	int ret;
+	unsigned long iova;
+	phys_addr_t result_pa = 0x12345;
+
+	ret = msm_iommu_map_contig_buffer(pa, domain_id, 0,
+					  sz, sz, 0, &iova);
+	if (ret) {
+		pr_err("%s: iommu map failed: %d\n", __func__, ret);
+		goto out;
+	}
+
+	result_pa = iommu_iova_to_phys(domain, iova);
+	if (pa != result_pa) {
+		pr_err("%s: VA2PA FAILED for %s: PA: %pa expected PA: %pa\n",
+			__func__, ctx_name, &result_pa, &pa);
+		ret = -EIO;
+	}
+	msm_iommu_unmap_contig_buffer(iova, domain_id, 0, sz);
+out:
+	return ret;
+
+}
+
+/*
+ *  We can only try to use addresses greater than 32 bits
+ * if LPAE is enabled in the CPU in addition to in the IOMMU
+ */
+#if defined(CONFIG_IOMMU_LPAE) && defined(CONFIG_ARM_LPAE)
+const unsigned int MAP_SIZES[] = {SZ_4K, SZ_64K, SZ_2M, SZ_32M, SZ_1G};
+const unsigned int PAGE_LEVEL_SIZES[] = {SZ_2M, SZ_4K};
+
+
+int do_lpae_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+		      const char *ctx_name)
+{
+	phys_addr_t pa = 0x100000000ULL;
+	int ret;
+	unsigned int i;
+
+	for(i = 0; i < ARRAY_SIZE(MAP_SIZES); ++i) {
+		ret = do_VA2PA_HTW(pa, MAP_SIZES[i], domain_id, domain,
+				   ctx_name);
+		if (ret)
+			goto out;
+	}
+out:
+	return ret;
+}
+#else
+const unsigned int MAP_SIZES[] = {SZ_4K, SZ_64K, SZ_1M, SZ_16M};
+const unsigned int PAGE_LEVEL_SIZES[] = {SZ_1M, SZ_4K};
+
+int do_lpae_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+		      const char *ctx_name)
+{
+	return 0;
+}
+#endif
+
+static int do_mapping_test(unsigned int i, unsigned int j, unsigned int k,
+			   struct iommu_domain *domain, const char *ctx_name)
+{
+	int ret;
+	phys_addr_t pa;
+	phys_addr_t result_pa;
+	unsigned int size;
+	unsigned int iova;
+
+	iova = SZ_1G * i;
+	iova += (SZ_1G-PAGE_LEVEL_SIZES[0]*10) + PAGE_LEVEL_SIZES[0] * j;
+	iova += PAGE_LEVEL_SIZES[0] - PAGE_LEVEL_SIZES[1]*10 +
+		PAGE_LEVEL_SIZES[1] * k;
+	pa = iova;
+	size = SZ_64M;
+
+	/* Test using iommu_map_range */
+	pr_debug("Test iommu_map_range\n");
+	ret = test_map_phys_range(domain, iova, pa, size, 0);
+	if (ret) {
+		pr_err("%s: Failed to map VA 0x%x to PA %pa using map_range\n",
+			__func__, iova, &pa);
+		goto out;
+	}
+
+	pr_debug("VA2PA map range\n");
+	result_pa = iommu_iova_to_phys(domain, iova);
+	if (result_pa != pa) {
+		pr_err("%s: VA2PA FAILED for %s: PA: %pa expected PA: %pa using map_range\n",
+			__func__, ctx_name, &result_pa, &pa);
+		ret = -EIO;
+	}
+	iommu_unmap_range(domain, iova, size);
+
+	if (ret)
+		goto out;
+
+	/* Test using iommu_map */
+	pr_debug("Test iommu_map\n");
+	ret = test_map_phys(domain, iova, pa, size, 0);
+	if (ret) {
+		pr_err("%s: Failed to map VA 0x%x to PA %pa\n", __func__,
+			iova, &pa);
+		goto out;
+	}
+
+	result_pa = iommu_iova_to_phys(domain, iova);
+	if (result_pa != pa) {
+		pr_err("%s: VA2PA FAILED for %s: PA: %pa expected PA: %pa\n",
+			__func__, ctx_name, &result_pa, &pa);
+		ret = -EIO;
+	}
+	iommu_unmap(domain, iova, size);
+out:
+	return ret;
+}
+
+static int do_map_range_test(struct iommu_domain *domain, const char *ctx_name)
+{
+	int ret;
+	struct sg_table *table;
+	struct scatterlist *sg;
+	int prot = IOMMU_WRITE | IOMMU_READ;
+	unsigned int num_pages_sizes = ARRAY_SIZE(MAP_SIZES);
+	unsigned int i;
+	unsigned int tot_size = 0;
+	unsigned int iova = MAP_SIZES[num_pages_sizes-1];
+	unsigned int result_pa;
+	phys_addr_t pa;
+
+	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
+	if (!table) {
+		ret = -ENOMEM;
+		pr_err("%s: Unable to allocate sgtable\n", __func__);
+		goto out;
+	}
+
+	ret = sg_alloc_table(table, num_pages_sizes, GFP_KERNEL);
+	if (ret) {
+		pr_err("%s: Unable to allocate sglist\n", __func__);
+		goto free_table;
+	}
+
+	pa = MAP_SIZES[num_pages_sizes-1];
+	sg = table->sgl;
+	for(i = 0; i < num_pages_sizes; ++i) {
+		sg_dma_len(sg) = MAP_SIZES[num_pages_sizes-i-1];
+		sg->offset = 0;
+		sg_dma_address(sg) = pa;
+		sg = sg_next(sg);
+		tot_size += MAP_SIZES[num_pages_sizes-i-1];
+		pa += MAP_SIZES[num_pages_sizes-i-1];
+	}
+
+	ret = iommu_map_range(domain, iova, table->sgl, tot_size, prot);
+	if (ret) {
+		pr_err("%s: could not map 0x%x in domain %p\n",
+			__func__, iova, domain);
+		goto free_sglist;
+	}
+
+	pa = MAP_SIZES[num_pages_sizes-1];
+	for(i = 0; i < num_pages_sizes; ++i) {
+		result_pa = iommu_iova_to_phys(domain, iova);
+		if (pa != result_pa) {
+			pr_err("%s: VA2PA FAILED for %s: IOVA: 0x%x PA: %pa expected PA: %pa\n",
+				__func__, ctx_name, iova, &result_pa, &pa);
+			ret = -EIO;
+			break;
+		}
+		iova += MAP_SIZES[num_pages_sizes-i-1];
+		pa += MAP_SIZES[num_pages_sizes-i-1];
+	}
+
+	iova = MAP_SIZES[num_pages_sizes-1];
+	iommu_unmap_range(domain, iova, tot_size);
+free_sglist:
+	sg_free_table(table);
+free_table:
+	kfree(table);
+out:
+	return ret;
+}
+
+static int do_advanced_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+			    const char *ctx_name)
+{
+	unsigned int i,j,k;
+	int ret;
+
+	pr_debug("Do mapping test\n");
+	for(i = 0; i < 2; ++i) {
+		for(j = 0; j < 20; ++j) {
+			for(k = 0; k < 20; ++k) {
+				ret = do_mapping_test(i, j, k,
+						      domain, ctx_name);
+				if (ret)
+					goto out;
+			}
+		}
+	}
+
+	pr_debug("Do map range test\n");
+	ret = do_map_range_test(domain, ctx_name);
+
+out:
+	return ret;
+}
+
+static int do_two_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+		const char *ctx_name)
+{
+	int ret;
+	unsigned long iova1;
+	unsigned long iova2;
+	phys_addr_t pa;
+
+	ret = msm_iommu_map_contig_buffer(0x10000000, domain_id, 0,
+					 SZ_4K, SZ_4K, 0, &iova1);
+	if (ret) {
+		pr_err("%s: iommu map failed: %d\n", __func__, ret);
+		goto out;
+	}
+
+	pa = iommu_iova_to_phys(domain, iova1);
+	if (pa != 0x10000000) {
+		pr_err("%s: VA2PA FAILED 1 for %s: PA: %pa\n", __func__,
+			ctx_name, &pa);
+		ret = -EIO;
+		goto unmap_1;
+	}
+
+	ret = msm_iommu_map_contig_buffer(0x20000000, domain_id, 0,
+					 SZ_4K, SZ_4K, 0, &iova2);
+	if (ret) {
+		pr_err("%s: iommu map failed: %d\n", __func__, ret);
+		goto unmap_1;
+	}
+
+	pa = iommu_iova_to_phys(domain, iova2);
+	if (pa != 0x20000000) {
+		pr_err("%s: VA2PA FAILED 2 for %s: PA: %pa\n", __func__,
+			ctx_name, &pa);
+		ret = -EIO;
+	}
+
+	msm_iommu_unmap_contig_buffer(iova2, domain_id, 0, SZ_4K);
+unmap_1:
+	msm_iommu_unmap_contig_buffer(iova1, domain_id, 0, SZ_4K);
+out:
+	return ret;
+}
+
+static int do_basic_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+		const char *ctx_name)
+{
+	int ret;
+	int i;
+
+	ret = do_two_VA2PA_HTW(domain_id, domain, ctx_name);
+	if (ret)
+		goto out;
+
+	ret = do_lpae_VA2PA_HTW(domain_id, domain, ctx_name);
+	if (ret) {
+		pr_err("%s: VA2PA LPAE HTW FAILED\n", __func__);
+		goto out;
+	}
+
+	for(i = 0; i < ARRAY_SIZE(MAP_SIZES); ++i) {
+		ret = do_VA2PA_HTW(MAP_SIZES[i], MAP_SIZES[i], domain_id,
+				   domain, ctx_name);
+		if (ret) {
+			pr_err("%s: VA2PA HTW for various page sizes FAILED\n",
+				__func__);
+			goto out;
+		}
+	}
+out:
+	return ret;
+}
 
 static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 			  struct test_iommu *tst_iommu)
@@ -332,9 +676,6 @@ static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 	struct iommu *smmu = &iommu_test->iommu_list[tst_iommu->iommu_no];
 	const char *ctx_name = smmu->cb_list[tst_iommu->cb_no].name;
 	struct device *dev;
-	unsigned long iova1;
-	unsigned long iova2;
-	unsigned int pa = 0x12345;
 
 	domain_id = create_domain(&domain);
 
@@ -356,36 +697,21 @@ static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 		goto unreg_dom;
 	}
 
-	ret = msm_iommu_map_contig_buffer(0x10000000, domain_id, 0,
-					 SZ_4K, SZ_4K, 0, &iova1);
+	pr_debug("Do basic test\n");
+	ret = do_basic_VA2PA_HTW(domain_id, domain, ctx_name);
 	if (ret) {
-		pr_err("iommu map failed: %d\n", ret);
+		/* Remap -EBUSY. This is used when context bank is busy */
+		if (ret == -EBUSY)
+			ret = -EINVAL;
 		goto detach;
 	}
 
-	pa = iommu_iova_to_phys(domain, iova1);
-	if (pa != 0x10000000) {
-		pr_err("1st translation FAILED for %s: PA: 0x%x\n", ctx_name,
-			(unsigned int) pa);
-		ret = -EIO;
+	if (!(tst_iommu->flags & TEST_FLAG_BASIC)) {
+		pr_debug("Do advanced test\n");
+		ret = do_advanced_VA2PA_HTW(domain_id, domain, ctx_name);
+		if (ret == -EBUSY)
+			ret = -EINVAL;
 	}
-
-	ret = msm_iommu_map_contig_buffer(0x20000000, domain_id, 0,
-					 SZ_4K, SZ_4K, 0, &iova2);
-	if (ret) {
-		pr_err("iommu map failed: %d\n", ret);
-		goto detach;
-	}
-
-	pa = iommu_iova_to_phys(domain, iova2);
-	if (pa != 0x20000000) {
-		pr_err("2nd translation FAILED for %s: PA: 0x%x\n", ctx_name,
-			(unsigned int) pa);
-		ret = -EIO;
-	}
-
-	msm_iommu_unmap_contig_buffer(iova2, domain_id, 0, SZ_4K);
-	msm_iommu_unmap_contig_buffer(iova1, domain_id, 0, SZ_4K);
 detach:
 	iommu_detach_device(domain, dev);
 unreg_dom:
