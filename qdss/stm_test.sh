@@ -85,6 +85,8 @@ fi
 
 # Enable stm
 echo 1 > /sys/bus/coresight/devices/coresight-stm/enable
+# Disable hw events
+echo 0 > /sys/bus/coresight/devices/coresight-stm/hwevent_enable
 
 # Insert an text marker to indicate start of current test
 echo "Starting trace" > /sys/kernel/debug/tracing/trace_marker
