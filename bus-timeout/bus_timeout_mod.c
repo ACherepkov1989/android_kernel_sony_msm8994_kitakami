@@ -149,9 +149,13 @@ static int bus_timeout_camera_set(const char *val, struct kernel_param *kp)
 	hang_addr = ioremap(address, SZ_4K);
 	r = regulator_get(NULL, "gdsc_vfe");
 	ret = IS_ERR(r);
-	if (!ret)
-		regulator_enable(r);
-	else {
+	if (!ret) {
+		ret = regulator_enable(r);
+		if (ret) {
+			pr_err("Bus timeout test: regulator failed to enable\n");
+			return ret;
+		}
+	} else {
 		pr_err("Bus timeout test: Unable to get regulator reference\n");
 		return ret;
 	}
