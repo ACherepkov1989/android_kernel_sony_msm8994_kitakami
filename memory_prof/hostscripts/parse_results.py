@@ -78,217 +78,254 @@ For now, we'll just disable plotting and go to text-only mode
     """
         force_text_only = True
 
-
 ST_PREFIX_DATA_ROW      = "=> "
 ST_PREFIX_PREALLOC_SIZE = "==> "
 ST_PREFIX_NUM_REPS      = "===> "
 
-# copy me:
-template_list_timings_dict = {
-        'ION_IOC_ALLOC': [],
-        'mmap': [],
-        'memset': [],
-        'ION_IOC_FREE': [],
-}
-template_dict_timings_dict = {
-        'ION_IOC_ALLOC': {},
-        'mmap': {},
-        'memset': {},
-        'ION_IOC_FREE': {},
-}
+def get_data_lines(lines):
+    return [line.lstrip(ST_PREFIX_DATA_ROW).rstrip('\n') for line in lines if line.startswith(ST_PREFIX_DATA_ROW)]
 
-def get_data_lines(data):
-    return [line.lstrip(ST_PREFIX_DATA_ROW).rstrip('\n') for line in data if line.startswith(ST_PREFIX_DATA_ROW)]
+def size_string_to_bytes(st):
+    if st.upper().startswith('0X'):
+        return int(st, 16)
+    multipliers = {
+        'K': 1 << 10,
+        'M': 1 << 20,
+    }
+    st = st.upper().replace('KB', 'K').replace('MB', 'M')
+    return int(st[:-1]) * multipliers[st[-1]]
 
-def extract_data_for_size(data, target_sz):
-    cached_timings = template_list_timings_dict.copy()
-    uncached_timings = template_list_timings_dict.copy()
-    heaps = []
+def print_table(table, header=False):
+    col_widths = {}
+    for row in table:
+        for idx,cell in enumerate(row):
+            col_widths.setdefault(idx, 0)
+            col_widths[idx] = max(col_widths[idx], len(str(cell)))
+    row_format = ""
+    padding = 4
+    total_width = 0
+    for i,idx in enumerate(sorted(col_widths.keys())):
+        row_format += "{%d:>%d}" % (i, col_widths[idx] + padding)
+        total_width += col_widths[idx] + padding
+    for cnt,row in enumerate(table):
+        if header and cnt == 1:
+            print "-" * total_width
+            continue
+        print row_format.format(*row)
 
-    for line in get_data_lines(data):
-        # for the format, see print_stats_results in memory_prof.c
-        (ion_op, heap_id, caching, sz, lbl_av, average, lbl_std, std_dev) = line.split(' ')
-        if sz != target_sz: continue
-        av = max(float(average), 0)
-        if heap_id not in heaps:
-            heaps.append(heap_id)
-        if caching == 'cached':
-            cached_timings[ion_op].append(av)
-        else:
-            uncached_timings[ion_op].append(av)
 
-    return (heaps, cached_timings, uncached_timings)
+def plot_against_time(data, end_time, init_time, max_latency, outfile, interactive, text_only):
+    # we will put each "alloc config" (e.g. "ION_SYSTEM_HEAP_ID
+    # ION_FLAG_CACHED") in its own figure. Within the figure there
+    # will be a subplot for each allocation size.
+    # x = np.linspace(0.1, 2 * np.pi, 10)
+    total_plots = sum([1 for k,item in data.iteritems() for c in item.iterkeys()])
+    current_plot = 1
+    if not text_only:
+        fig = plt.figure(1, figsize=(8, total_plots * 4), dpi=100)
+    padding = 100
+    timings = {}
+    for i, (cfg, sizes) in enumerate(data.iteritems()):
+        for j, (sz, alloc_data) in enumerate(sizes.iteritems()):
+            timings[alloc_data['time'][0]] = {
+                'cfg': cfg,
+                'size': sz,
+                'average': alloc_data['average'][0],
+            }
+            if text_only:
+                continue
+            ax = plt.subplot(total_plots, 1, current_plot)
+            ax.set_title(cfg + ' ' + sz)
+            ax.grid(True)
+            x = [t - init_time + padding for t in alloc_data['time']]
+            y = alloc_data['average']
+            markerline, stemlines, baseline = ax.stem(x, y, '-.')
+            plt.xlim([0, end_time - init_time + padding + padding])
+            plt.ylim([0, max_latency])
+            plt.setp(markerline, 'markerfacecolor', 'b')
+            plt.setp(baseline, 'color', 'r', 'linewidth', 2)
+            current_plot += 1
 
-def extract_all_data(data):
-    timings = template_dict_timings_dict.copy()
+    times = sorted(timings.keys())
+    table = [['timestamp', 'heap_id', 'flags', 'size', 'time']]
+    for time in times:
+        heap, flags = timings[time]['cfg'].split(' ')
+        table.append([
+            time - times[0],
+            heap,
+            flags if flags != '0' else "None",
+            timings[time]['size'],
+            timings[time]['average'],
+        ])
+    print_table(table, header=True)
+    if text_only:
+        return
+    if outfile:
+        plt.savefig(outfile, bbox_inches=0)
+    if interactive:
+        plt.show()
 
-    for line in get_data_lines(data):
-        # for the format, see print_stats_results in memory_prof.c
-        (ion_op, heap_id, caching, sz, lbl_av, average, lbl_std, std_dev) = line.split(' ')
-        timings[ion_op].setdefault(heap_id, {})
-        av = max(float(average), 0)
-        timings[ion_op][heap_id].setdefault(caching, {})
-        timings[ion_op][heap_id][caching][sz] = float(average)
+def plot_against_alloc_size(data, op, outfile, interactive, text_only):
+    size_data = {}
+    table = []
+    for alloc_config,iitem in data.iteritems():
+        for size_string,jitem in iitem.iteritems():
+            size_data.setdefault(alloc_config, {})
+            size_data[alloc_config][size_string] = np.average(jitem["average"])
+            heap, flags = alloc_config.split(' ')
+            table.append([
+                heap,
+                flags if flags != '0' else "None",
+                size_string,
+                size_data[alloc_config][size_string],
+            ])
 
-    return timings
+    # sort by heap_ids, then sizes
+    table = sorted(table,
+                   key=lambda row: (row[0], size_string_to_bytes(row[2])))
+    # add the header post sorting
+    table.insert(0, ["heap_id", "flags", "size", "time"])
 
-def compare_heaps_for_a_size(data, target_sz, num_reps, pre_alloc_size, ion_op, text_only=False, target=None):
-    (heaps, cached_timings, uncached_timings) = extract_data_for_size(data, target_sz)
-    cached_timings = cached_timings[ion_op]
-    uncached_timings = uncached_timings[ion_op]
+    print_table(table, header=True)
 
-    title = ('Ion %s times\n' % ion_op) \
-            + ('Target: %s' % ("%s\n" % target) if target is not None else "") \
-            + ('(%s with ION_IOC_ALLOC, average of %d reps, %dMB pre-allocation)' % (target_sz, num_reps, pre_alloc_size))
-
-    print title
-    print
-
-    for (heap, cached, uncached) in zip(heaps, cached_timings, uncached_timings):
-        print "%25s   (cached): %f" % (heap, cached)
-        print "%25s (uncached): %s" % (heap, str(uncached) if uncached != 0 else "N/A")
-
-    if text_only or force_text_only:
+    if text_only:
         return
 
-    ind = np.arange(len(heaps))
-    width = .35
-
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10, 10), dpi=100)
     ax = fig.add_subplot(111)
-    cached_rects = ax.bar(ind, cached_timings, width, color='r')
-    uncached_rects = ax.bar(ind + width, uncached_timings, width, color='y')
-
-    ax.set_title(title)
-    ax.set_ylabel('Time (ms)')
-    ax.set_xticks(ind + width)
-    ax.set_xticklabels(heaps)
-
-    ax.legend( (cached_rects[0], uncached_rects[0]), ('Cached', 'Uncached') )
-
-    plt.show()
-
-def first_key_element(d):
-    "Returns the first element found in the dict `d'."
-    keys = d.keys()
-    if len(keys) < 1:
-        return None
-    return d[d.keys()[0]]
-
-def compare_times_for_heaps(data, num_reps, pre_alloc_size, ion_op, text_only=False, target=None):
-    timings = extract_all_data(data)[ion_op]
-
-    # we need to sort the size strings, which are a few levels in
-    # (through some keys that might or might not exist)
-    first_heap_timing = first_key_element(timings)
-    sizes_for_heap_timing = first_key_element(first_heap_timing)
-    sorted_keys = sorted(
-        sizes_for_heap_timing.keys(),
-        key=lambda v: float(v.split('MB')[0])
-    )
-
-    for target_heap in timings.keys():
-        heap_timings = timings[target_heap]
-        print '%s times for %s (%d reps, %dMB pre-allocation)\n' \
-            % (ion_op, target_heap, num_reps, pre_alloc_size)
-
-        format_str = '%6s %10s %10s'
-        print format_str % (
-            'Size', 'Cached', 'Uncached',
-        )
-
-        for k in sorted_keys:
-            print format_str % (
-                k,
-                ('%5.2f' % heap_timings['cached'][k]) if 'cached' in heap_timings else 'NA',
-                ('%5.2f' % heap_timings['uncached'][k]) if 'uncached' in heap_timings else 'NA',
-            )
-
-        print '\n'
-
-    if text_only or force_text_only:
-        return
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-
-    sorted_keys_numbers = [float(s.split('MB')[0]) for s in sorted_keys]
 
     shapes_cycler = cycle(["o", "v", "^" , "<", ">"])
 
-    for target_heap in timings.keys():
-        for caching in ('cached', 'uncached'):
-            heap_timings = timings[target_heap]
-            if caching in heap_timings:
-                lbl = "%s (%s)" % (target_heap, caching)
-                ax.plot(sorted_keys_numbers,
-                        [heap_timings[caching][k] for k in sorted_keys],
-                        next(shapes_cycler) + '-',
-                        label=lbl)
+    current_plot = 1
+    for alloc_config,item in size_data.iteritems():
+        sorted_sizes = sorted(item.keys(), key=size_string_to_bytes)
+        lbl = alloc_config
+        if lbl.endswith(' 0'):
+            lbl = lbl.rstrip('0') + '(No flags)'
+        ax.plot([size_string_to_bytes(s) / 1024.0 / 1024.0
+                 for s in sorted_sizes],
+                [item[s] for s in sorted_sizes],
+                next(shapes_cycler) + '-',
+                label=lbl)
 
-    title = ("Ion %s times\n" % ion_op) \
-            + ('%s' % ("Target: %s\n" % target) if target is not None else "") \
-            + ("(average of %d reps)" % num_reps)
+    title = "%s times" % op
 
     ax.set_ylabel("Time (ms)")
     ax.set_xlabel("Allocation size (MB)")
     ax.set_title(title)
     ax.legend(loc="upper left")
     plt.grid(True)
-    plt.show()
+    if outfile:
+        plt.savefig(outfile, bbox_inches=0)
+    if interactive:
+        plt.show()
+
+
+def plot_it(lines, op, xaxis, outfile, interactive, text_only):
+    """Plots some stuff.
+
+    - lines: the data
+
+    - op: the operation to plot (one of 'ION_IOC_ALLOC', 'mmap',
+      'memset', 'ION_IOC_FREE')
+
+    - xaxis: Sets what the x-axis will be for this plot. One of 'time'
+      or 'alloc_size'. When set to 'alloc_size' all of the allocations
+      for each (heap_id,flags) pair will be aggregated per-size before
+      plotting. When set to 'time' we just plot all of the data
+      against time.
+    """
+    data = {}
+    init_time = None
+    end_time = 0
+    max_latency = 0
+    for line in get_data_lines(lines):
+        # for the line format, see print_stats_results in
+        # memory_prof.c
+        (time,
+         ion_op,
+         heap_id,
+         caching,
+         alloc_size,
+         lbl_av,
+         average,
+         lbl_std,
+         std_dev,
+         lbl_reps,
+         reps) = line.split(' ')
+
+        if ion_op != op: continue
+
+        alloc_config = ' '.join([heap_id, caching])
+
+        time = int(time)
+        average = float(average)
+        std_dev = float(std_dev)
+        reps = int(reps)
+
+        if init_time is None:
+            init_time = time
+        else:
+            init_time = min(init_time, time)
+
+        end_time = max(end_time, time)
+        max_latency = max(max_latency, average)
+
+        # there must be a cleaner way of setting up a nested dict
+        data.setdefault(alloc_config, {})
+        data[alloc_config].setdefault(alloc_size, {})
+        data[alloc_config][alloc_size].setdefault("time", [])
+        data[alloc_config][alloc_size].setdefault("average", [])
+        data[alloc_config][alloc_size].setdefault("std_dev", [])
+        data[alloc_config][alloc_size].setdefault("reps", [])
+        data[alloc_config][alloc_size]["time"].append(time)
+        data[alloc_config][alloc_size]["average"].append(average)
+        data[alloc_config][alloc_size]["std_dev"].append(std_dev)
+        data[alloc_config][alloc_size]["reps"].append(reps)
+
+    if xaxis == 'time':
+        plot_against_time(data, end_time, init_time, max_latency, outfile, interactive, text_only)
+    elif xaxis == 'alloc_size':
+        plot_against_alloc_size(data, op, outfile, interactive, text_only)
+
 
 if __name__ == "__main__":
-    target_sz = None
+    usage = """Usage: %prog <outputmode> [options]
 
-    parser = OptionParser()
-    parser.add_option("-c", "--compare-heaps", action="store_true",
-                      help="Compare same-sized allocations across heaps")
-    parser.add_option("-z", "--compare-alloc-sizes", action="store_true",
-                      help="Compare same-heap allocations across sizes")
-    parser.add_option("-s", "--size", metavar="SIZE",
-                      help="Allocation size to plot (e.g. '8MB'). Only used with -c")
-    # parser.add_option("-e", "--heap", metavar="HEAP",
-    #                   help="Heap to plot (e.g. 'ION_CP_MM_HEAP_ID'), or 'ALL'. Only used with -z")
+where outputmode is one of: """ + ', '.join(["--interactive", "--outfile", "--text-only"])
+    parser = OptionParser(usage=usage)
     parser.add_option("-t", "--text-only", action="store_true")
     parser.add_option("--target", help="Name of the device (used for plot titles)")
-    parser.add_option("-o", "--ion-op",
+    parser.add_option("-p", "--ion-op",
                       default="ION_IOC_ALLOC",
                       help="Ion (etc) operation to display (currently supported: ION_IOC_ALLOC, mmap, memset, ION_IOC_FREE)")
+    parser.add_option("-x", "--x-axis",
+                      default="alloc_size",
+                      help="The x-axis to be used for the plot. One of 'time' or 'alloc_size'.")
+    parser.add_option("-o", "--outfile",
+                      help="Filename to save the plots to (e.g. output.png, output.svg, etc.)")
+    parser.add_option("-i", "--interactive", action="store_true",
+                      help="Use the interactive viewer")
 
     (options, args) = parser.parse_args()
 
-    if options.compare_heaps and not options.size:
-        print "You must provide a size (-s) when comparing same-sized allocations across heaps (-c)"
+    valid_x_axes = ['time', 'alloc_size']
+    if not options.x_axis in valid_x_axes:
+        print 'Invalid x-axis requested:', options.xaxis
+        print 'You should supply one of', ' '.join(valid_x_axes)
         sys.exit(1)
 
-    if not options.compare_heaps and not options.compare_alloc_sizes:
-        print "You must specify either -c or -z"
+    if not options.outfile and not options.interactive and not options.text_only:
+        print "Nothing to do."
+        print 'You must specify one of: %s' % ', '.join(["--interactive", "--outfile", "--text-only"])
         sys.exit(1)
 
     # snarf:
-    data = [line for line in fileinput.input(args)]
+    lines = [line for line in fileinput.input(args)]
 
-    # get the num reps:
-    repsline = [line for line in data if line.startswith(ST_PREFIX_NUM_REPS)][0]
-    num_reps = int(repsline.split(' ')[-1])
-
-    # get the pre-alloc size:
-    prealloclines = [line for line in data if line.startswith(ST_PREFIX_PREALLOC_SIZE)]
-    if len(prealloclines) > 0:
-        pre_alloc_size = int(prealloclines[0].split(' ')[-1])
-    else:
-        pre_alloc_size = 0
-
-    if options.compare_heaps:
-        compare_heaps_for_a_size(data, options.size, num_reps,
-                                 pre_alloc_size,
-                                 options.ion_op,
-                                 text_only=options.text_only,
-                                 target=options.target)
-
-    if options.compare_alloc_sizes:
-        compare_times_for_heaps(data, num_reps,
-                                pre_alloc_size,
-                                options.ion_op,
-                                text_only=options.text_only,
-                                target=options.target)
+    plot_it(lines,
+            options.ion_op,
+            options.x_axis,
+            options.outfile,
+            options.interactive,
+            options.text_only or force_text_only)
