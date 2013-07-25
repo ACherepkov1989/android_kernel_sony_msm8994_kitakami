@@ -31,7 +31,7 @@
 # Note: Directory this script is run in must contain Python
 # script that returns statistics
 
-DEFAULT_TEST_CASE="/data/kernel-tests/memory_prof.sh -e"
+DEFAULT_TEST_CASE="sh /data/kernel-tests/memory_prof.sh -e"
 
 usage()
 {
@@ -43,14 +43,11 @@ usage()
 
 [[ "$1" = "-h" || "$1" = "--help" ]] && { usage; exit 1; }
 
-echo "hi"
-exit 1
-
 DEBUGFS_ROOT=${DEBUGFS_ROOT:-/sys/kernel/debug}
 TRACING_ROOT=${TRACING_ROOT:-${DEBUGFS_ROOT}/tracing}
 EVENTS_ROOT=${EVENTS_ROOT:-${TRACING_ROOT}/events/kmem}
 
-#Mount Debug Filsystem
+# Mount Debug Filsystem
 adb wait-for-device
 adb root
 adb wait-for-device
@@ -58,7 +55,7 @@ adb shell "mkdir -p ${DEBUGFS_ROOT}"
 adb shell "mount -t debugfs nodev ${DEBUGFS_ROOT}"
 echo "INFO: Mounted Debug Filesystem"
 
-#Enable Tracing
+# Enable Tracing
 adb shell "echo function > ${TRACING_ROOT}/current_tracer"
 adb shell "echo 1 > ${EVENTS_ROOT}/alloc_pages_iommu_end/enable"
 adb shell "echo 1 > ${EVENTS_ROOT}/alloc_pages_iommu_start/enable"
@@ -69,27 +66,27 @@ adb shell "echo 1 > ${EVENTS_ROOT}/alloc_pages_sys_fail/enable"
 adb shell "echo 1 > ${EVENTS_ROOT}/iommu_map_range/enable"
 echo "INFO: Enabled Ion/Iommu Tracing"
 
-#Execute Some Test
+# Execute Some Test
 if [ -z "$1" ]; then
 	KERNELTEST=$DEFAULT_TEST_CASE
 else
 	KERNELTEST=$1
 fi
 echo "INFO: Running $KERNELTEST"
-adb shell "sh $KERNELTEST"
+adb shell "$KERNELTEST"
 
-#Pull
+# Pull
 echo "INFO: Pulling Trace File into Current Directory"
-if [ -f trace ]; then rm trace; fi
+rm -vf trace
 adb pull ${TRACING_ROOT}/trace
 
-#Disable Tracing
+# Disable Tracing
 adb shell "echo 0 > ${EVENTS_ROOT}/enable"
 adb shell "echo nop > ${TRACING_ROOT}/current_tracer"
 echo "INFO: Disabled Ion/Iommu Tracing"
 
-#Invoke Python Script
+# Invoke Python Script
 echo "INFO: Gathering Trace Statistics..."
 ./stats.py
-if [ -f trace ]; then rm trace; fi
+rm -vf trace
 echo "Done"
