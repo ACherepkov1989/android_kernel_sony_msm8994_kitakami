@@ -36,6 +36,9 @@ endif
 if USEBAM_DMUX_LOOPBACK
 BUILD_TEST += bam_dmux_loopback
 endif
+if USEPAGE_NOM
+BUILD_TEST += page-nom
+endif
 endif
 if USESPS
 BUILD_TEST += sps

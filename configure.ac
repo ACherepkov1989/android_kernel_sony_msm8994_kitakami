@@ -112,6 +112,9 @@ ENABLE_KERNEL_TEST([swp],[include the swp test (default=yes)])
 # ipi
 ENABLE_KERNEL_TEST([ipi],[include the ipi test (default=yes)])
 
+# page-nom
+ENABLE_KERNEL_TEST([page-nom],[include the page-nom test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -131,5 +134,6 @@ AC_CONFIG_FILES([
 	hrtimer/Makefile
 	swp/Makefile
 	ipi/Makefile
+	page-nom/Makefile
 	])
 AC_OUTPUT
