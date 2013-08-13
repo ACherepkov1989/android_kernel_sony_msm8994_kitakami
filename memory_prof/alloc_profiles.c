@@ -32,6 +32,7 @@
 #include <err.h>
 #include <linux/msm_ion.h>
 #include "memory_prof.h"
+#include "memory_prof_util.h"
 
 #define MAKE_ALLOC_PROFILES(size_mb, reps, quiet)			\
 	MAKE_ALLOC_PROFILE(ION_CP_MM_HEAP_ID, ION_FLAG_SECURE, size_mb, reps, quiet, false, false), \

@@ -10,14 +10,27 @@ LOCAL_MODULE      := the_memory_prof_module.ko
 LOCAL_MODULE_TAGS := debug
 include $(DLKM_DIR)/AndroidKernelModule.mk
 
-# the userspace test program
+# the userspace test programs
 include $(CLEAR_VARS)
 LOCAL_MODULE := memory_prof
 LOCAL_CFLAGS += -Wno-missing-field-initializers -g
 LOCAL_STRIP_MODULE = false
-LOCAL_SRC_FILES += memory_prof.c alloc_profiles.c
+LOCAL_SRC_FILES += memory_prof.c alloc_profiles.c memory_prof_util.c
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+LOCAL_SHARED_LIBRARIES := \
+        libc \
+        libcutils \
+        libutils
+LOCAL_MODULE_TAGS := optional debug
+LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := memfeast
+LOCAL_CFLAGS += -g
+LOCAL_STRIP_MODULE = false
+LOCAL_SRC_FILES += memfeast.c memory_prof_util.c
 LOCAL_SHARED_LIBRARIES := \
         libc \
         libcutils \
