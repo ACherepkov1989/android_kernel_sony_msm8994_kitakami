@@ -100,11 +100,15 @@ ENABLE_KERNEL_TEST([iommu],[include the iommu test (default=yes)])
 # ip_accelerator
 ENABLE_KERNEL_TEST([ip_accelerator],[include the ip_accelerator test (default=yes)])
 
+# bam_dmux_loopback
+ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
 AC_CONFIG_FILES([
 	Makefile
+	bam_dmux_loopback/Makefile
 	ion/Makefile
 	ipc_logging/Makefile
 	memory_prof/Makefile
