@@ -3,8 +3,8 @@
 # autogen.sh -- Autotools bootstrapping
 #
 
-aclocal &&\
+aclocal-1.11 &&\
 autoheader &&\
 autoconf &&\
-automake --add-missing --copy
+automake-1.11 --add-missing --copy
 
