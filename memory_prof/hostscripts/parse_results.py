@@ -110,7 +110,6 @@ def print_table(table, header=False):
     for cnt,row in enumerate(table):
         if header and cnt == 1:
             print "-" * total_width
-            continue
         print row_format.format(*row)
 
 
