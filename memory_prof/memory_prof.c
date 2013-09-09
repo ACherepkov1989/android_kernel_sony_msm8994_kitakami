@@ -45,6 +45,7 @@
 #include <linux/msm_ion.h>
 #include "memory_prof.h"
 #include "memory_prof_module.h"
+#include "memory_prof_util.h"
 
 static unsigned int sleepiness;
 
@@ -905,6 +906,10 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 	}
+
+	/* make sure we don't get killed: */
+	set_oom_score_adj_self(-1000);
+	set_oom_score_adj_parent(-1000);
 
 	if (do_basic_sanity_tests)
 		for (i = 0; i < num_reps; ++i)

@@ -27,67 +27,47 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __MEMORY_PROF_H__
-#define __MEMORY_PROF_H__
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <err.h>
 
 #include "memory_prof_util.h"
 
-#define NUM_REPS_FOR_HEAP_PROFILING 50
-#define NUM_REPS_FOR_REPEATABILITY 100
-#define ION_PRE_ALLOC_SIZE_DEFAULT 0 /* 0 MB */
-#define MAX_PRE_ALLOC_SIZE 5000 /* 5000 MB */
-#define MAX_ALLOC_PROFILE_LINE_LEN 500
-#define MAX_ALLOC_PROFILE_FIELDS 20
-#define MAX_ALLOC_PROFILE_WORD_LEN 80
-#define MAX_HEAP_ID_STRING_LEN 40
-#define MAX_FLAGS_STRING_LEN 100
-#define MAX_FLAGS 15
-#define MAX_SIZE_STRING_LEN 15
+void set_oom_score_adj_path(const char *path, int adj)
+{
+	char *val;
+	int fd;
 
-#define MEMORY_PROF_DEV "/dev/memory_prof"
-#define ION_DEV		"/dev/ion"
+	asprintf(&val, "%d", adj);
 
-/*
- * Don't change the format of the following line strings. We need to
- * rely on them for parsing.
- */
-#define ST_PREFIX_DATA_ROW	"=>"
-#define ST_PREFIX_PREALLOC_SIZE "==>"
+	fd = open(path, O_WRONLY);
+	if (fd < 0)
+		err(1, "Couldn't open %s", path);
 
-enum alloc_op_enum {
-	OP_NONE,
-	OP_ALLOC,
-	OP_SLEEP,
-};
+	if (write(fd, val, strlen(val)) < 0)
+		err(1, "Couldn't write to %s", path);
 
-struct alloc_profile_entry {
-	enum alloc_op_enum op;
-	union {
-		struct alloc_op {
-			int reps;
-			unsigned int heap_id;
-			char heap_id_string[MAX_HEAP_ID_STRING_LEN];
-			unsigned int flags;
-			char flags_string[MAX_FLAGS_STRING_LEN];
-			unsigned long size;
-			char size_string[MAX_SIZE_STRING_LEN];
-			bool quiet;
-			bool profile_mmap;
-			bool profile_memset;
-		} alloc_op;
-		struct sleep_op {
-			unsigned int time_us;
-		} sleep_op;
-	} u;
-};
+	close(fd);
+	free(val);
+}
 
-struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path);
-struct alloc_profile_entry *get_default_alloc_profile(void);
+void set_oom_score_adj_pid(int pid, int adj)
+{
+	char *path;
+	asprintf(&path, "/proc/%d/oom_score_adj", pid);
+	set_oom_score_adj_path(path, adj);
+	free(path);
+}
 
-#endif /* __MEMORY_PROF_H__ */
+void set_oom_score_adj_parent(int adj)
+{
+	set_oom_score_adj_pid(getppid(), adj);
+}
+
+void set_oom_score_adj_self(int adj)
+{
+	set_oom_score_adj_path("/proc/self/oom_score_adj", adj);
+}

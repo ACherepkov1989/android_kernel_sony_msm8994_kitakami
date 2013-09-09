@@ -1,7 +1,8 @@
 memory_profdir = $(prefix)/memory_prof
-memory_prof_PROGRAMS = memory_prof
-memory_prof_SOURCES	= memory_prof.c alloc_profiles.c
+memory_prof_PROGRAMS = memory_prof memfeast
+memory_prof_SOURCES	= memory_prof.c alloc_profiles.c memory_prof_util.c
 memory_prof_CFLAGS = -lm
+memfeast_SOURCES = memfeast.c memory_prof_util.c
 dist_memory_prof_SCRIPTS  = memory_prof.sh run.sh
 dist_memory_prof_DATA = README.txt $(wildcard alloc_profiles/*)
 

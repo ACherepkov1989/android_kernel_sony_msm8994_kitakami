@@ -1,4 +1,17 @@
-Test: memory_prof
+memory_prof is a suite of tools for profiling memory-related
+performance as well as catching regressions. The suite is named after
+the original memory_prof program, but now includes other programs and
+scripts that can be used for memory profiling.
+
+
+                                                                  __
+                                                                 / _|
+ _ __ ___   ___ _ __ ___   ___  _ __ _   _       _ __  _ __ ___ | |_
+| '_ ` _ \ / _ \ '_ ` _ \ / _ \| '__| | | |     | '_ \| '__/ _ \|  _|
+| | | | | |  __/ | | | | | (_) | |  | |_| |     | |_) | | | (_) | |
+|_| |_| |_|\___|_| |_| |_|\___/|_|   \__, |     | .__/|_|  \___/|_|
+                                      __/ |_____| |
+                                     |___/______|_|
 
 Usage: See memory_prof -h
 
@@ -18,10 +31,36 @@ Notes:
     run the memory_prof binary directly without inserting the kernel
     module.
 
-Target support: 8974
+    Information about the format of allocation profiles (specified
+    with -i) can be found at the end of this document in Appendix A.
+
+Target support: All
 
 
-Appendix A: Allocation Profiles
+                           __               _
+                          / _|             | |
+ _ __ ___   ___ _ __ ___ | |_ ___  __ _ ___| |_
+| '_ ` _ \ / _ \ '_ ` _ \|  _/ _ \/ _` / __| __|
+| | | | | |  __/ | | | | | ||  __/ (_| \__ \ |_
+|_| |_| |_|\___|_| |_| |_|_| \___|\__,_|___/\__|
+
+Usage: See memfeast -h
+
+Description:
+
+    memfeast reliably and predictably forces the system into a
+    low-memory condition.
+
+Target support: All
+
+
+
+
+
+-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Appendix A: Allocation Profiles for memory_prof
 
     The heap profiling test (-e) has support for custom "allocation
     profile" input files (specified with -i). The format of the
