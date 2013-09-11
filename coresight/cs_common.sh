@@ -54,12 +54,18 @@ etm_enable_all_cores() {
 count=0
 retval=0
 cores=`grep -c "processor" $cpuinfo`
-stop mpdecision
+if [ $cores -gt 1 ]
+then
+	stop mpdecision
+fi
 while [ $count -lt $cores ]
 do
+	if [ $count -gt 0 ]
+	then
+		cpupath_enable=$cpupath$count"/online"
+		echo 1 > $cpupath_enable
+	fi
         etmpath_enable=$etmpath$count"/enable"
-        cpupath_enable=$cpupath$count"/online"
-        echo 1 > $cpupath_enable
         if [ -f $etmpath_enable ]
         then
                 echo 1 > $etmpath_enable
@@ -69,7 +75,10 @@ do
         fi
         count=$(( count + 1 ))
 done
-start mpdecision
+if [ $cores -gt 1 ]
+then
+	start mpdecision
+fi
 return $retval
 }
 
@@ -108,12 +117,18 @@ etm_disable_all_cores() {
 count=0
 retval=0
 cores=`grep -c "processor" $cpuinfo`
-stop mpdecision
+if [ $cores -gt 1 ]
+then
+	stop mpdecision
+fi
 while [ $count -lt $cores ]
 do
+	if [ $count -gt 0 ]
+	then
+		cpupath_enable=$cpupath$count"/online"
+		echo 1 > $cpupath_enable
+	fi
         etmpath_enable=$etmpath$count"/enable"
-        cpupath_enable=$cpupath$count"/online"
-        echo 1 > $cpupath_enable
         if [ -f $etmpath_enable ]
         then
                 echo 0 > $etmpath_enable
@@ -123,7 +138,10 @@ do
         fi
         count=$(( count + 1 ))
 done
-start mpdecision
+if [ $cores -gt 1 ]
+then
+	start mpdecision
+fi
 return $retval
 }
 
