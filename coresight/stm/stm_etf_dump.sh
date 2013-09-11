@@ -66,7 +66,7 @@ do
         fi
         skip=$(( skip + 16 ))
 done
-if [ $size -eq 160 ]
+if [ $size -gt 64 ]
 then
         echo "PASS: STM ETF dump test"
 else
