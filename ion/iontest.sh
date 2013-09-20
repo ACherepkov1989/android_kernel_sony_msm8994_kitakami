@@ -32,10 +32,22 @@
 
 chmod 755 msm_iontest
 
-if [ -d /system/lib/modules/ ]; then
-	modpath=/system/lib/modules
-else
-	modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
+ion_test_mod_paths=(
+	/system/lib/modules
+	/usr/kernel-tests/ion
+	/kernel-tests/modules/lib/modules/$(uname -r)/extra
+)
+
+for p in ${ion_test_mod_paths[@]}; do
+	if [ -d $p ]; then
+		modpath=$p
+		break
+	fi
+done
+
+if [[ -z "$modpath" ]]; then
+	echo "Couldn't find a path to the kernel module. Bailing."
+	exit 1
 fi
 
 ion_test_mod=${modpath}/msm_ion_test_module.ko
