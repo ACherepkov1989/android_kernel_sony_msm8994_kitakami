@@ -387,7 +387,7 @@ static int do_VA2PA_HTW(phys_addr_t pa, unsigned int sz, int domain_id,
 			struct iommu_domain *domain, const char *ctx_name)
 {
 	int ret;
-	unsigned long iova;
+	dma_addr_t iova;
 	phys_addr_t result_pa = 0x12345;
 
 	ret = msm_iommu_map_contig_buffer(pa, domain_id, 0,
@@ -598,8 +598,8 @@ static int do_two_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
 		const char *ctx_name)
 {
 	int ret;
-	unsigned long iova1;
-	unsigned long iova2;
+	dma_addr_t iova1;
+	dma_addr_t iova2;
 	phys_addr_t pa;
 
 	ret = msm_iommu_map_contig_buffer(0x10000000, domain_id, 0,

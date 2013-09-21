@@ -212,7 +212,8 @@ static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned lon
 		struct memory_prof_map_extra_args args;
 		struct ion_handle *handle;
 		struct ion_client *client = module_data->client;
-		unsigned long iova, buffer_size;
+		unsigned long buffer_size;
+		dma_addr_t iova;
 
 		if (copy_from_user(&args, (void __user *)arg,
 					sizeof(struct memory_prof_map_extra_args)))
