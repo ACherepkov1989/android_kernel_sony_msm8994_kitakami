@@ -1,6 +1,7 @@
 BOARD_PLATFORM_LIST := msm8974
 BOARD_PLATFORM_LIST += msm8226
 BOARD_PLATFORM_LIST += msm8610
+BOARD_PLATFORM_LIST += apq8084
 
 ifeq ($(call is-board-platform-in-list,$(BOARD_PLATFORM_LIST)),true)
 
