@@ -986,6 +986,79 @@ static void ion_memcpy_test(void)
 	}
 }
 
+/**
+ * Memory throughput test. Print some stats.
+ */
+static void mmap_memcpy_test(void)
+{
+	char *chunk, *src, *dst;
+	struct timeval tv;
+	double *data_rates;
+	double sum = 0, sum_of_squares = 0, average, std_dev, dmin, dmax;
+	int iters = 1000, memcpy_iters = 100;
+	int i, j;
+	const size_t chunk_len = SZ_1M;
+
+	MALLOC(double *, data_rates, iters * sizeof(double));
+
+	chunk = mmap(NULL, chunk_len,
+		PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS,
+		-1, 0);
+	if (chunk == MAP_FAILED) {
+		perror("Couldn't allocate 1MB buffer with mmap\n");
+		goto free_data_rates;
+	}
+
+	/*
+	 * Some systems appear to do this trick where they mprotect
+	 * the first page of a large allocation with
+	 * PROT_NONE. Possibly to protect against someone else
+	 * overflowing into their buffer? We do it here just to
+	 * emulate the "real-world" a little closer.
+	 */
+	if (mprotect(chunk, SZ_4K, PROT_NONE)) {
+		perror("Couldn't mprotect the first page of the 1MB buffer\n");
+		goto munmap_chunk;
+	}
+
+	src = chunk + SZ_4K;
+	dst = chunk + SZ_512K;
+	memset(src, 0x5a, SZ_64K);
+	memset(dst, 0xa5, SZ_64K);
+
+	for (i = 0; i < iters; ++i) {
+		float elapsed_ms;
+		mprof_tick(&tv);
+		for (j = 0; j < memcpy_iters; ++j)
+			memcpy(dst, src, SZ_64K);
+		elapsed_ms = mprof_tock(&tv);
+		/* units: MB/s */
+		data_rates[i] = ((SZ_64K * memcpy_iters) / SZ_1M)
+			/ (elapsed_ms / 1000);
+	}
+
+	dmin = dmax = data_rates[0];
+	for (i = 0; i < iters; ++i) {
+		sum += data_rates[i];
+		dmin = MIN(dmin, data_rates[i]);
+		dmax = MAX(dmax, data_rates[i]);
+	}
+	average = sum / iters;
+
+	for (i = 0; i < iters; ++i)
+		sum_of_squares += pow(data_rates[i] - average, 2);
+	std_dev = sqrt(sum_of_squares / iters);
+
+	printf("average: %.3f MB/s, min: %.3f MB/s, max: %.3f MB/s, std_dev: %.3f MB/s\n",
+		average, dmin, dmax, std_dev);
+
+munmap_chunk:
+	munmap(chunk, chunk_len);
+free_data_rates:
+	free(data_rates);
+}
+
 static int file_exists(const char const *fname)
 {
 	struct stat tmp;
@@ -1017,7 +1090,10 @@ static int file_exists(const char const *fname)
 	"  -s         Do the stress test (same as -e)\n"		\
 	"  -t MB      Size (in MB) of temp buffer pre-allocated before Ion allocations (default 0 MB)\n" \
 	"  --ion-memcpy-test\n" \
-	"             Does some memcpy's between various types of Ion buffers\n"
+	"             Does some memcpy's between various types of Ion buffers\n" \
+	"  --mmap-memcpy-test\n" \
+	"             Does some memcpy's between some large buffers allocated\n" \
+	"             by mmap\n"
 
 static void usage(char *progname)
 {
@@ -1026,6 +1102,7 @@ static void usage(char *progname)
 
 static struct option memory_prof_options[] = {
 	{"ion-memcpy-test", no_argument, 0, 0},
+	{"mmap-memcpy-test", no_argument, 0, 0},
 	{0, 0, 0, 0}
 };
 
@@ -1040,6 +1117,7 @@ int main(int argc, char *argv[])
 	bool do_oom_test = false;
 	bool do_leak_test = false;
 	bool do_ion_memcpy_test = false;
+	bool do_mmap_memcpy_test = false;
 	const char *alloc_profile = NULL;
 	int num_reps = 1;
 	int num_heap_prof_reps = -1;
@@ -1058,6 +1136,12 @@ int main(int argc, char *argv[])
 					memory_prof_options[option_index].name)
 				== 0) {
 				do_ion_memcpy_test = true;
+				break;
+			}
+			if (strcmp("mmap-memcpy-test",
+					memory_prof_options[option_index].name)
+				== 0) {
+				do_mmap_memcpy_test = true;
 				break;
 			}
 			printf("Unhandled longopt: %s\n",
@@ -1138,6 +1222,9 @@ int main(int argc, char *argv[])
 
 	if (do_ion_memcpy_test)
 		ion_memcpy_test();
+
+	if (do_mmap_memcpy_test)
+		mmap_memcpy_test();
 
 	return rc;
 }
