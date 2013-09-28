@@ -29,8 +29,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <err.h>
 
@@ -71,3 +73,72 @@ void set_oom_score_adj_self(int adj)
 {
 	set_oom_score_adj_path("/proc/self/oom_score_adj", adj);
 }
+
+/**
+ * timeval_sub - subtracts t2 from t1
+ *
+ * Returns a timeval with the result
+ */
+struct timeval timeval_sub(struct timeval t1, struct timeval t2)
+{
+	struct timeval diff;
+
+	diff.tv_sec = t1.tv_sec - t2.tv_sec;
+
+	if (t1.tv_usec < t2.tv_usec) {
+		diff.tv_usec = t1.tv_usec + S_TO_US(1) - t2.tv_usec;
+		diff.tv_sec--;
+	} else {
+		diff.tv_usec = t1.tv_usec - t2.tv_usec;
+	}
+
+	return diff;
+}
+
+/**
+ * timeval_ms_diff - gets the difference (in MS) between t1 and t2
+ *
+ * Returns the MS diff between t1 and t2 (t1 - t2)
+ */
+double timeval_ms_diff(struct timeval t1, struct timeval t2)
+{
+	struct timeval tv_result = timeval_sub(t1, t2);
+	return US_TO_MS(tv_result.tv_usec) + S_TO_MS(tv_result.tv_sec);
+}
+
+void mprof_tick(struct timeval *tv)
+{
+	if (gettimeofday(tv, NULL)) {
+		/* BAIL */
+		errx(1, "couldn't get time of day");
+		return;
+	}
+	return;
+}
+
+double mprof_tock(struct timeval *tv)
+{
+	struct timeval tv_after;
+	mprof_tick(&tv_after);
+	return timeval_ms_diff(tv_after, *tv);
+}
+
+/**
+ * Returns true if the given buffers have the same content. If they
+ * differ, the offset to the first differing byte is returned in
+ * *fail_index.
+ */
+bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index)
+{
+	int i;
+	for (i = 0; i < (int) len; ++i)
+		if (dst[i] != src[i]) {
+			printf("ERROR: buffer integrity check failed at "\
+				"offset %d. dst[i]=0x%x, src[i]=0x%x\n",
+				i, dst[i], src[i]);
+			*fail_index = i;
+			return false;
+		}
+	return true;
+}
+
