@@ -48,15 +48,15 @@
 #define ARRAY_SIZE(arr)	(sizeof(arr) / sizeof((arr)[0]))
 
 static struct ion_test_data mm_heap_test = {
-	.align = 0x1000,
-	.size = 0x1000,
+	.align = 0x100000,
+	.size = 0x100000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
 	.flags = ION_FLAG_SECURE,
 	.heap_type_req = CP,
 };
 static struct ion_test_data adv_mm_heap_test = {
-	.align = 0x1000,
-	.size = 0x1000,
+	.align = 0x100000,
+	.size = 0x100000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
 	.heap_type_req = CP,
 	.flags = 0,
