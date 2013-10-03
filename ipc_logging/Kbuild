@@ -1,0 +1,3 @@
+# Kernel module make instructions go here.
+#
+obj-m := ipc_logging_test.o

@@ -9,6 +9,11 @@ if KERNELMODULES
 if USEION
 BUILD_TEST += ion
 endif
+
+if USEIPC_LOGGING
+BUILD_TEST += ipc_logging
+endif
+
 if USEMEMORY_PROF
 BUILD_TEST += memory_prof
 endif
