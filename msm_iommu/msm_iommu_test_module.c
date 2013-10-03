@@ -883,7 +883,6 @@ static int test_iommu_bfb(const struct msm_iommu_test *iommu_test,
 	}
 
 	drvdata = dev_get_drvdata(dev->parent);
-	iommu_access_ops->iommu_lock_acquire();
 	iommu_access_ops->iommu_clk_on(drvdata);
 
 	for (i = 0; i < tst_iommu->bfb_size; ++i) {
@@ -897,7 +896,6 @@ static int test_iommu_bfb(const struct msm_iommu_test *iommu_test,
 		}
 	}
 	iommu_access_ops->iommu_clk_off(drvdata);
-	iommu_access_ops->iommu_lock_release();
 
 	iommu_detach_device(domain, dev);
 unreg_dom:
