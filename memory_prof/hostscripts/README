@@ -1,12 +1,12 @@
-parse_results.py:
+parse_memory_prof_results.py:
 =================
 
-	parse_results.py produces histograms and/or graphs from the
+	parse_memory_prof_results.py produces histograms and/or graphs from the
 	output of the `memory_prof -e' test.
 
 USAGE:
 
-	See `parse_reults.py -h'
+	See `parse_memory_prof_results.py -h'
 
 DEPENDECIES:
 
