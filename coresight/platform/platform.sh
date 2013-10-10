@@ -28,7 +28,13 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 count=0
+source=`echo "$*" | sed -n 's/.*--source \(\w*\).*/\1/p'`
+source=`echo $source | tr '[A-Z]' '[a-z]'`
 source "$(dirname $0)/../cs_common.sh"
+if [[ -z "$source" ]]
+then
+        source="all"
+fi
 echo "-----Coresight Platform Test Starting-----"
 echo "------------------------------------------"
 if [ -d $csrpath ]
@@ -37,17 +43,20 @@ then
 else
        echo "FAIL: coresight-csr driver probe failed ****"
 fi
-cores=`grep -c "processor" $cpuinfo`
-while [ $count -lt $cores ]
-do
-        if [ -d $etmpath$count ]
-        then
-                echo "PASS: coresight-etm$count driver initialized"
-        else
-                echo "FAIL: coresight-etm$count driver probe failed ****"
-        fi
-        count=$(( count + 1 ))
-done
+if [[ $source == "etm" || $source == "all" ]]
+then
+	cores=`grep -c "processor" $cpuinfo`
+	while [ $count -lt $cores ]
+	do
+		if [ -d $etmpath$count ]
+		then
+			echo "PASS: coresight-etm$count driver initialized"
+		else
+			echo "FAIL: coresight-etm$count driver probe failed ****"
+		fi
+		count=$(( count + 1 ))
+	done
+fi
 if [ -d $f0path ]
 then
         echo "PASS: coresight-funnel-in0 driver initialized"
@@ -72,11 +81,14 @@ then
 else
         echo "FAIL: coresight-replicator driver probe failed ****"
 fi
-if [ -d $stmpath ]
+if [[ $source == "stm" || $source == "all" ]]
 then
-        echo "PASS: coresight-stm driver initialized"
-else
-        echo "FAIL: coresight-stm driver probe failed ****"
+	if [ -d $stmpath ]
+	then
+		echo "PASS: coresight-stm driver initialized"
+	else
+		echo "FAIL: coresight-stm driver probe failed ****"
+	fi
 fi
 if [ -d $tmcetfpath ] && [ -d $tmcetrpath ]
 then
