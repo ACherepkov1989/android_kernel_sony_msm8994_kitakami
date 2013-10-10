@@ -66,18 +66,6 @@ then
 else
         echo "FAIL: coresight-funnel-merg driver probe failed ****"
 fi
-if [ -d $fkpsspath ]
-then
-        echo "PASS: coresight-funnel-kpss driver initialized"
-else
-        echo "FAIL: coresight-funnel-kpss driver probe failed ****"
-fi
-if [ -d $fmmsspath ]
-then
-        echo "PASS: coresight-funnel-mmss driver initialized"
-else
-        echo "FAIL: coresight-funnel-mmss driver probe failed ****"
-fi
 if [ -d $replicatorpath ]
 then
         echo "PASS: coresight-replicator driver initialized"
