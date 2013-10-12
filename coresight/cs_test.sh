@@ -54,7 +54,7 @@ fi
 }
 
 cs_nominal(){
-cd $directory"/platform" && sh platform.sh
+cd $directory"/platform" && sh platform.sh "--source $source"
 if [ $etm -eq 1 ]
 then
         cd $directory"/etm" && sh etm_enable.sh
