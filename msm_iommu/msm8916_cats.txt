@@ -1,0 +1,5 @@
+1	vfe0
+2	venus_ns
+3	mdp_0
+8	jpeg_enc0
+9	gfx3d_user

@@ -31,6 +31,7 @@ struct test_iommu {
 	unsigned int bfb_size;
 	int ret_code;
 	unsigned int flags;
+	int cats_tbu_id;
 };
 
 struct target_struct {
@@ -44,5 +45,6 @@ struct target_struct {
 #define IOC_IOMMU_TEST_IOMMU_INT _IOWR(MSM_IOMMU_MAGIC, 3, \
 						struct test_iommu)
 #define IOC_IOMMU_TEST_IOMMU_BFB _IOWR(MSM_IOMMU_MAGIC, 4, struct test_iommu)
+#define IOC_IOMMU_TEST_CATS _IOWR(MSM_IOMMU_MAGIC, 5, struct test_iommu)
 
 #endif

@@ -67,6 +67,10 @@ unsigned int TEST_TYPE = NOMINAL_TEST;
 unsigned int no_repeats = 1;
 unsigned int force = 0;
 static unsigned int do_basic_va2pa_test;
+static unsigned int cats_data_read = 0;
+static char *tbu_id_cb_name;
+#define NUM_TBUS		20
+#define TBU_NAME_LENGTH		50
 
 #define PRINT_FORMAT "%15s (%20s)"
 
@@ -210,6 +214,100 @@ out:
 	return ret;
 }
 
+int read_cats_tbu_id(struct target_struct *target)
+{
+	char file_name[100];
+	FILE *fp;
+	int ret = 0;
+	char cb_name[50];
+	char line[101];
+	unsigned int tbu_id;
+
+	snprintf(file_name, 100, "%s_cats.txt", target->name);
+	fp = fopen(file_name, "r");
+
+	if (fp == NULL) {
+		ret = -EINVAL;
+		debug(ERR, "CATS TBU info file not found !!\n");
+		goto out;
+	}
+
+	tbu_id_cb_name = malloc((sizeof(char)) * NUM_TBUS * TBU_NAME_LENGTH);
+	while (fgets(line, 100, fp) != NULL) {
+		sscanf(line, "%x %s", &tbu_id, cb_name);
+
+		if (tbu_id > NUM_TBUS)
+			continue;
+
+		memcpy(&tbu_id_cb_name[tbu_id * TBU_NAME_LENGTH], cb_name,
+				TBU_NAME_LENGTH);
+	}
+
+	fclose(fp);
+out:
+	return ret;
+}
+
+int do_cats_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped,
+		struct target_struct *target)
+{
+	int ret = 0;
+	struct test_iommu tst_iommu;
+	*skipped = 0;
+	int i;
+
+	if (!force) {
+		debug(INFO, PRINT_FORMAT ": Testing CATS: SKIPPED! (Secure)\n",
+		      gnc->iommu_name, gnc->cb_name);
+		*skipped = 1;
+		return 0;
+	}
+
+	if (!cats_data_read) {
+		ret = read_cats_tbu_id(target);
+		if (ret) {
+			*skipped = 1;
+			return ret;
+		}
+		cats_data_read++;
+	}
+
+	for (i = 0; i < NUM_TBUS; i++) {
+		if (!strcmp(&tbu_id_cb_name[i * TBU_NAME_LENGTH], gnc->cb_name)) {
+			tst_iommu.cats_tbu_id = i;
+			break;
+		} else
+			tst_iommu.cats_tbu_id = -1;
+	}
+
+	tst_iommu.iommu_no = gnc->iommu_no;
+	tst_iommu.cb_no = gnc->cb_no;
+	tst_iommu.flags = 0;
+
+	ret = ioctl(iommu_test_fd, IOC_IOMMU_TEST_CATS, &tst_iommu);
+
+	if (ret) {
+		if (tst_iommu.ret_code == -EBUSY) {
+			debug(INFO, PRINT_FORMAT ": Testing CATS: SKIPPED! (CTX Busy)\n",
+			      gnc->iommu_name, gnc->cb_name);
+			*skipped = 1;
+			ret = 0;
+		} else if (tst_iommu.ret_code == -EINVAL) {
+			debug(INFO, PRINT_FORMAT ": Testing CATS: SKIPPED! (!TBU_ID)\n",
+			      gnc->iommu_name, gnc->cb_name);
+			*skipped = 1;
+			ret = 0;
+		} else if (ret) {
+			debug(INFO, PRINT_FORMAT ": Testing CATS: FAILED! (%d)\n",
+			     gnc->iommu_name, gnc->cb_name, tst_iommu.ret_code);
+		}
+	} else {
+		debug(INFO, PRINT_FORMAT ": Testing CATS: OK\n",
+		      gnc->iommu_name, gnc->cb_name);
+	}
+	return ret;
+}
+
 int do_int_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 {
 	int ret = 0;
@@ -348,6 +446,14 @@ struct test_results run_nominal_tests(void)
 			++result.no_tests;
 
 			ret = do_va2pa_test(iommu_test_fd, &gnc, &skipped);
+			if (ret)
+				++result.no_failed;
+
+			result.no_skipped += skipped;
+			++result.no_tests;
+
+			ret = do_cats_test(iommu_test_fd, &gnc, &skipped,
+						&target);
 			if (ret)
 				++result.no_failed;
 
