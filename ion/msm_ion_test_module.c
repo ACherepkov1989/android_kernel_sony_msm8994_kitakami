@@ -130,11 +130,6 @@ static int ion_find_heaps_available(void)
 				}
 				break;
 			}
-			case ION_IOMMU_HEAP_ID:
-			{
-				heap_list[i].type = SYSTEM_MEM2;
-				break;
-			}
 			case ION_QSECOM_HEAP_ID:
 			case ION_AUDIO_HEAP_ID:
 			{
