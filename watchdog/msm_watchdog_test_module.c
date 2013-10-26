@@ -19,7 +19,7 @@
 #include <linux/smp.h>
 #include <linux/cpu.h>
 #include <linux/cpumask.h>
-#include <linux/cpumask.h>
+#include <linux/slab.h>
 #include <asm/barrier.h>
 #include <asm/io.h>
 #include <asm-generic/sizes.h>
@@ -33,6 +33,7 @@
 #define REG_VAL_WDOG_BITE_VAL		0x400
 
 #define SCM_SVC_SEC_WDOG_TRIG	0x8
+#define SCM_SVC_SPIN_CPU	0xD
 
 #define MDELAY_TIME		15000
 
@@ -73,25 +74,57 @@ static void keep_looping(void *arg)
 	while(1);
 }
 
+/* Force the secure lockup of the CPU on which this task runs
+ */
+static void keep_looping_2(struct work_struct *work)
+{
+	int ret = 0;
+	u32 argument = 0;
+	pr_info("Forcing secure lockup of cpu 1 using SCM call\n");
+	atomic_inc(&cause_bark);
+	ret = scm_call(SCM_SVC_BOOT, SCM_SVC_SPIN_CPU, &argument,
+					sizeof(argument), NULL, 0);
+	pr_err("scm call failed!\n");
+	while(1);
+}
+
+/* Disable premption on the CPUs this task runs so that we always
+ * know the HLOS context for the current CPU
+ */
 static void cpu_cntx_work(struct work_struct *work)
 {
 	keep_looping((void *)get_cpu());
 }
 
-static DECLARE_WORK(cpu_cntx_work_struct_1, cpu_cntx_work);
-static DECLARE_WORK(cpu_cntx_work_struct_2, cpu_cntx_work);
-static DECLARE_WORK(cpu_cntx_work_struct_3, cpu_cntx_work);
 static void apps_wdog_bark_cntxt_work(struct work_struct *work)
 {
-	schedule_work_on(1, &cpu_cntx_work_struct_1);
-	schedule_work_on(2, &cpu_cntx_work_struct_2);
-	schedule_work_on(3, &cpu_cntx_work_struct_3);
-	while(atomic_read(&cause_bark) != 3)
+	int cpu = 0;
+	struct work_struct **workq;
+	int online_cpus = num_online_cpus();
+	if (online_cpus != num_present_cpus()) {
+		pr_err("Stop mpdecision and enable all CPUs\n");
+		goto out;
+	}
+	workq = kmalloc(sizeof(struct work_struct *) * (online_cpus - 1),
+			GFP_KERNEL);
+	for_each_online_cpu(cpu) {
+		if (cpu == 0)
+			continue;
+		workq[cpu - 1] = kmalloc(sizeof(struct work_struct),
+					 GFP_KERNEL);
+		if (cpu == 1)
+			INIT_WORK(workq[cpu - 1], keep_looping_2);
+		else
+			INIT_WORK(workq[cpu - 1], cpu_cntx_work);
+		schedule_work_on(cpu, workq[cpu - 1]);
+	}
+	while(atomic_read(&cause_bark) != online_cpus - 1)
 		mdelay(500);
 	pr_info("Apps watchdog bark for cpu context save test\n");
 	preempt_disable();
 	mdelay(MDELAY_TIME);
 	preempt_enable();
+out:
 	complete(&timeout_complete);
 }
 
@@ -253,7 +286,7 @@ static int apps_wdog_bark_cntxt_set(const char *val, struct kernel_param *kp)
 		init_completion(&timeout_complete);
 		schedule_work_on(0, &apps_wdog_bark_cntxt_work_struct);
 		wait_for_completion(&timeout_complete);
-		pr_err("Failed to trigger apps bark\n");
+		pr_err("Failed cpu context test\n");
 	}
 	return -EIO;
 }

@@ -1,4 +1,4 @@
-# Copyright (c) 2012, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -34,7 +34,7 @@ fi
 watchdog_test_mod=${modpath}/msm_watchdog_test_module.ko
 
 case "$1" in
-    apps_wdog_bite|apps_wdog_bark|sec_wdog_bite|sec_wdog_scm)
+    apps_wdog_bite|apps_wdog_bark|sec_wdog_bite|sec_wdog_scm|cpu_cntxt_test)
 	thetest="$1"
 	echo "Running test $thetest"
 	;;
@@ -45,6 +45,19 @@ case "$1" in
 	;;
 esac
 
+if [ $1 = "cpu_cntxt_test" ]; then
+	count=0
+	cpupath="/sys/devices/system/cpu/cpu"
+	cpuinfo="/proc/cpuinfo"
+	cores=`grep -c "processor" $cpuinfo`
+	stop mpdecision
+	while [ $count -lt $cores ]
+	do
+		cpupath_enable=$cpupath$count"/online"
+		echo 1 > $cpupath_enable
+		count=$(( count + 1 ))
+	done
+fi
 
 if [ -e $watchdog_test_mod ]; then
 	insmod $watchdog_test_mod ${thetest}=1
