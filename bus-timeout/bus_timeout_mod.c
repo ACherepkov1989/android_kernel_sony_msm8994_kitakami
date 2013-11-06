@@ -59,6 +59,10 @@ static struct clk_pair bus_timeout_camera_clocks_on[] = {
 		.dev = "fda10000.qcom,vfe",
 		.clk = "iface_clk",
 	},
+	{
+		.dev = "fda10000.qcom,vfe",
+		.clk = "camss_ahb_clk",
+	},
 };
 
 static struct clk_pair bus_timeout_camera_clocks_off[] = {
