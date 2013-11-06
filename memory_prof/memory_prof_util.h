@@ -30,10 +30,27 @@
 #ifndef __MEMORY_PROF_UTIL_H__
 #define __MEMORY_PROF_UTIL_H__
 
+#include <stdbool.h>
+#include <sys/time.h>
+
 void set_oom_score_adj_path(const char *path, int adj);
 void set_oom_score_adj_pid(int pid, int adj);
 void set_oom_score_adj_parent(int adj);
 void set_oom_score_adj_self(int adj);
+
+struct timeval timeval_sub(struct timeval t1, struct timeval t2);
+double timeval_ms_diff(struct timeval t1, struct timeval t2);
+void mprof_tick(struct timeval *tv);
+double mprof_tock(struct timeval *tv);
+bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
+
+#define US_TO_MS(us) (us / 1000.0)
+#define MS_TO_S(ms) (ms / 1000.0)
+#define S_TO_MS(s) (s * 1000.0)
+#define MS_TO_US(ms) (ms * 1000.0)
+#define S_TO_US(s) (s * 1000 * 1000.0)
+#define TV_TO_MS(tv) (S_TO_MS(tv.tv_sec) + US_TO_MS(tv.tv_usec))
+
 
 #define SZ_1K				0x00000400
 #define SZ_2K				0x00000800

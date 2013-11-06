@@ -42,6 +42,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#include <getopt.h>
 #include <linux/msm_ion.h>
 #include "memory_prof.h"
 #include "memory_prof_module.h"
@@ -70,22 +71,73 @@ static void hr()
  * @alloc_data [in/out] alloc data. On success, user must free.
  * returns 0 on success, 1 otherwise
  */
-static int alloc_me_up_some_ion(int *ionfd,
+static int alloc_me_up_some_ion(int ionfd,
 				struct ion_allocation_data *alloc_data)
 {
 	int rc = 0;
-	*ionfd = open(ION_DEV, O_RDONLY);
-	if (*ionfd < 0) {
-		perror("couldn't open " ION_DEV);
-		return *ionfd;
-	}
 
-	rc = ioctl(*ionfd, ION_IOC_ALLOC, alloc_data);
-	if (rc) {
+	rc = ioctl(ionfd, ION_IOC_ALLOC, alloc_data);
+	if (rc)
 		perror("couldn't do ion alloc");
-		close(*ionfd);
+
+	return rc;
+}
+
+/**
+ * mmaps an Ion buffer to *buf.
+ *
+ * @ionfd - the ion fd
+ * @handle - the handle to the Ion buffer to map
+ * @len - the length of the buffer
+ * @buf - [output] the userspace buffer where the ion buffer will be
+ * mapped
+ * @map_fd - [output] the fd corresponding to the ION_IOC_MAP call
+ * will be saved in *map_fd. *You should close it* when you're done
+ * with it (and have munmap'd) *buf.
+ *
+ * Returns 0 on success, 1 otherwise
+ */
+static int mmap_my_ion_buffer(int ionfd, struct ion_handle *handle, size_t len,
+			char **buf, int *map_fd)
+{
+	struct ion_fd_data fd_data;
+	int rc;
+
+	fd_data.handle = handle;
+
+	rc = ioctl(ionfd, ION_IOC_MAP, &fd_data);
+	if (rc) {
+		perror("couldn't do ION_IOC_MAP");
+		return 1;
 	}
 
+	*map_fd = fd_data.fd;
+
+	*buf = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED,
+		*map_fd, 0);
+
+	return 0;
+}
+
+/**
+ * Allocates an ion buffer and mmaps it into *buf. See
+ * alloc_me_up_some_ion and mmap_my_ion_buffer for an explanation of
+ * the parameters here.
+ */
+static int alloc_and_map_some_ion(int ionfd,
+				struct ion_allocation_data *alloc_data,
+				char **buf, int *map_fd)
+{
+	int rc;
+
+	rc = alloc_me_up_some_ion(ionfd, alloc_data);
+	if (rc)
+		return rc;
+	rc = mmap_my_ion_buffer(ionfd, alloc_data->handle, alloc_data->len,
+				buf, map_fd);
+	if (rc) {
+		rc |= ioctl(ionfd, ION_IOC_FREE, &alloc_data->handle);
+	}
 	return rc;
 }
 
@@ -93,16 +145,23 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 				unsigned long size_mb)
 {
 	uint8_t *buf;
-	int ionfd, rc;
+	int ionfd, rc = 0;
 	unsigned long i, squelched = 0;
 	bool integrity_good = true;
 	struct ion_fd_data fd_data;
 	struct ion_custom_data custom_data;
 	struct ion_flush_data flush_data;
 
-	rc = alloc_me_up_some_ion(&ionfd, &alloc_data);
-	if (rc)
+	ionfd = open(ION_DEV, O_RDONLY);
+	if (ionfd < 0) {
+		perror("couldn't open " ION_DEV);
+		rc = ionfd;
 		goto out;
+	}
+
+	rc = alloc_me_up_some_ion(ionfd, &alloc_data);
+	if (rc)
+		goto err0;
 
 	fd_data.handle = alloc_data.handle;
 
@@ -260,11 +319,17 @@ static int do_map_extra_test(void)
 	};
 	struct ion_fd_data fd_data;
 
+	ionfd = open(ION_DEV, O_RDONLY);
+	if (ionfd < 0) {
+		perror("couldn't open " ION_DEV);
+		goto out;
+	}
+
 	memory_prof_fd = open(MEMORY_PROF_DEV, 0);
 	if (memory_prof_fd < 0) {
 		perror("couldn't open " MEMORY_PROF_DEV);
 		rc = memory_prof_fd;
-		goto out;
+		goto close_ion_fd;
 	}
 
 	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_CREATE);
@@ -273,7 +338,7 @@ static int do_map_extra_test(void)
 		goto close_memory_prof_fd;
 	}
 
-	rc = alloc_me_up_some_ion(&ionfd, &alloc_data);
+	rc = alloc_me_up_some_ion(ionfd, &alloc_data);
 	if (rc)
 		goto destroy_ion_client;
 
@@ -302,48 +367,10 @@ destroy_ion_client:
 	rc |= ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_DESTROY);
 close_memory_prof_fd:
 	close(memory_prof_fd);
+close_ion_fd:
+	close(ionfd);
 out:
 	return rc;
-}
-
-
-#define US_TO_MS(us) (us / 1000.0)
-#define MS_TO_S(ms) (ms / 1000.0)
-#define S_TO_MS(s) (s * 1000.0)
-#define MS_TO_US(ms) (ms * 1000.0)
-#define S_TO_US(s) (s * 1000 * 1000.0)
-#define TV_TO_MS(tv) (S_TO_MS(tv.tv_sec) + US_TO_MS(tv.tv_usec))
-
-/**
- * timeval_sub - subtracts t2 from t1
- *
- * Returns a timeval with the result
- */
-static struct timeval timeval_sub(struct timeval t1, struct timeval t2)
-{
-	struct timeval diff;
-
-	diff.tv_sec = t1.tv_sec - t2.tv_sec;
-
-	if (t1.tv_usec < t2.tv_usec) {
-		diff.tv_usec = t1.tv_usec + S_TO_US(1) - t2.tv_usec;
-		diff.tv_sec--;
-	} else {
-		diff.tv_usec = t1.tv_usec - t2.tv_usec;
-	}
-
-	return diff;
-}
-
-/**
- * timeval_ms_diff - gets the difference (in MS) between t1 and t2
- *
- * Returns the MS diff between t1 and t2 (t2 - t1)
- */
-static double timeval_ms_diff(struct timeval t1, struct timeval t2)
-{
-	struct timeval tv_result = timeval_sub(t1, t2);
-	return US_TO_MS(tv_result.tv_usec) + S_TO_MS(tv_result.tv_sec);
 }
 
 /**
@@ -785,7 +812,13 @@ static void leak_test(void)
 	puts("About to leak a handle...");
 	fflush(stdout);
 
-	alloc_me_up_some_ion(&ionfd, &alloc_data);
+	ionfd = open(ION_DEV, O_RDONLY);
+	if (ionfd < 0) {
+		perror("couldn't open " ION_DEV);
+		return;
+	}
+
+	alloc_me_up_some_ion(ionfd, &alloc_data);
 
 	fd_data.handle = alloc_data.handle;
 
@@ -803,6 +836,154 @@ static void leak_test(void)
 	puts("We will now sleep for 5 seconds for you to check");
 	puts("<debugfs>/ion/check_leaked_fds");
 	sleep(5);
+}
+
+/**
+ * Allocate two ion buffers, mmap them, memset each of them to
+ * something different, memcpy from one to the other, then check that
+ * they are equal.
+
+ * We time the memcpy operation and return the number of milliseconds
+ * it took in *time_elapsed_memcpy_ms. When time_elapsed_flush_ms is
+ * not NULL, we flush the dst buffer and return the number of
+ * milliseconds it took to do so in *time_elapsed_flush_ms.
+ *
+ * @src_alloc_data - source allocation data
+ * @dst_alloc_data - source allocation data
+ * @time_elapsed_memcpy_ms - [output] time taken (in MS) to do the memcpy
+ * @time_elapsed_flush_ms - [output] time taken (in MS) to do the
+ * cache flush. Pass NULL if you don't want to do the flushing.
+ *
+ */
+static int do_ion_memcpy(struct ion_allocation_data src_alloc_data,
+			struct ion_allocation_data dst_alloc_data,
+			double *time_elapsed_memcpy_ms,
+			double *time_elapsed_flush_ms)
+{
+	int ionfd, i, src_fd, dst_fd, fail_index = 0, rc = 0;
+	char *src, *dst;
+	struct timeval tv;
+	size_t len = src_alloc_data.len;
+
+	ionfd = open(ION_DEV, O_RDONLY);
+	if (ionfd < 0) {
+		perror("couldn't open " ION_DEV);
+		rc = 1;
+		goto out;
+	}
+
+	if (alloc_and_map_some_ion(ionfd, &src_alloc_data, &src, &src_fd)) {
+		perror("Couldn't alloc and map src buffer");
+		rc = 1;
+		goto close_ionfd;
+	}
+	if (alloc_and_map_some_ion(ionfd, &dst_alloc_data, &dst, &dst_fd)) {
+		perror("Couldn't alloc and map dst buffer");
+		rc = 1;
+		goto free_src;
+	}
+
+	memset(src, 0x5a, len);
+	memset(dst, 0xa5, len);
+	mprof_tick(&tv);
+	memcpy(dst, src, len);
+	*time_elapsed_memcpy_ms = mprof_tock(&tv);
+
+	if (time_elapsed_flush_ms) {
+		struct ion_flush_data flush_data;
+		struct ion_custom_data custom_data;
+		flush_data.handle = dst_alloc_data.handle;
+		flush_data.vaddr = dst;
+		flush_data.length = len;
+		custom_data.cmd = ION_IOC_CLEAN_CACHES;
+		custom_data.arg = (unsigned long) &flush_data;
+		mprof_tick(&tv);
+		if (ioctl(ionfd, ION_IOC_CUSTOM, &custom_data)) {
+			perror("Couldn't flush caches");
+			rc = 1;
+		}
+		*time_elapsed_flush_ms = mprof_tock(&tv);
+	}
+
+	if (!buffers_are_equal(src, dst, len, &fail_index)) {
+		printf("WARNING: buffer integrity check failed\n"
+			"dst[%d]=0x%x, src[%d]=0x%x\n",
+			fail_index, dst[fail_index],
+			fail_index, src[fail_index]);
+		rc = 1;
+	}
+
+munmap_and_close:
+	munmap(src, len);
+	munmap(dst, len);
+	close(src_fd);
+	close(dst_fd);
+free_dst:
+	ioctl(ionfd, ION_IOC_FREE, &dst_alloc_data.handle);
+free_src:
+	ioctl(ionfd, ION_IOC_FREE, &src_alloc_data.handle);
+close_ionfd:
+	close(ionfd);
+out:
+	return rc;
+}
+
+/**
+ * Profiles the time it takes to copy between various types of Ion
+ * buffers. Namely, copies between every permutation of
+ * cached/uncached buffer (4 permutations total). Also profiles the
+ * amount of time it takes to flush the destination buffer on a
+ * cached->cached copy.
+ */
+static void ion_memcpy_test(void)
+{
+	struct ion_allocation_data src_alloc_data, dst_alloc_data;
+	struct timeval tv;
+	double time_elapsed_memcpy_ms = 0,
+		time_elapsed_flush_ms = 0;
+
+	src_alloc_data.len = SZ_4M;
+	src_alloc_data.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
+	dst_alloc_data.len = SZ_4M;
+	dst_alloc_data.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
+
+	src_alloc_data.flags = 0;
+	dst_alloc_data.flags = 0;
+	if (do_ion_memcpy(src_alloc_data, dst_alloc_data,
+				&time_elapsed_memcpy_ms, NULL)) {
+		printf("Uncached -> Uncached: FAIL\n");
+	} else {
+		printf("Uncached -> Uncached: %.3fms\n", time_elapsed_memcpy_ms);
+	}
+
+	src_alloc_data.flags = 0;
+	dst_alloc_data.flags = ION_FLAG_CACHED;
+	if (do_ion_memcpy(src_alloc_data, dst_alloc_data,
+				&time_elapsed_memcpy_ms, NULL)) {
+		printf("Uncached -> Cached: FAIL\n");
+	} else {
+		printf("Uncached -> Cached: %.3fms\n", time_elapsed_memcpy_ms);
+	}
+
+	src_alloc_data.flags = ION_FLAG_CACHED;
+	dst_alloc_data.flags = 0;
+	if (do_ion_memcpy(src_alloc_data, dst_alloc_data,
+				&time_elapsed_memcpy_ms, NULL)) {
+		printf("Cached -> Uncached: FAIL\n");
+	} else {
+		printf("Cached -> Uncached: %.3fms\n", time_elapsed_memcpy_ms);
+	}
+
+	src_alloc_data.flags = ION_FLAG_CACHED;
+	dst_alloc_data.flags = ION_FLAG_CACHED;
+	if (do_ion_memcpy(src_alloc_data, dst_alloc_data,
+				&time_elapsed_memcpy_ms,
+				&time_elapsed_flush_ms)) {
+		printf("Cached -> Cached: FAIL\n");
+	} else {
+		printf("Cached -> Cached: %.3fms (cache flush took %.3fms)\n",
+			time_elapsed_memcpy_ms, time_elapsed_flush_ms);
+	}
 }
 
 static int file_exists(const char const *fname)
@@ -834,12 +1015,19 @@ static int file_exists(const char const *fname)
 	"  -p MS      Sleep for MS milliseconds between stuff (for debugging)\n" \
 	"  -r         Do the repeatability test\n"			\
 	"  -s         Do the stress test (same as -e)\n"		\
-	"  -t MB      Size (in MB) of temp buffer pre-allocated before Ion allocations (default 0 MB)\n"
+	"  -t MB      Size (in MB) of temp buffer pre-allocated before Ion allocations (default 0 MB)\n" \
+	"  --ion-memcpy-test\n" \
+	"             Does some memcpy's between various types of Ion buffers\n"
 
 static void usage(char *progname)
 {
 	printf(USAGE_STRING, progname);
 }
+
+static struct option memory_prof_options[] = {
+	{"ion-memcpy-test", no_argument, 0, 0},
+	{0, 0, 0, 0}
+};
 
 int main(int argc, char *argv[])
 {
@@ -851,13 +1039,30 @@ int main(int argc, char *argv[])
 	bool do_map_extra_test = false;
 	bool do_oom_test = false;
 	bool do_leak_test = false;
+	bool do_ion_memcpy_test = false;
 	const char *alloc_profile = NULL;
 	int num_reps = 1;
 	int num_heap_prof_reps = -1;
 	int ion_pre_alloc_size = ION_PRE_ALLOC_SIZE_DEFAULT;
+	int option_index = 0;
 
-	while (-1 != (opt = getopt(argc, argv, "abe::hi:klmnop:rs::t:z:"))) {
+	while (-1 != (opt = getopt_long(
+				argc,
+				argv,
+				"abe::hi:klmnop:rs::t:z:",
+				memory_prof_options,
+				&option_index))) {
 		switch (opt) {
+		case 0:
+			if (strcmp("ion-memcpy-test",
+					memory_prof_options[option_index].name)
+				== 0) {
+				do_ion_memcpy_test = true;
+				break;
+			}
+			printf("Unhandled longopt: %s\n",
+				memory_prof_options[option_index].name);
+			break;
 		case 't':
 			ion_pre_alloc_size = atoi(optarg);
 			break;
@@ -930,6 +1135,9 @@ int main(int argc, char *argv[])
 	if (do_leak_test)
 		for (i = 0; i < num_reps; ++i)
 			leak_test();
+
+	if (do_ion_memcpy_test)
+		ion_memcpy_test();
 
 	return rc;
 }
