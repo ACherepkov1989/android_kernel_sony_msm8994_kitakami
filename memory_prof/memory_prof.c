@@ -142,8 +142,7 @@ static int alloc_and_map_some_ion(int ionfd,
 	return rc;
 }
 
-static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
-				unsigned long size)
+static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
 {
 	uint8_t *buf;
 	int ionfd, rc = 0;
@@ -153,6 +152,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 	struct ion_custom_data custom_data;
 	struct ion_flush_data flush_data;
 	int error_vals[256];
+	unsigned long size = alloc_data.len;
 
 	memset(error_vals, 0, sizeof(error_vals));
 
@@ -259,7 +259,7 @@ static int basic_sanity_tests(unsigned long size)
 	};
 
 	puts("testing system without caching...");
-	lrc = basic_ion_sanity_test(system_alloc_data, size);
+	lrc = basic_ion_sanity_test(system_alloc_data);
 	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
@@ -267,14 +267,14 @@ static int basic_sanity_tests(unsigned long size)
 
 	puts("testing system with caching...");
 	system_alloc_data.flags |= ION_FLAG_CACHED;
-	lrc = basic_ion_sanity_test(system_alloc_data, size);
+	lrc = basic_ion_sanity_test(system_alloc_data);
 	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
 	rc |= lrc;
 
 	puts("testing system contig without caching...");
-	lrc = basic_ion_sanity_test(system_contig_alloc_data, size);
+	lrc = basic_ion_sanity_test(system_contig_alloc_data);
 	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
@@ -282,7 +282,7 @@ static int basic_sanity_tests(unsigned long size)
 
 	puts("testing system contig with caching...");
 	system_contig_alloc_data.flags |= ION_FLAG_CACHED;
-	lrc = basic_ion_sanity_test(system_contig_alloc_data, size);
+	lrc = basic_ion_sanity_test(system_contig_alloc_data);
 	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
