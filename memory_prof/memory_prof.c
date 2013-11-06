@@ -49,6 +49,7 @@
 #include "memory_prof_util.h"
 
 static unsigned int sleepiness;
+static int verbosity;
 
 static void sleepy()
 {
@@ -151,6 +152,9 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 	struct ion_fd_data fd_data;
 	struct ion_custom_data custom_data;
 	struct ion_flush_data flush_data;
+	int error_vals[256];
+
+	memset(error_vals, 0, sizeof(error_vals));
 
 	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
@@ -196,12 +200,14 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 
 	for (i = 0; i < size; ++i) {
 		if (buf[i] != 0xA5) {
+			error_vals[buf[i]]++;
 			if (!integrity_good) {
 				squelched++;
-				continue;
+				if (verbosity < 2)
+					continue;
 			}
-			printf("  Data integrity error at "
-				"offset 0x%lx from 0x%p!!!!\n", i, buf);
+			printf("  Data integrity error at offset 0x%lx from 0x%p (%x != 0xa5))!!!!\n",
+				i, buf, buf[i]);
 			integrity_good = false;
 			rc = 1;
 		}
@@ -212,6 +218,11 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 
 	if (integrity_good)
 		printf("  Buffer integrity check succeeded\n");
+	else if (verbosity)
+		for (i = 0; i < 255; ++i)
+			if (error_vals[i])
+				printf("Saw %d instead of 0xA5 %d times\n",
+					(int) i, error_vals[i]);
 
 err3:
 	if (munmap(buf, size)) {
@@ -1085,6 +1096,7 @@ static int file_exists(const char const *fname)
 	"  -r         Do the repeatability test\n"			\
 	"  -s         Do the stress test (same as -e)\n"		\
 	"  -t MB      Size (in MB) of temp buffer pre-allocated before Ion allocations (default 0 MB)\n" \
+	"  -v         Increase verbosity. Pass multiple times to increase verbosity\n" \
 	"  --ion-memcpy-test\n" \
 	"             Does some memcpy's between various types of Ion buffers\n" \
 	"  --mmap-memcpy-test\n" \
@@ -1123,7 +1135,7 @@ int main(int argc, char *argv[])
 	while (-1 != (opt = getopt_long(
 				argc,
 				argv,
-				"abe::hi:klmnop:rs::t:z:",
+				"abe::hi:klmnop:rs::t:vz:",
 				memory_prof_options,
 				&option_index))) {
 		switch (opt) {
@@ -1181,6 +1193,9 @@ int main(int argc, char *argv[])
 		case 'p':
 			/* ms to us */
 			sleepiness = atoi(optarg) * 1000;
+			break;
+		case 'v':
+			verbosity++;
 			break;
 		case 'z':
 			basic_sanity_size = atoi(optarg);
