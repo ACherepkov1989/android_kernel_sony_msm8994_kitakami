@@ -233,15 +233,15 @@ static void basic_sanity_tests(unsigned long size)
 	int lrc, rc = 0;
 
 	struct ion_allocation_data system_alloc_data = {
-		.align	   = SZ_1M,
-		.len	   = SZ_1M,
+		.align	   = SZ_4K,
+		.len	   = size,
 		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 
 	struct ion_allocation_data system_contig_alloc_data = {
-		.align	   = SZ_1M,
-		.len	   = SZ_1M,
+		.align	   = SZ_4K,
+		.len	   = size,
 		.heap_mask = ION_HEAP(ION_SYSTEM_CONTIG_HEAP_ID),
 		.flags	   = 0,
 	};
