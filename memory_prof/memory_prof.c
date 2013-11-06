@@ -232,13 +232,6 @@ static void basic_sanity_tests(unsigned long size_mb)
 {
 	int lrc, rc = 0;
 
-	struct ion_allocation_data iommu_alloc_data = {
-		.align	   = SZ_1M,
-		.len	   = SZ_1M,
-		.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
-		.flags	   = 0,
-	};
-
 	struct ion_allocation_data system_alloc_data = {
 		.align	   = SZ_1M,
 		.len	   = SZ_1M,
@@ -252,21 +245,6 @@ static void basic_sanity_tests(unsigned long size_mb)
 		.heap_mask = ION_HEAP(ION_SYSTEM_CONTIG_HEAP_ID),
 		.flags	   = 0,
 	};
-
-	puts("testing IOMMU without caching...");
-	lrc = basic_ion_sanity_test(iommu_alloc_data, size_mb);
-	puts(lrc ? "FAILED!" : "PASSED");
-	hr();
-	sleepy();
-	rc |= lrc;
-
-	puts("testing IOMMU with caching...");
-	iommu_alloc_data.flags |= ION_FLAG_CACHED;
-	lrc = basic_ion_sanity_test(iommu_alloc_data, size_mb);
-	puts(lrc ? "FAILED!" : "PASSED");
-	hr();
-	sleepy();
-	rc |= lrc;
 
 	puts("testing system without caching (should fail)...");
 	lrc = !basic_ion_sanity_test(system_alloc_data, size_mb);
@@ -314,7 +292,7 @@ static int do_map_extra_test(void)
 	struct ion_allocation_data alloc_data = {
 		.align	   = SZ_1M,
 		.len	   = buffer_length,
-		.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
+		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 	struct ion_fd_data fd_data;
@@ -757,7 +735,7 @@ static void oom_test(void)
 	int rc, ionfd, cnt = 0;
 	struct ion_allocation_data alloc_data = {
 		.len	   = SZ_8M,
-		.heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID),
+		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 
@@ -1084,7 +1062,7 @@ static int file_exists(const char const *fname)
 	"  -l         Do leak test (leak an ion handle)\n"		\
 	"  -m         Do map extra test (requires kernel module)\n"	\
 	"  -n         Do the nominal test (same as -b)\n"		\
-	"  -o         Do OOM test (alloc from Ion Iommu heap until OOM)\n" \
+	"  -o         Do OOM test (alloc from Ion system heap until OOM)\n" \
 	"  -p MS      Sleep for MS milliseconds between stuff (for debugging)\n" \
 	"  -r         Do the repeatability test\n"			\
 	"  -s         Do the stress test (same as -e)\n"		\
