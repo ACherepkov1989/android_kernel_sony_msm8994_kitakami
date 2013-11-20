@@ -654,10 +654,58 @@ static void print_a_bunch_of_stats_results(const char *name,
 	print_stats_results(sbuf, flags_label, size_string, free_stats, reps);
 }
 
+static LIST_HEAD(simple_alloc_list, simple_alloc_node) simple_alloc_head;
+
+struct simple_alloc_node {
+	char *alloc_id;
+	struct ion_handle *handle;
+	LIST_ENTRY(simple_alloc_node) nodes;
+};
+
+static void do_simple_alloc(int ionfd, struct alloc_profile_entry *pp)
+{
+	struct simple_alloc_node *np;
+	struct ion_allocation_data alloc_data = {
+		.align	   = SZ_4K,
+		.len	   = pp->u.simple_alloc_op.size,
+		.heap_mask = pp->u.simple_alloc_op.heap_id,
+		.flags	   = pp->u.simple_alloc_op.flags,
+	};
+
+	MALLOC(struct simple_alloc_node *,
+		np, sizeof(struct simple_alloc_node));
+
+	if (alloc_me_up_some_ion(ionfd, &alloc_data))
+		err(1, "Couldn't do Ion alloc");
+
+	np->handle = alloc_data.handle;
+	np->alloc_id = pp->u.simple_alloc_op.alloc_id;
+	LIST_INSERT_HEAD(&simple_alloc_head, np, nodes);
+}
+
+static void do_simple_free(int ionfd, struct alloc_profile_entry *pp)
+{
+	struct simple_alloc_node *np;
+
+	for (np = simple_alloc_head.lh_first;
+	     np != NULL;
+	     np = np->nodes.le_next) {
+		struct ion_handle_data data;
+		if (strcmp(np->alloc_id, pp->u.simple_free_op.alloc_id))
+			continue;
+		data.handle = np->handle;
+		if (ioctl(ionfd, ION_IOC_FREE, &data))
+			err(1, "Couldn't do ION_IOC_FREE");
+		LIST_REMOVE(np, nodes);
+		free(np);
+	}
+}
+
 static int heap_profiling(int pre_alloc_size, const int nreps,
 			const char *alloc_profile_path)
 {
 	int max_reps = 0;
+	int simple_ion_fd = -1;
 	double *alloc_stats = NULL;
 	double *map_stats = NULL;
 	double *memset_stats = NULL;
@@ -747,6 +795,21 @@ static int heap_profiling(int pre_alloc_size, const int nreps,
 			puts(pp->u.print_op.text);
 			break;
 		}
+		case OP_SIMPLE_ALLOC:
+		{
+			if (simple_ion_fd == -1) {
+				simple_ion_fd = open(ION_DEV, O_RDONLY);
+				if (simple_ion_fd < 0)
+					err(1, "couldn't open " ION_DEV);
+			}
+			do_simple_alloc(simple_ion_fd, pp);
+			break;
+		}
+		case OP_SIMPLE_FREE:
+		{
+			do_simple_free(simple_ion_fd, pp);
+			break;
+		}
 		default:
 			errx(1, "Unknown op: %d", pp->op);
 		}
@@ -756,6 +819,9 @@ static int heap_profiling(int pre_alloc_size, const int nreps,
 	free(map_stats);
 	free(memset_stats);
 	free(free_stats);
+
+	if (simple_ion_fd >= 0)
+		close(simple_ion_fd);
 	return 0;
 }
 
@@ -1145,6 +1211,8 @@ int main(int argc, char *argv[])
 	int ion_pre_alloc_size = ION_PRE_ALLOC_SIZE_DEFAULT;
 	int option_index = 0;
 
+	LIST_INIT(&simple_alloc_head);
+
 	while (-1 != (opt = getopt_long(
 				argc,
 				argv,
@@ -1184,7 +1252,7 @@ int main(int argc, char *argv[])
 		case 'i':
 			alloc_profile = optarg;
 			if (!file_exists(alloc_profile))
-				err(1, "Can't read alloc profile file: %s\n",
+				err(1, "Can't read alloc profile file: %s",
 					alloc_profile);
 			break;
 		case 'k':

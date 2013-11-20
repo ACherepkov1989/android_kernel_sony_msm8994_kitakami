@@ -71,9 +71,9 @@ Appendix A: Allocation Profiles for memory_prof
         [rest...]
 
     The `op' field specifies what kind of operation this line
-    holds. Should be `alloc', `sleep', or `print'. The remaining
-    fields ([rest...])  are defined differently for different values
-    of `op'.
+    holds. Should be `alloc', `sleep', `print', `simple_alloc', or
+    `simple_free'. The remaining fields ([rest...])  are defined
+    differently for different values of `op'.
 
     In all cases, all defined fields are *required* and cannot be left
     empty (e.g. `something,,other'). For example, if you don't have
@@ -148,3 +148,49 @@ Appendix A: Allocation Profiles for memory_prof
           rest
 
       - rest :: The text to print
+
+    o `op' == simple_alloc
+
+      When `op' == simple_alloc, an ION_IOC_ALLOC will be performed. A
+      matching ION_IOC_FREE will *not* be performed. To free a buffer
+      allocated with `simple_alloc' you should use the `simple_free'
+      op (defined below) with the same alloc_id field.
+
+      The following remaining fields are defined:
+
+          alloc_id
+          heap_id
+          flags
+          alloc_size_bytes
+          alloc_size_label
+
+      - alloc_id :: a user-defined ID that can be used in a
+        `simple_free' line (see below) to free this allocation. This
+        can actually be any string.
+
+      - heap_id, flags, alloc_size_bytes, alloc_size_label :: the same
+        was as for the `alloc' op, above
+
+      See `simple_free' for an example of how this can be used.
+
+    o `op' == simple_free
+
+      When `op' == simple_free, an ION_IOC_FREE will be performed on
+      the buffer identified by alloc_id. See the `simple_alloc' op
+      above.
+
+      The following remaining fields are defined:
+
+          alloc_id
+
+      - alloc_id :: the user-defined ID that was used in an earlier
+        `simple_alloc'
+
+      Here's an example of an allocation profile using
+      simple_alloc/simple_free:
+
+          simple_alloc,1,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+          simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+          # there are now two Ion buffers allocated. Now free them both:
+          simple_free,1
+          simple_free,pizza

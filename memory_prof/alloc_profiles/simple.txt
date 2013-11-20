@@ -1,0 +1,7 @@
+simple_alloc,1,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+print,Allocated two buffers from the system heap.
+print,Now sleeping for 5 seconds for you to look at them.
+sleep,5000000
+simple_free,1
+simple_free,pizza
