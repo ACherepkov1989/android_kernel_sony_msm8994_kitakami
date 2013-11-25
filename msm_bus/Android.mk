@@ -7,7 +7,7 @@ BOARD_PLATFORM_LIST += mdm9625
 BOARD_PLATFORM_LIST += msm8226
 BOARD_PLATFORM_LIST += msm8610
 
-ifeq ($(call is-board-platform-in-list, $(BOARD_PLATFORM_LIST)),true)
+ifneq (,$(filter  $(BOARD_PLATFORM_LIST),$(TARGET_BOARD_PLATFORM)))
 
 DLKM_DIR   := device/qcom/common/dlkm
 LOCAL_PATH := $(call my-dir)
