@@ -184,6 +184,14 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
 		goto err2;
 	}
 
+	for (i = 0; i < size; ++i)
+		if (buf[i]) {
+			printf("Buffer wasn't zero'd at offset %ld! got: %x\n",
+				i, buf[i]);
+			rc = 1;
+			goto err3;
+		}
+
 	memset(buf, 0xA5, size);
 	flush_data.handle = alloc_data.handle;
 	flush_data.vaddr = buf;
