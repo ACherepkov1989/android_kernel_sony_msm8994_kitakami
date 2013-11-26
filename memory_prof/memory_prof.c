@@ -777,7 +777,8 @@ static int oom_test(void)
 			/* game over! */
 			break;
 		} else {
-			np = malloc(sizeof(struct ion_handle_node));
+			MALLOC(struct ion_handle_node *,
+				np, sizeof(struct ion_handle_node));
 			np->handle = alloc_data.handle;
 			LIST_INSERT_HEAD(&head, np, nodes);
 		}
