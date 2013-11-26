@@ -742,6 +742,11 @@ static int heap_profiling(int pre_alloc_size, const int nreps,
 			usleep(pp->u.sleep_op.time_us);
 			break;
 		}
+		case OP_PRINT:
+		{
+			puts(pp->u.print_op.text);
+			break;
+		}
 		default:
 			errx(1, "Unknown op: %d", pp->op);
 		}

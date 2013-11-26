@@ -228,6 +228,10 @@ enum sleep_op_line_idx {
 	LINE_IDX_TIME_US = 1,
 };
 
+enum print_op_line_idx {
+	PRINT_LINE_IDX_TEXT = 1,
+};
+
 /* how many more alloc profile entries to {re-,m}alloc when we need more */
 #define MORE_PROFILE_ENTRIES 30
 
@@ -330,6 +334,11 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 			new.op = OP_SLEEP;
 			STRTOL(new.u.sleep_op.time_us,
 				words[LINE_IDX_TIME_US], 0);
+		} else if (0 == strcmp(words[0], "print")) {
+			new.op = OP_PRINT;
+			STRNCPY_SAFE(new.u.print_op.text,
+				words[PRINT_LINE_IDX_TEXT],
+				MAX_PRINT_STRING_LEN);
 		} else {
 			errx(1, "Malformed line: `%s'", buf);
 		}

@@ -71,7 +71,7 @@ Appendix A: Allocation Profiles for memory_prof
         [rest...]
 
     The `op' field specifies what kind of operation this line
-    holds. Should be `alloc', `sleep', or `flush'. The remaining
+    holds. Should be `alloc', `sleep', or `print'. The remaining
     fields ([rest...])  are defined differently for different values
     of `op'.
 
@@ -137,3 +137,14 @@ Appendix A: Allocation Profiles for memory_prof
           time_us
 
       - time_us :: The time (in microseconds) to sleep
+
+    o `op' == print
+
+      When `op' == print, the remaining text on the line is printed to
+      stdout.
+
+      The following remaining fields are defined:
+
+          rest
+
+      - rest :: The text to print
