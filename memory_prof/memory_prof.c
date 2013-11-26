@@ -258,9 +258,9 @@ static int basic_sanity_tests(unsigned long size)
 		.flags	   = 0,
 	};
 
-	puts("testing system without caching (should fail)...");
-	lrc = !basic_ion_sanity_test(system_alloc_data, size);
-	puts(lrc ? "FAILED! (failed to fail)" : "PASSED (successfully failed)");
+	puts("testing system without caching...");
+	lrc = basic_ion_sanity_test(system_alloc_data, size);
+	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
 	rc |= lrc;
@@ -273,9 +273,9 @@ static int basic_sanity_tests(unsigned long size)
 	sleepy();
 	rc |= lrc;
 
-	puts("testing system contig without caching (should fail)...");
-	lrc = !basic_ion_sanity_test(system_contig_alloc_data, size);
-	puts(lrc ? "FAILED! (failed to fail)" : "PASSED (successfully failed)");
+	puts("testing system contig without caching...");
+	lrc = basic_ion_sanity_test(system_contig_alloc_data, size);
+	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
 	rc |= lrc;
