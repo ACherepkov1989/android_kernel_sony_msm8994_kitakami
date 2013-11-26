@@ -1051,7 +1051,8 @@ static int file_exists(const char const *fname)
 	"  -h         Print this message and exit\n"			\
 	"  -a         Do the adversarial test (same as -l)\n"		\
 	"  -b         Do basic sanity tests\n"				\
-	"  -z MB      Size (in MB) of buffer for basic sanity tests (default=1)\n" \
+	"  -z         Size (in bytes) of buffer for basic sanity tests\n" \
+	"             (default=1048576 (1MB))\n"			\
 	"  -e[REPS]   Do Ion heap profiling. Optionally specify number of reps\n" \
 	"             E.g.: -e10 would do 10 reps (default=100). The number\n" \
 	"             of reps is only used when the default allocation profile\n" \
@@ -1165,7 +1166,7 @@ int main(int argc, char *argv[])
 			sleepiness = atoi(optarg) * 1000;
 			break;
 		case 'z':
-			basic_sanity_size = atoi(optarg) * SZ_1M;
+			basic_sanity_size = atoi(optarg);
 			break;
 		case 'h':
 		default:
