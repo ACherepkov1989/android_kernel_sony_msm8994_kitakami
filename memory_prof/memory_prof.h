@@ -47,6 +47,7 @@
 #define MAX_ALLOC_PROFILE_WORD_LEN 80
 #define MAX_HEAP_ID_STRING_LEN 40
 #define MAX_PRINT_STRING_LEN (MAX_ALLOC_PROFILE_LINE_LEN - 10)
+#define MAX_ALLOC_ID_STRING_LEN 40
 #define MAX_FLAGS_STRING_LEN 100
 #define MAX_FLAGS 15
 #define MAX_SIZE_STRING_LEN 15
@@ -66,6 +67,8 @@ enum alloc_op_enum {
 	OP_ALLOC,
 	OP_SLEEP,
 	OP_PRINT,
+	OP_SIMPLE_ALLOC,
+	OP_SIMPLE_FREE,
 };
 
 struct alloc_profile_entry {
@@ -89,6 +92,18 @@ struct alloc_profile_entry {
 		struct print_op {
 			char text[MAX_PRINT_STRING_LEN];
 		} print_op;
+		struct simple_alloc_op {
+			char alloc_id[MAX_ALLOC_ID_STRING_LEN];
+			unsigned int heap_id;
+			char heap_id_string[MAX_HEAP_ID_STRING_LEN];
+			unsigned int flags;
+			char flags_string[MAX_FLAGS_STRING_LEN];
+			unsigned long size;
+			char size_string[MAX_SIZE_STRING_LEN];
+		} simple_alloc_op;
+		struct simple_free_op {
+			char alloc_id[MAX_ALLOC_ID_STRING_LEN];
+		} simple_free_op;
 	} u;
 };
 

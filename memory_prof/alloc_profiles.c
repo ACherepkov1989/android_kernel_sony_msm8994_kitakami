@@ -232,6 +232,14 @@ enum print_op_line_idx {
 	PRINT_LINE_IDX_TEXT = 1,
 };
 
+enum simple_alloc_op_line_idx {
+	SA_LINE_IDX_ALLOC_ID = 1,
+	SA_LINE_IDX_HEAP_ID,
+	SA_LINE_IDX_FLAGS,
+	SA_LINE_IDX_ALLOC_SIZE_BYTES,
+	SA_LINE_IDX_ALLOC_SIZE_LABEL,
+};
+
 /* how many more alloc profile entries to {re-,m}alloc when we need more */
 #define MORE_PROFILE_ENTRIES 30
 
@@ -339,6 +347,40 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 			STRNCPY_SAFE(new.u.print_op.text,
 				words[PRINT_LINE_IDX_TEXT],
 				MAX_PRINT_STRING_LEN);
+		} else if (0 == strcmp(words[0], "simple_alloc")) {
+			unsigned int heap_id;
+
+			new.op = OP_SIMPLE_ALLOC;
+			STRNCPY_SAFE(new.u.simple_alloc_op.alloc_id,
+				words[SA_LINE_IDX_ALLOC_ID],
+				MAX_ALLOC_ID_STRING_LEN);
+
+			if (find_heap_id_value(words[SA_LINE_IDX_HEAP_ID],
+						&heap_id))
+				errx(1, "Unknown heap_id: %s",
+					words[SA_LINE_IDX_HEAP_ID]);
+
+			new.u.simple_alloc_op.heap_id = ION_HEAP(heap_id);
+			STRNCPY_SAFE(new.u.simple_alloc_op.heap_id_string,
+				words[SA_LINE_IDX_HEAP_ID],
+				MAX_HEAP_ID_STRING_LEN);
+
+			new.u.simple_alloc_op.flags
+				= parse_flags(words[SA_LINE_IDX_FLAGS]);
+			STRNCPY_SAFE(new.u.simple_alloc_op.flags_string,
+				words[SA_LINE_IDX_FLAGS],
+				MAX_FLAGS_STRING_LEN);
+
+			STRTOL(new.u.simple_alloc_op.size,
+				words[SA_LINE_IDX_ALLOC_SIZE_BYTES], 0);
+			STRNCPY_SAFE(new.u.simple_alloc_op.size_string,
+				words[SA_LINE_IDX_ALLOC_SIZE_LABEL],
+				MAX_SIZE_STRING_LEN);
+		} else if (0 == strcmp(words[0], "simple_free")) {
+			new.op = OP_SIMPLE_FREE;
+			STRNCPY_SAFE(new.u.simple_free_op.alloc_id,
+				words[SA_LINE_IDX_ALLOC_ID],
+				MAX_ALLOC_ID_STRING_LEN);
 		} else {
 			errx(1, "Malformed line: `%s'", buf);
 		}

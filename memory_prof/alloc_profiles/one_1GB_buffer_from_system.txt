@@ -1,0 +1,5 @@
+simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x40000000,1GB
+print,Allocated one huge buffer (1GB) from the system heap.
+print,Now sleeping for 10 seconds for you to look at it.
+sleep,10000000
+simple_free,pizza
