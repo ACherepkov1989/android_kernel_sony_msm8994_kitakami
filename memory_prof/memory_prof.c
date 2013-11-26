@@ -203,6 +203,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 			printf("  Data integrity error at "
 				"offset 0x%lx from 0x%p!!!!\n", i, buf);
 			integrity_good = false;
+			rc = 1;
 		}
 	}
 	if (squelched)
@@ -228,7 +229,7 @@ out:
 	return rc;
 }
 
-static void basic_sanity_tests(unsigned long size)
+static int basic_sanity_tests(unsigned long size)
 {
 	int lrc, rc = 0;
 
@@ -281,6 +282,7 @@ static void basic_sanity_tests(unsigned long size)
 	else
 		puts("All basic sanity tests passed");
 
+	return rc;
 }
 
 static int do_map_extra_test(void)
@@ -554,28 +556,31 @@ out:
 	return rc;
 }
 
-static void map_extra_test(void)
+static int map_extra_test(void)
 {
 	int rc = 0;
 	puts("testing msm_iommu_map_extra...");
 	rc = do_map_extra_test();
 	if (rc) puts("FAILED!");
 	hr();
+	return rc;
 }
 
-static void profile_kernel_alloc(void)
+static int profile_kernel_alloc(void)
 {
 	int rc, memory_prof_fd;
 
 	memory_prof_fd = open(MEMORY_PROF_DEV, 0);
 	if (memory_prof_fd < 0) {
 		perror("couldn't open " MEMORY_PROF_DEV);
-		return;
+		return 1;
 	}
 	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_TEST_KERNEL_ALLOCS);
 	if (rc)
 		perror("couldn't do MEMORY_PROF_IOC_TEST_KERNEL_ALLOCS");
 	close(memory_prof_fd);
+
+	return rc;
 }
 
 static void print_stats_results(const char *name, const char *flags_label,
@@ -630,7 +635,7 @@ static void print_a_bunch_of_stats_results(const char *name,
 	print_stats_results(sbuf, flags_label, size_string, free_stats, reps);
 }
 
-static void heap_profiling(int pre_alloc_size, const int nreps,
+static int heap_profiling(int pre_alloc_size, const int nreps,
 			const char *alloc_profile_path)
 {
 	int max_reps = 0;
@@ -728,9 +733,10 @@ static void heap_profiling(int pre_alloc_size, const int nreps,
 	free(map_stats);
 	free(memset_stats);
 	free(free_stats);
+	return 0;
 }
 
-static void oom_test(void)
+static int oom_test(void)
 {
 	int rc, ionfd, cnt = 0;
 	struct ion_allocation_data alloc_data = {
@@ -750,7 +756,7 @@ static void oom_test(void)
 	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
 		perror("couldn't open " ION_DEV);
-		return;
+		return 1;
 	}
 
 
@@ -775,9 +781,11 @@ static void oom_test(void)
 		LIST_REMOVE(head.lh_first, nodes);
 		free(np);
 	}
+
+	return 0;
 }
 
-static void leak_test(void)
+static int leak_test(void)
 {
 	int ionfd;
 	struct ion_fd_data fd_data;
@@ -793,7 +801,7 @@ static void leak_test(void)
 	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
 		perror("couldn't open " ION_DEV);
-		return;
+		return 1;
 	}
 
 	alloc_me_up_some_ion(ionfd, &alloc_data);
@@ -814,6 +822,8 @@ static void leak_test(void)
 	puts("We will now sleep for 5 seconds for you to check");
 	puts("<debugfs>/ion/check_leaked_fds");
 	sleep(5);
+
+	return 0;
 }
 
 /**
@@ -913,7 +923,7 @@ out:
  * amount of time it takes to flush the destination buffer on a
  * cached->cached copy.
  */
-static void ion_memcpy_test(void)
+static int ion_memcpy_test(void)
 {
 	struct ion_allocation_data src_alloc_data, dst_alloc_data;
 	struct timeval tv;
@@ -962,13 +972,16 @@ static void ion_memcpy_test(void)
 		printf("Cached -> Cached: %.3fms (cache flush took %.3fms)\n",
 			time_elapsed_memcpy_ms, time_elapsed_flush_ms);
 	}
+
+	return 0;
 }
 
 /**
  * Memory throughput test. Print some stats.
  */
-static void mmap_memcpy_test(void)
+static int mmap_memcpy_test(void)
 {
+	int rc = 0;
 	char *chunk, *src, *dst;
 	struct timeval tv;
 	double *data_rates;
@@ -985,6 +998,7 @@ static void mmap_memcpy_test(void)
 		-1, 0);
 	if (chunk == MAP_FAILED) {
 		perror("Couldn't allocate 1MB buffer with mmap\n");
+		rc = 1;
 		goto free_data_rates;
 	}
 
@@ -997,6 +1011,7 @@ static void mmap_memcpy_test(void)
 	 */
 	if (mprotect(chunk, SZ_4K, PROT_NONE)) {
 		perror("Couldn't mprotect the first page of the 1MB buffer\n");
+		rc = 1;
 		goto munmap_chunk;
 	}
 
@@ -1035,6 +1050,8 @@ munmap_chunk:
 	munmap(chunk, chunk_len);
 free_data_rates:
 	free(data_rates);
+
+	return rc;
 }
 
 static int file_exists(const char const *fname)
@@ -1181,29 +1198,29 @@ int main(int argc, char *argv[])
 
 	if (do_basic_sanity_tests)
 		for (i = 0; i < num_reps; ++i)
-			basic_sanity_tests(basic_sanity_size);
+			rc |= basic_sanity_tests(basic_sanity_size);
 	if (do_map_extra_test)
 		for (i = 0; i < num_reps; ++i)
-			map_extra_test();
+			rc |= map_extra_test();
 	if (do_heap_profiling)
 		for (i = 0; i < num_reps; ++i)
-			heap_profiling(ion_pre_alloc_size,
-				num_heap_prof_reps, alloc_profile);
+			rc |= heap_profiling(ion_pre_alloc_size,
+					num_heap_prof_reps, alloc_profile);
 	if (do_kernel_alloc_profiling)
 		for (i = 0; i < num_reps; ++i)
-			profile_kernel_alloc();
+			rc |= profile_kernel_alloc();
 	if (do_oom_test)
 		for (i = 0; i < num_reps; ++i)
-			oom_test();
+			rc |= oom_test();
 	if (do_leak_test)
 		for (i = 0; i < num_reps; ++i)
-			leak_test();
+			rc |= leak_test();
 
 	if (do_ion_memcpy_test)
-		ion_memcpy_test();
+		rc |= ion_memcpy_test();
 
 	if (do_mmap_memcpy_test)
-		mmap_memcpy_test();
+		rc |= mmap_memcpy_test();
 
 	return rc;
 }
