@@ -142,7 +142,7 @@ static int alloc_and_map_some_ion(int ionfd,
 }
 
 static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
-				unsigned long size_mb)
+				unsigned long size)
 {
 	uint8_t *buf;
 	int ionfd, rc = 0;
@@ -171,7 +171,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 		goto err1;
 	}
 
-	buf = mmap(NULL, size_mb, PROT_READ | PROT_WRITE, MAP_SHARED,
+	buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		fd_data.fd, 0);
 
 	if (buf == MAP_FAILED) {
@@ -180,10 +180,10 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 		goto err2;
 	}
 
-	memset(buf, 0xA5, size_mb);
+	memset(buf, 0xA5, size);
 	flush_data.handle = alloc_data.handle;
 	flush_data.vaddr = buf;
-	flush_data.length = size_mb;
+	flush_data.length = size;
 	custom_data.cmd = ION_IOC_CLEAN_INV_CACHES;
 	custom_data.arg = (unsigned long) &flush_data;
 	if (ioctl(ionfd, ION_IOC_CUSTOM, &custom_data)) {
@@ -194,7 +194,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 		puts("flushed caches");
 	}
 
-	for (i = 0; i < size_mb; ++i) {
+	for (i = 0; i < size; ++i) {
 		if (buf[i] != 0xA5) {
 			if (!integrity_good) {
 				squelched++;
@@ -213,7 +213,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data,
 		printf("  Buffer integrity check succeeded\n");
 
 err3:
-	if (munmap(buf, size_mb)) {
+	if (munmap(buf, size)) {
 		rc = 1;
 		perror("couldn't do munmap");
 	}
@@ -228,7 +228,7 @@ out:
 	return rc;
 }
 
-static void basic_sanity_tests(unsigned long size_mb)
+static void basic_sanity_tests(unsigned long size)
 {
 	int lrc, rc = 0;
 
@@ -247,7 +247,7 @@ static void basic_sanity_tests(unsigned long size_mb)
 	};
 
 	puts("testing system without caching (should fail)...");
-	lrc = !basic_ion_sanity_test(system_alloc_data, size_mb);
+	lrc = !basic_ion_sanity_test(system_alloc_data, size);
 	puts(lrc ? "FAILED! (failed to fail)" : "PASSED (successfully failed)");
 	hr();
 	sleepy();
@@ -255,14 +255,14 @@ static void basic_sanity_tests(unsigned long size_mb)
 
 	puts("testing system with caching...");
 	system_alloc_data.flags |= ION_FLAG_CACHED;
-	lrc = basic_ion_sanity_test(system_alloc_data, size_mb);
+	lrc = basic_ion_sanity_test(system_alloc_data, size);
 	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
 	rc |= lrc;
 
 	puts("testing system contig without caching (should fail)...");
-	lrc = !basic_ion_sanity_test(system_contig_alloc_data, size_mb);
+	lrc = !basic_ion_sanity_test(system_contig_alloc_data, size);
 	puts(lrc ? "FAILED! (failed to fail)" : "PASSED (successfully failed)");
 	hr();
 	sleepy();
@@ -270,7 +270,7 @@ static void basic_sanity_tests(unsigned long size_mb)
 
 	puts("testing system contig with caching...");
 	system_contig_alloc_data.flags |= ION_FLAG_CACHED;
-	lrc = basic_ion_sanity_test(system_contig_alloc_data, size_mb);
+	lrc = basic_ion_sanity_test(system_contig_alloc_data, size);
 	puts(lrc ? "FAILED!" : "PASSED");
 	hr();
 	sleepy();
@@ -1087,7 +1087,7 @@ static struct option memory_prof_options[] = {
 int main(int argc, char *argv[])
 {
 	int rc = 0, i, opt;
-	unsigned long basic_sanity_size_mb = SZ_1M;
+	unsigned long basic_sanity_size = SZ_1M;
 	bool do_basic_sanity_tests = false;
 	bool do_heap_profiling = false;
 	bool do_kernel_alloc_profiling = false;
@@ -1165,7 +1165,7 @@ int main(int argc, char *argv[])
 			sleepiness = atoi(optarg) * 1000;
 			break;
 		case 'z':
-			basic_sanity_size_mb = atoi(optarg) * SZ_1M;
+			basic_sanity_size = atoi(optarg) * SZ_1M;
 			break;
 		case 'h':
 		default:
@@ -1180,7 +1180,7 @@ int main(int argc, char *argv[])
 
 	if (do_basic_sanity_tests)
 		for (i = 0; i < num_reps; ++i)
-			basic_sanity_tests(basic_sanity_size_mb);
+			basic_sanity_tests(basic_sanity_size);
 	if (do_map_extra_test)
 		for (i = 0; i < num_reps; ++i)
 			map_extra_test();
