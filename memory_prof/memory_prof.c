@@ -658,10 +658,10 @@ static int heap_profiling(int pre_alloc_size, const int nreps,
 			const char *alloc_profile_path)
 {
 	int max_reps = 0;
-	double *alloc_stats;
-	double *map_stats;
-	double *memset_stats;
-	double *free_stats;
+	double *alloc_stats = NULL;
+	double *map_stats = NULL;
+	double *memset_stats = NULL;
+	double *free_stats = NULL;
 	bool using_default = false;
 	struct alloc_profile_entry *pp;
 	struct alloc_profile_entry *alloc_profile;
@@ -686,14 +686,13 @@ static int heap_profiling(int pre_alloc_size, const int nreps,
 	for (pp = alloc_profile; pp->op != OP_NONE; ++pp)
 		if (pp->op == OP_ALLOC)
 			max_reps = MAX(max_reps, pp->u.alloc_op.reps);
-	if (max_reps == 0)
-		errx(1, "No data lines found in profile: %s",
-			alloc_profile_path);
 
-	MALLOC(double *, alloc_stats, sizeof(double) * max_reps);
-	MALLOC(double *, map_stats, sizeof(double) * max_reps);
-	MALLOC(double *, memset_stats, sizeof(double) * max_reps);
-	MALLOC(double *, free_stats, sizeof(double) * max_reps);
+	if (max_reps) {
+		MALLOC(double *, alloc_stats, sizeof(double) * max_reps);
+		MALLOC(double *, map_stats, sizeof(double) * max_reps);
+		MALLOC(double *, memset_stats, sizeof(double) * max_reps);
+		MALLOC(double *, free_stats, sizeof(double) * max_reps);
+	}
 
 	for (pp = alloc_profile; pp->op != OP_NONE; ++pp) {
 		int i;
