@@ -100,7 +100,7 @@ static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 		goto out;
 
 	iommu_inst->secure = 0;
-	if (!of_property_read_u32(iommu_node, "qcom,iommu-secure-id",&dummy))
+	if (!of_property_read_u32(iommu_node, "qti,iommu-secure-id", &dummy))
 		iommu_inst->secure = 1;
 
 	for_each_child_of_node(iommu_node, iommu_child) {
@@ -126,7 +126,7 @@ static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 
 			iommu_inst->cb_list[cb_idx].secure_context =
 					of_property_read_bool(iommu_child,
-					"qcom,secure-context");
+					"qti,secure-context");
 
 			++cb_idx;
 		}
@@ -179,7 +179,22 @@ static int iommu_find_iommus_available(struct msm_iommu_test *iommu_test)
 			iommu_test->iommu_rev = 1;
 		}
 		iommu_node = of_find_compatible_node(iommu_node, NULL,
-						     match_str);
+						match_str);
+	}
+
+	if (iommu_test->no_iommu == 0) {
+		match_str = "qti,msm-smmu-v1";
+
+		iommu_node = of_find_compatible_node(iommu_node, NULL,
+						match_str);
+		while (iommu_node) {
+			if (of_device_is_available(iommu_node)) {
+				++iommu_test->no_iommu;
+				iommu_test->iommu_rev = 0;
+			}
+			iommu_node = of_find_compatible_node(iommu_node, NULL,
+						match_str);
+		}
 	}
 
 	if (iommu_test->no_iommu == 0) {
