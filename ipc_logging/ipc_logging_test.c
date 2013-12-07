@@ -19,8 +19,8 @@
 #include <linux/delay.h>
 #include <linux/seq_file.h>
 
-#include <mach/msm_ipc_logging.h>
-#include "../mach-msm/ipc_logging.h"
+#include <linux/ipc_logging.h>
+#include "../../../kernel/trace/ipc_logging_private.h"
 
 /**
  * Unit test assertion for logging test cases.
