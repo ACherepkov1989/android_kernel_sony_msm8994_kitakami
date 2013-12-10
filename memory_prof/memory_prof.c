@@ -658,7 +658,7 @@ static LIST_HEAD(simple_alloc_list, simple_alloc_node) simple_alloc_head;
 
 struct simple_alloc_node {
 	char *alloc_id;
-	struct ion_handle *handle;
+	ion_user_handle_t handle;
 	LIST_ENTRY(simple_alloc_node) nodes;
 };
 
@@ -837,7 +837,7 @@ static int oom_test(void)
 	LIST_HEAD(handle_list, ion_handle_node) head;
 	struct handle_list *headp;
 	struct ion_handle_node {
-		struct ion_handle *handle;
+		ion_user_handle_t handle;
 		LIST_ENTRY(ion_handle_node) nodes;
 	} *np;
 	LIST_INIT(&head);
