@@ -76,6 +76,7 @@ fi
 cd $directory"/sink_switch" && sh sinkswitch.sh "--source $source"
 cd $directory"/sink_switch" && sh etr_modes.sh "--source $source"
 cd $directory"/profile" && sh cs_profile.sh "--source $source"
+cd $directory"/cti" && sh cti_test.sh
 }
 
 cs_adversary(){
@@ -144,6 +145,12 @@ for i in $(seq 1 $run)
 do
         cd $directory"/sink_switch" && sh etr_modes.sh "--source $source"
 done
+echo "Coresight cti test started"
+for i in $(seq 1 $run)
+do
+        cd $directory"/cti" && sh cti_test.sh
+done
+
 if [ $stm -eq 1 ] && [ $etm -eq 1 ]
 then
         echo "CoreSight adversarial repeat test started for $run iterations"
