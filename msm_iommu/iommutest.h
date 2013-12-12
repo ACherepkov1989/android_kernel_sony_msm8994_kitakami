@@ -39,7 +39,7 @@ struct target_struct {
 
 #define IOC_IOMMU_GET_NXT_IOMMU_CB _IOWR(MSM_IOMMU_MAGIC, 0, struct get_next_cb)
 #define IOC_IOMMU_GET_TARGET _IOR(MSM_IOMMU_MAGIC, 1, struct target_struct)
-#define IOC_IOMMU_TEST_IOMMU_VA2PA_HTW _IOWR(MSM_IOMMU_MAGIC, 2, \
+#define IOC_IOMMU_TEST_IOMMU_VA2PA _IOWR(MSM_IOMMU_MAGIC, 2, \
 						struct test_iommu)
 #define IOC_IOMMU_TEST_IOMMU_INT _IOWR(MSM_IOMMU_MAGIC, 3, \
 						struct test_iommu)

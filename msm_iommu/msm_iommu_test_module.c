@@ -399,7 +399,7 @@ static int test_map_phys(struct iommu_domain *domain,
 	return ret;
 }
 
-static int do_VA2PA_HTW(phys_addr_t pa, unsigned int sz, int domain_id,
+static int do_VA2PA(phys_addr_t pa, unsigned int sz, int domain_id,
 			struct iommu_domain *domain, const char *ctx_name)
 {
 	int ret;
@@ -434,7 +434,7 @@ const unsigned int MAP_SIZES[] = {SZ_4K, SZ_64K, SZ_2M, SZ_32M, SZ_1G};
 const unsigned int PAGE_LEVEL_SIZES[] = {SZ_2M, SZ_4K};
 
 
-int do_lpae_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+int do_lpae_VA2PA(int domain_id, struct iommu_domain *domain,
 		      const char *ctx_name)
 {
 	phys_addr_t pa = 0x100000000ULL;
@@ -442,7 +442,7 @@ int do_lpae_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
 	unsigned int i;
 
 	for(i = 0; i < ARRAY_SIZE(MAP_SIZES); ++i) {
-		ret = do_VA2PA_HTW(pa, MAP_SIZES[i], domain_id, domain,
+		ret = do_VA2PA(pa, MAP_SIZES[i], domain_id, domain,
 				   ctx_name);
 		if (ret)
 			goto out;
@@ -454,7 +454,7 @@ out:
 const unsigned int MAP_SIZES[] = {SZ_4K, SZ_64K, SZ_1M, SZ_16M};
 const unsigned int PAGE_LEVEL_SIZES[] = {SZ_1M, SZ_4K};
 
-int do_lpae_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+int do_lpae_VA2PA(int domain_id, struct iommu_domain *domain,
 		      const char *ctx_name)
 {
 	return 0;
@@ -585,7 +585,7 @@ out:
 	return ret;
 }
 
-static int do_advanced_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+static int do_advanced_VA2PA(int domain_id, struct iommu_domain *domain,
 			    const char *ctx_name)
 {
 	unsigned int i,j,k;
@@ -610,7 +610,7 @@ out:
 	return ret;
 }
 
-static int do_two_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+static int do_two_VA2PA(int domain_id, struct iommu_domain *domain,
 		const char *ctx_name)
 {
 	int ret;
@@ -654,27 +654,27 @@ out:
 	return ret;
 }
 
-static int do_basic_VA2PA_HTW(int domain_id, struct iommu_domain *domain,
+static int do_basic_VA2PA(int domain_id, struct iommu_domain *domain,
 		const char *ctx_name)
 {
 	int ret;
 	int i;
 
-	ret = do_two_VA2PA_HTW(domain_id, domain, ctx_name);
+	ret = do_two_VA2PA(domain_id, domain, ctx_name);
 	if (ret)
 		goto out;
 
-	ret = do_lpae_VA2PA_HTW(domain_id, domain, ctx_name);
+	ret = do_lpae_VA2PA(domain_id, domain, ctx_name);
 	if (ret) {
-		pr_err("%s: VA2PA LPAE HTW FAILED\n", __func__);
+		pr_err("%s: VA2PA LPAE FAILED\n", __func__);
 		goto out;
 	}
 
 	for(i = 0; i < ARRAY_SIZE(MAP_SIZES); ++i) {
-		ret = do_VA2PA_HTW(MAP_SIZES[i], MAP_SIZES[i], domain_id,
+		ret = do_VA2PA(MAP_SIZES[i], MAP_SIZES[i], domain_id,
 				   domain, ctx_name);
 		if (ret) {
-			pr_err("%s: VA2PA HTW for various page sizes FAILED\n",
+			pr_err("%s: VA2PA for various page sizes FAILED\n",
 				__func__);
 			goto out;
 		}
@@ -683,7 +683,7 @@ out:
 	return ret;
 }
 
-static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
+static int test_VA2PA(const struct msm_iommu_test *iommu_test,
 			  struct test_iommu *tst_iommu)
 {
 	int ret = 0;
@@ -714,7 +714,7 @@ static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 	}
 
 	pr_debug("Do basic test\n");
-	ret = do_basic_VA2PA_HTW(domain_id, domain, ctx_name);
+	ret = do_basic_VA2PA(domain_id, domain, ctx_name);
 	if (ret) {
 		/* Remap -EBUSY. This is used when context bank is busy */
 		if (ret == -EBUSY)
@@ -724,7 +724,7 @@ static int test_VA2PA_HTW(const struct msm_iommu_test *iommu_test,
 
 	if (!(tst_iommu->flags & TEST_FLAG_BASIC)) {
 		pr_debug("Do advanced test\n");
-		ret = do_advanced_VA2PA_HTW(domain_id, domain, ctx_name);
+		ret = do_advanced_VA2PA(domain_id, domain, ctx_name);
 		if (ret == -EBUSY)
 			ret = -EINVAL;
 	}
@@ -953,14 +953,14 @@ static long iommu_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			ret = 0;
 		break;
 	}
-	case IOC_IOMMU_TEST_IOMMU_VA2PA_HTW:
+	case IOC_IOMMU_TEST_IOMMU_VA2PA:
 	{
 		if (copy_from_user(&tst_iommu, (void __user *)arg, sizeof
 				   (tst_iommu)))
 			ret = -EFAULT;
 
 		if (!ret) {
-			ret = test_VA2PA_HTW(iommu_test, &tst_iommu);
+			ret = test_VA2PA(iommu_test, &tst_iommu);
 			if (copy_to_user((void __user *)arg, &tst_iommu,
 					 sizeof(tst_iommu)))
 				ret = -EFAULT;
