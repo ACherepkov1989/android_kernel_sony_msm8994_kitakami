@@ -737,7 +737,6 @@ unreg_dom:
 }
 
 #define CTX_SHIFT 12
-#define CTX_OFFSET 0x8000
 
 #define GET_GLOBAL_REG(reg, base) (readl_relaxed((base) + (reg)))
 
@@ -746,7 +745,7 @@ unreg_dom:
 
 #define SET_V1_CTX_REG(reg, base, ctx, val) \
 	writel_relaxed((val), \
-		((base) + CTX_OFFSET + (reg) + ((ctx) << CTX_SHIFT)))
+		((base) + (reg) + ((ctx) << CTX_SHIFT)))
 
 #define FSRRESTORE_V0	(0x024)
 #define FSRRESTORE_V1	(0x05C)
@@ -773,8 +772,8 @@ static int fault_handler(struct iommu_domain *domain,
 		SET_V0_CTX_REG(FSR_V0, drvdata->base, ctx_drvdata->num,
 			       0x4000000a);
 	} else if (int_data->iommu_test->iommu_rev >= 1) {
-		SET_V1_CTX_REG(FSR_V1, drvdata->base, ctx_drvdata->num,
-			       0x4000000a);
+		SET_V1_CTX_REG(FSR_V1, drvdata->cb_base, ctx_drvdata->num,
+				0x4000000a);
 	} else {
 		pr_err("%s: Unknown IOMMU rev: %d\n", __func__,
 			int_data->iommu_test->iommu_rev);
@@ -796,8 +795,9 @@ static int trigger_interrupt(struct device *dev, int iommu_rev)
 		SET_V0_CTX_REG(FSRRESTORE_V0, drvdata->base, ctx_drvdata->num,
 			       0x4000000a);
 	} else if (iommu_rev >= 1) {
-		SET_V1_CTX_REG(FSRRESTORE_V1, drvdata->base, ctx_drvdata->num,
-			       0x4000000a);
+		SET_V1_CTX_REG(FSRRESTORE_V1, drvdata->cb_base,
+				ctx_drvdata->num,
+				0x4000000a);
 	} else {
 		pr_err("%s: Unknown IOMMU rev: %d\n", __func__, iommu_rev);
 		ret = -ENODEV;
