@@ -43,7 +43,7 @@ stmpath="/sys/bus/coresight/devices/coresight-stm"
 tmcetfpath="/sys/bus/coresight/devices/coresight-tmc-etf"
 tmcetrpath="/sys/bus/coresight/devices/coresight-tmc-etr"
 tpiupath="/sys/bus/coresight/devices/coresight-tpiu"
-
+ctipath="/sys/bus/coresight/devices/coresight-cti"
 
 
 #===============================================================
