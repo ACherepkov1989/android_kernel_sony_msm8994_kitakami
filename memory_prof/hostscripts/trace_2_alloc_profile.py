@@ -57,11 +57,9 @@ ion_flags = {
     "ION_FLAG_CACHED": 1,
     "ION_FLAG_CACHED_NEEDS_SYNC": 2,
     "ION_FLAG_SECURE": (1 << ion_heaps['ION_HEAP_ID_RESERVED']['value']),
-    "ION_FLAG_FORCE_CONTIGUOUS": (1 << 30),
 }
 
 # some deprecated flags:
-ion_flags["ION_FORCE_CONTIGUOUS"] = ion_flags["ION_FLAG_FORCE_CONTIGUOUS"]
 ion_flags["ION_SECURE"] = ion_flags["ION_FLAG_SECURE"]
 
 # look up flag name from value:
