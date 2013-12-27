@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -52,13 +52,13 @@ static struct ion_test_data mm_heap_test = {
 	.size = 0x100000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
 	.flags = ION_FLAG_SECURE,
-	.heap_type_req = CP,
+	.heap_type_req = SECURE_DMA,
 };
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0x100000,
 	.size = 0x100000,
 	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.heap_type_req = CP,
+	.heap_type_req = SECURE_DMA,
 	.flags = 0,
 };
 

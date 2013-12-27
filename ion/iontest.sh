@@ -1,4 +1,4 @@
-# Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -32,18 +32,9 @@
 
 chmod 755 msm_iontest
 
-ion_test_mod_paths=(
-	/system/lib/modules
-	/usr/kernel-tests/ion
-	/kernel-tests/modules/lib/modules/$(uname -r)/extra
-)
-
-for p in ${ion_test_mod_paths[@]}; do
-	if [ -d $p ]; then
-		modpath=$p
-		break
-	fi
-done
+[ -d /system/lib/modules ] && modpath=/system/lib/modules
+[ -d /kernel-tests/modules/lib/modules/$(uname -r)/extra ] && modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
+[ -d /usr/kernel-tests/ion ] && modpath=/usr/kernel-tests/ion
 
 if [[ -z "$modpath" ]]; then
 	echo "Couldn't find a path to the kernel module. Bailing."

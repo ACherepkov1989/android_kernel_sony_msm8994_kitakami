@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -87,6 +87,7 @@ static int ion_find_heaps_available(void)
 	unsigned int i = 0;
 	int ret = 0;
 	unsigned int val = 0;
+	heap_list_len = 0;
 
 	ion_node = of_find_compatible_node(NULL, NULL, "qcom,msm-ion");
 
@@ -123,7 +124,8 @@ static int ion_find_heaps_available(void)
 				ret = of_property_read_u32(ion_child,
 						"qcom,memory-reservation-size", &val);
 				if (ret) {
-					heap_list[i].type = CP;
+					heap_list[i].type = SECURE_DMA;
+					ret = 0;
 				} else {
 					heap_list[i].size = val;
 					heap_list[i].type = CP_CARVEOUT;
@@ -136,7 +138,8 @@ static int ion_find_heaps_available(void)
 				ret = of_property_read_u32(ion_child,
 						"qcom,memory-reservation-size", &val);
 				if (ret) {
-					heap_list[i].type = 0;
+					heap_list[i].type = DMA;
+					ret = 0;
 				} else {
 					heap_list[i].size = val;
 					heap_list[i].type = CARVEOUT;
