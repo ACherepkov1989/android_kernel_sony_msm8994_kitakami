@@ -43,12 +43,11 @@ ion_heaps = {
     "ION_ADSP_HEAP_ID": {'value': 22, 'short': "adsp"},
     "ION_PIL1_HEAP_ID": {'value': 23, 'short': "pil_1"},
     "ION_SF_HEAP_ID": {'value': 24, 'short': "sf"},
-    "ION_IOMMU_HEAP_ID": {'value': 25, 'short': "iommu"},
+    "ION_SYSTEM_HEAP_ID": {'value': 25, 'short': "system"},
     "ION_PIL2_HEAP_ID": {'value': 26, 'short': "pil_2"},
     "ION_QSECOM_HEAP_ID": {'value': 27, 'short': "qsecom"},
     "ION_AUDIO_HEAP_ID": {'value': 28, 'short': "audio"},
     "ION_MM_FIRMWARE_HEAP_ID": {'value': 29, 'short': "mm_fw"},
-    "ION_SYSTEM_HEAP_ID": {'value': 30, 'short': "vmalloc"},
     "ION_HEAP_ID_RESERVED": {'value': 31, 'short': "reserved"},
 }
 
@@ -88,7 +87,7 @@ def convert_heap_id(heap_id_string):
     for heap_id, heap in ion_heaps.iteritems():
         if heap['short'] == heap_id_string:
             return heap_id
-    die("Unknown heap_name: %s" % heap_name)
+    die("Unknown heap_id: %s" % heap_id_string)
 
 
 def next_is_fallback(lines, idx):
