@@ -66,9 +66,9 @@ module_param_call(cpu_cntxt_test, apps_wdog_bark_cntxt_set, param_get_int,
 struct completion timeout_complete;
 static atomic_t cause_bark;
 
-static void keep_looping(void *arg)
+static void keep_looping(int arg)
 {
-	int cpu = (int)arg;
+	int cpu = arg;
 	pr_info("Executing on cpu %d\n",cpu);
 	atomic_inc(&cause_bark);
 	while(1);
@@ -93,7 +93,7 @@ static void keep_looping_2(struct work_struct *work)
  */
 static void cpu_cntx_work(struct work_struct *work)
 {
-	keep_looping((void *)get_cpu());
+	keep_looping(get_cpu());
 }
 
 static void apps_wdog_bark_cntxt_work(struct work_struct *work)
