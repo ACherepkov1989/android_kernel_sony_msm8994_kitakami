@@ -100,7 +100,7 @@ static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 		goto out;
 
 	iommu_inst->secure = 0;
-	if (!of_property_read_u32(iommu_node, "qti,iommu-secure-id", &dummy))
+	if (!of_property_read_u32(iommu_node, "qcom,iommu-secure-id", &dummy))
 		iommu_inst->secure = 1;
 
 	for_each_child_of_node(iommu_node, iommu_child) {
@@ -126,7 +126,7 @@ static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 
 			iommu_inst->cb_list[cb_idx].secure_context =
 					of_property_read_bool(iommu_child,
-					"qti,secure-context");
+					"qcom,secure-context");
 
 			++cb_idx;
 		}
@@ -170,30 +170,31 @@ static int iommu_find_iommus_available(struct msm_iommu_test *iommu_test)
 {
 	struct device_node *iommu_node  = NULL;
 	int ret = 0;
-	const char *match_str = "qcom,msm-smmu-v1";
+	const char *match_str = "qcom,msm-smmu-v2";
 
 	iommu_node = of_find_compatible_node(iommu_node, NULL,  match_str);
+
 	while (iommu_node) {
 		if (of_device_is_available(iommu_node)) {
 			++iommu_test->no_iommu;
-			iommu_test->iommu_rev = 1;
+			iommu_test->iommu_rev = 2;
 		}
 		iommu_node = of_find_compatible_node(iommu_node, NULL,
 						match_str);
 	}
 
 	if (iommu_test->no_iommu == 0) {
-		match_str = "qti,msm-smmu-v1";
+		match_str = "qcom,msm-smmu-v1";
 
 		iommu_node = of_find_compatible_node(iommu_node, NULL,
-						match_str);
+						     match_str);
 		while (iommu_node) {
 			if (of_device_is_available(iommu_node)) {
 				++iommu_test->no_iommu;
-				iommu_test->iommu_rev = 0;
+				iommu_test->iommu_rev = 1;
 			}
 			iommu_node = of_find_compatible_node(iommu_node, NULL,
-						match_str);
+							     match_str);
 		}
 	}
 
@@ -226,7 +227,7 @@ static int iommu_find_iommus_available(struct msm_iommu_test *iommu_test)
 			goto free_mem;
 
 	} else {
-		pr_debug("No IOMMUs found in target\n");
+		pr_info("No IOMMUs found in target\n");
 	}
 	goto out;
 
@@ -771,7 +772,7 @@ static int fault_handler(struct iommu_domain *domain,
 	if (int_data->iommu_test->iommu_rev == 0) {
 		SET_V0_CTX_REG(FSR_V0, drvdata->base, ctx_drvdata->num,
 			       0x4000000a);
-	} else if (int_data->iommu_test->iommu_rev == 1) {
+	} else if (int_data->iommu_test->iommu_rev >= 1) {
 		SET_V1_CTX_REG(FSR_V1, drvdata->base, ctx_drvdata->num,
 			       0x4000000a);
 	} else {
@@ -794,7 +795,7 @@ static int trigger_interrupt(struct device *dev, int iommu_rev)
 	if (iommu_rev == 0) {
 		SET_V0_CTX_REG(FSRRESTORE_V0, drvdata->base, ctx_drvdata->num,
 			       0x4000000a);
-	} else if (iommu_rev == 1) {
+	} else if (iommu_rev >= 1) {
 		SET_V1_CTX_REG(FSRRESTORE_V1, drvdata->base, ctx_drvdata->num,
 			       0x4000000a);
 	} else {
