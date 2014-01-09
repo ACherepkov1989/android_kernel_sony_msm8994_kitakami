@@ -246,7 +246,7 @@ int do_int_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 	return ret;
 }
 
-int do_va2pa_htw_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
+int do_va2pa_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 {
 	int ret = 0;
 	struct test_iommu tst_iommu;
@@ -257,26 +257,26 @@ int do_va2pa_htw_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 	tst_iommu.flags = do_basic_va2pa_test ? TEST_FLAG_BASIC : 0;
 
 	if (gnc->iommu_secure && !force) {
-		debug(INFO, PRINT_FORMAT ": Testing VA2PA (HTW): SKIPPED! (Secure)\n",
+		debug(INFO, PRINT_FORMAT ": Testing VA2PA: SKIPPED! (Secure)\n",
 		      gnc->iommu_name, gnc->cb_name);
 		*skipped = 1;
 		return 0;
 	}
 
-	ret = ioctl(iommu_test_fd, IOC_IOMMU_TEST_IOMMU_VA2PA_HTW, &tst_iommu);
+	ret = ioctl(iommu_test_fd, IOC_IOMMU_TEST_IOMMU_VA2PA, &tst_iommu);
 
 	if (ret) {
 		if (tst_iommu.ret_code == -EBUSY) {
-			debug(INFO, PRINT_FORMAT ": Testing VA2PA (HTW): SKIPPED! (CTX Busy)\n",
+			debug(INFO, PRINT_FORMAT ": Testing VA2PA: SKIPPED! (CTX Busy)\n",
 			      gnc->iommu_name, gnc->cb_name);
 			*skipped = 1;
 			ret = 0;
 		} else if (ret) {
-			debug(INFO, PRINT_FORMAT ": Testing VA2PA (HTW): FAILED! (%d)\n",
+			debug(INFO, PRINT_FORMAT ": Testing VA2PA: FAILED! (%d)\n",
 			     gnc->iommu_name, gnc->cb_name, tst_iommu.ret_code);
 		}
 	} else {
-		debug(INFO, PRINT_FORMAT ": Testing VA2PA (HTW): OK\n",
+		debug(INFO, PRINT_FORMAT ": Testing VA2PA: OK\n",
 		      gnc->iommu_name, gnc->cb_name);
 	}
 
@@ -347,7 +347,7 @@ struct test_results run_nominal_tests(void)
 			result.no_skipped += skipped;
 			++result.no_tests;
 
-			ret = do_va2pa_htw_test(iommu_test_fd, &gnc, &skipped);
+			ret = do_va2pa_test(iommu_test_fd, &gnc, &skipped);
 			if (ret)
 				++result.no_failed;
 
