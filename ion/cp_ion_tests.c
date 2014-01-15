@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -115,11 +115,6 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 		debug(ERR, "alloc buf failed\n");
 		goto cp_alloc_err;
 	}
-	rc = ioctl(ion_kernel_fd, IOC_ION_SEC, NULL);
-	if (rc) {
-		debug(INFO, "unable to secure heap\n");
-		goto cp_alloc_sec_err;
-	}
 	sec_alloc_data.len = test_data->size;
 	sec_alloc_data.heap_mask = test_data->heap_mask;
 	sec_alloc_data.flags = test_data->flags;
@@ -139,7 +134,6 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 	} else {
 		ioctl(ion_fd, ION_IOC_FREE, &sec_alloc_data.handle);
 	}
-	ioctl(ion_kernel_fd, IOC_ION_UNSEC, NULL);
 	if (test_type == ADV_TEST) {
 		fd_data.handle = alloc_data.handle;
 		rc = ioctl(ion_fd, ION_IOC_MAP, &fd_data);
@@ -263,12 +257,6 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 		debug(INFO, "Failed to allocate uspace ion buffer\n");
 		goto sec_map_alloc_err;
 	}
-	rc = ioctl(ion_kernel_fd, IOC_ION_SEC, NULL);
-	if (rc) {
-		debug(INFO, "unable to secure heap\n");
-		goto sec_map_alloc_err;
-	}
-	debug(INFO, "passed secure heap\n");
 	fd_data.handle = alloc_data.handle;
 	rc = ioctl(ion_fd, ION_IOC_MAP, &fd_data);
 	if (rc == 0) {
@@ -276,7 +264,7 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 			debug(ERR, "mapping buffer to uspace succeeded\n");
 			rc = -EIO;
 			close(fd_data.fd);
-			goto sec_map_err;
+			goto sec_map_alloc_err;
 		}
 	}
 	map_fd = fd_data.fd;
@@ -321,8 +309,6 @@ sec_map_kc_err:
 	close(fd_data.fd);
 sec_map_share_err:
 	munmap((void *)addr, alloc_data.len);
-sec_map_err:
-	ioctl(ion_kernel_fd, IOC_ION_UNSEC, NULL);
 sec_map_alloc_err:
 	ioctl(ion_fd, ION_IOC_FREE, &alloc_data.handle);
 	close(ion_kernel_fd);
