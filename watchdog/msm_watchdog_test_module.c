@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,7 +23,7 @@
 #include <asm/barrier.h>
 #include <asm/io.h>
 #include <asm-generic/sizes.h>
-#include <mach/scm.h>
+#include <soc/qcom/scm.h>
 
 #define REG_MPM2_WDOG_BASE		0xFC4AA000
 #define REG_OFFSET_MPM2_WDOG_RESET	0x0
