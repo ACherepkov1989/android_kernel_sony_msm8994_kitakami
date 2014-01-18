@@ -52,9 +52,6 @@ struct ion_heap_data {
 #define IOC_ION_UBUF_FLAGS	_IOR(MSM_ION_MAGIC, 10, unsigned long)
 #define IOC_ION_UBUF_SIZE	_IOR(MSM_ION_MAGIC, 11, unsigned long)
 
-#define IOC_ION_SEC	_IO(MSM_ION_MAGIC, 12)
-#define IOC_ION_UNSEC	_IO(MSM_ION_MAGIC, 13)
-
 #define IOC_ION_FIND_PROPER_HEAP _IOWR(MSM_ION_MAGIC, 14, struct ion_heap_data)
 
 

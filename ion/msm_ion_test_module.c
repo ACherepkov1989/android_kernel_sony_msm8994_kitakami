@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -323,24 +323,6 @@ static long ion_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			ret = -EIO;
 		} else
 			ret = 0;
-		break;
-	}
-	case IOC_ION_SEC:
-	{
-		ret = msm_ion_secure_heap(ION_CP_MM_HEAP_ID);
-		if (ret)
-			pr_info("unable to secure heap\n");
-		else
-			pr_info("able to secure heap\n");
-		break;
-	}
-	case IOC_ION_UNSEC:
-	{
-		ret = msm_ion_unsecure_heap(ION_CP_MM_HEAP_ID);
-		if (ret)
-			pr_info("unable to unsecure heap\n");
-		else
-			pr_info("able to unsecure heap\n");
 		break;
 	}
 	case IOC_ION_FIND_PROPER_HEAP:
