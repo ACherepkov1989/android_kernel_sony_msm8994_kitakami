@@ -10,6 +10,8 @@ enum ion_test_heap_type {
 	CARVEOUT,
 	CP_CARVEOUT,
 	CP,
+	DMA,
+	SECURE_DMA
 };
 
 struct ion_test_data {
