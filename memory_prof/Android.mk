@@ -13,9 +13,16 @@ include $(DLKM_DIR)/AndroidKernelModule.mk
 # the userspace test programs
 include $(CLEAR_VARS)
 LOCAL_MODULE := memory_prof
-LOCAL_CFLAGS += -Wno-missing-field-initializers -Werror -g
+LOCAL_CFLAGS += -Wno-missing-field-initializers -Werror -g -DALLOC_PROFILES_PATH=/data/kernel-tests/memory_prof_data/alloc_profiles
 LOCAL_STRIP_MODULE = false
-LOCAL_SRC_FILES += memory_prof.c alloc_profiles.c memory_prof_util.c
+LOCAL_SRC_FILES += memory_prof.c \
+	alloc_profiles.c \
+	memory_prof_util.c \
+	op-alloc.c \
+	op-print.c \
+	op-simple-ops.c \
+	op-sleep.c
+
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_SHARED_LIBRARIES := \
