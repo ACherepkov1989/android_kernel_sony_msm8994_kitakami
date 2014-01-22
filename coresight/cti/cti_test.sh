@@ -1,6 +1,6 @@
 #! /bin/sh --
 
-# Copyright (c) 2013, The Linux Foundation. All rights reserved.
+# Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -29,79 +29,74 @@
 
 # Script to test the QDSS CTI driver.
 echo "-----Coresight cti Test Starting-----"
-echo "--------------------------------------------"
+echo "-------------------------------------"
 source "$(dirname $0)/../cs_common.sh"
 
 CTI_MAX_TRIGGERS=8
 CTI_MAX_CHANNELS=4
-if [ !-d /sys/bus/coresight/devices ]; then
-    echo "/sys/bus/coresight/ don't exist"
-    return 1
-fi
 CTI_MAX_NUMBERS=`ls /sys/bus/coresight/devices | grep 'coresight-cti[0-8]'| wc -l`
-
 if [ $CTI_MAX_NUMBERS -lt 0 ]; then
-    echo "cti number is lower than zero"
-    return 1
+    echo "FAIL: No CTI device found"
+    exit 1
 fi
 
-let cti_number=$CTI_MAX_NUMBERS-1
-trig_rang=$( seq 1 $CTI_MAX_TRIGGERS)
-channel_rang=$( seq 1 $CTI_MAX_CHANNELS)
-f=0
-t=0
-if [ $t -lt $cti_number ]; then
+cti_number=$(($CTI_MAX_NUMBERS-1))
+cti_max_trig_index=$(($CTI_MAX_TRIGGERS-1))
+cti_max_ch_index=$(($CTI_MAX_CHANNELS-1))
+trig_rang=$( seq 0 $cti_max_trig_index)
+channel_rang=$( seq 0 $cti_max_ch_index)
+cti_index_rang=$( seq 0 $cti_number)
+
+#failure count
+fail_cnt=0
+for index in $cti_index_rang
+do
     for trig in $trig_rang
     do
         for channel in $channel_rang
         do
-            # start do map trigin to channel test
-            echo $trig $channel  >  $ctipath$t/map_trigin
-            trigin=`cat $ctipath$t/show_trigin | cut -b 4`
-            channelin=`cat $ctipath$t/show_trigin | cut -b 8`
-            if [ "$trig" == "$trigin" ] && [ "$channel" == "$channelin" ]; then
-                echo "succeed map trigin $trig to coresight-cti$t channel $channel"
-                #unmap trigin
-                echo $trig $channel > $ctipath$t/unmap_trigin
-                trigin=`cat $ctipath$t/show_trigin | cut -b 4`
-                channelin=`cat $ctipath$t/show_trigin | cut -b 8`
-                if [ "$trigin" = "" ] && [ "$channelin" = "" ]; then
-                    echo "succeed to unmap trigin $trig to coresight-cti$t channel $channel"
-                else
-                    echo "failed to unmap trigin $trig to coresight-cti$t channel $channel"
-                    let f=f+1
-                    echo 1 > $ctipath$t/reset
+            echo $trig $channel > $ctipath$index/map_trigin
+            trigin=`cat $ctipath$index/show_trigin | cut -b 4`
+            channelin=`cat $ctipath$index/show_trigin | cut -b 8`
+            if [ "$trig" -eq "$trigin" ] && [ "$channel" -eq "$channelin" ]; then
+                echo $trig $channel > $ctipath$index/unmap_trigin
+                trigin=`cat $ctipath$index/show_trigin | cut -b 4`
+                channelin=`cat $ctipath$index/show_trigin | cut -b 8`
+                if [ "$trigin" != "" ] || [ "$channelin" != "" ]; then
+                    echo "Failed to unmap coresight-cti$index trigin $trig to channel $channel"
+                    fail_cnt=$(($fail_cnt+1))
+                    echo 1 > $ctipath$index/reset
                 fi
             else
-                echo "Failed map trigin $trig to coresight-cti$t channel $channel"
-                let f=f+1
-                echo 1 > $ctipath$t/reset
+                echo "Failed to map coresight-cti$index trigin $trig to channel $channel"
+                fail_cnt=$(($fail_cnt+1))
+                echo 1 > $ctipath$index/reset
             fi
-            #start do map trigout to channel test
-            echo $trig $channel > $ctipath$t/map_trigout
-            trigout=`cat $ctipath$t/show_trigout | cut -b 4`
-            channelout=`cat $ctipath$t/show_trigout | cut -b 8`
-            if [ "$trig" == "$trigout" ] && [ "$channel" == "$channelout" ]; then
-                echo $trig $channel  >  $ctipath$t/unmap_trigout
-                trigout=`cat $ctipath$t/show_trigout | cut -b 4`
-                channelout=`cat $ctipath$t/show_trigout | cut -b 8`
-                if [ "$trigout" = "" ] && [ "$channelout" = "" ]; then
-                    echo "succeed to unmap trigout $trig to coresight-cti$t channel $channel"
-                else
-                    echo "failed to unmap trigout $trig to coresight-cti$t channel $channel"
-                    let f=f+1
-                    echo 1 > $ctipath$t/reset
+
+            echo $trig $channel > $ctipath$index/map_trigout
+            trigout=`cat $ctipath$index/show_trigout | cut -b 4`
+            channelout=`cat $ctipath$index/show_trigout | cut -b 8`
+            if [ "$trig" -eq "$trigout" ] && [ "$channel" -eq "$channelout" ]; then
+                echo $trig $channel > $ctipath$index/unmap_trigout
+                trigout=`cat $ctipath$index/show_trigout | cut -b 4`
+                channelout=`cat $ctipath$index/show_trigout | cut -b 8`
+                if [ "$trigout" != "" ] || [ "$channelout" != "" ]; then
+                    echo "Failed to unmap coresight-cti$index trigout $trig to channel $channel"
+                    fail_cnt=$(($fail_cnt+1))
+                    echo 1 > $ctipath$index/reset
                 fi
             else
-                echo "Fail map trigout $trig to coresight-cti$t channel $channel"
-                let f=f+1
-                echo 1 > $ctipath/reset
+                echo "Fail to map coresight-cti$index trigout $trig to channel $channel"
+                fail_cnt=$(($fail_cnt+1))
+                echo 1 > $ctipath$index/reset
             fi
         done
-        let let t=t+1
     done
-fi
-# $f count the map and unmap failed times
-if [ "$f" == "0" ]; then
+    index=$(($index+1))
+done
+
+if [ "$fail_cnt" -eq "0" ]; then
     echo "CTI map/unmap Test PASS "
+else
+    echo "CTI map/unamp Test FAIL "
 fi
