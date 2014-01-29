@@ -71,9 +71,18 @@ Appendix A: Allocation Profiles for memory_prof
         [rest...]
 
     The `op' field specifies what kind of operation this line
-    holds. Should be `alloc', `sleep', `print', `simple_alloc', or
-    `simple_free'. The remaining fields ([rest...])  are defined
-    differently for different values of `op'.
+    holds. The following operations are currently supported:
+
+        - alloc
+        - sleep
+        - print
+        - simple_alloc
+        - simple_free
+
+    Each operation is described in detail below.
+
+    The remaining fields ([rest...])  are defined differently for
+    different values of `op'.
 
     In all cases, all defined fields are *required* and cannot be left
     empty (e.g. `something,,other'). For example, if you don't have
