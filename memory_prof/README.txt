@@ -79,6 +79,8 @@ Appendix A: Allocation Profiles for memory_prof
         - simple_alloc
         - simple_free
         - alloc_pages
+        - create_unused_client
+        - free_all_unused_clients
 
     Each operation is described in detail below.
 
@@ -248,3 +250,17 @@ Appendix A: Allocation Profiles for memory_prof
           alloc_pages,1,MP_GFP_KERNEL|MP_GFP_ZERO
           alloc_pages,9,MP_GFP_KERNEL
           alloc_pages,9,MP_GFP_KERNEL|MP_GFP_ZERO
+
+    o `op' == create_unused_client
+
+      When `op' == create_unused_client, we will create a new Ion
+      client by opening /dev/ion. No allocations or any other work
+      whatsoever is performed. No other fields are used for this
+      op. This is useful for profiling the client creation and
+      destruction code.
+
+    o `op' == free_all_unused_clients
+
+      When `op' == free_all_unused_clients, all clients previously
+      created with create_unused_client are free'd by close()'ing all
+      file descriptors returned by the previous calls to open().
