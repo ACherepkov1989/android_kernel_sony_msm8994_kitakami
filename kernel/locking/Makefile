@@ -1,4 +1,4 @@
-obj-y += mutex.o semaphore.o rwsem.o lglock.o
+obj-y += mutex.o semaphore.o rwsem.o lglock.o mcs_spinlock.o
 
 ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_lockdep.o = -pg
