@@ -77,6 +77,7 @@ Appendix A: Allocation Profiles for memory_prof
         - sleep
         - print
         - simple_alloc
+        - simple_profile
         - simple_free
         - alloc_pages
         - create_unused_client
@@ -185,6 +186,17 @@ Appendix A: Allocation Profiles for memory_prof
 
       See `simple_free' for an example of how this can be used.
 
+    o `op' == simple_profile
+
+      When `op' == simple_profile, we iterate through all buffers
+      previously allocated with `simple_alloc' until we find one with
+      a matching alloc_id. We profile the first one we find with the
+      same algorithm as `op' == alloc.
+
+      The following remaining fields are defined:
+
+          alloc_id
+
     o `op' == simple_free
 
       When `op' == simple_free, an ION_IOC_FREE will be performed on
@@ -199,10 +211,11 @@ Appendix A: Allocation Profiles for memory_prof
         `simple_alloc'
 
       Here's an example of an allocation profile using
-      simple_alloc/simple_free:
+      simple_alloc/simple_profile/simple_free:
 
           simple_alloc,1,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
           simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+          simple_profile,pizza
           # there are now two Ion buffers allocated. Now free them both:
           simple_free,1
           simple_free,pizza

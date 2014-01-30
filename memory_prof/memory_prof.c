@@ -432,63 +432,89 @@ int alloc_mem_list(char **alloc_list, int sizemb)
  * @map_ms - [output] time taken (in MS) to complete the ION_IOC_MAP + mmap
  * @memset_ms - [output] time taken (in MS) to memset the Ion buffer
  * @free_ms - [output] time taken (in MS) to complete the ION_IOC_FREE
+ * @do_pre_alloc - whether or not we should do a "pre-allocation"
+ * @handle - an Ion handle to use for profiling. If 0, a buffer will be
+ *           allocated for you.
+ * @ionfd - fd to /dev/ion to be used (needed if you're passing in a
+ *          handle). Pass -1 to open /dev/ion and get a new client.
+ * @do_free - whether or not we should free the handle when we're done with it
  *
  * Returns 0 on success, 1 on failure.
  */
-int profile_alloc_for_heap(unsigned int heap_mask,
+int do_profile_alloc_for_heap(unsigned int heap_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
-			double *memset_ms, double *free_ms)
+			double *memset_ms, double *free_ms,
+			bool do_pre_alloc, ion_user_handle_t handle,
+			int ionfd, bool do_free)
 {
-	int ionfd, rc = 0, rc2;
+	int rc = 0, rc2;
 	uint8_t *buf = MAP_FAILED;
 	struct ion_fd_data fd_data;
 	struct timeval tv_before, tv_after, tv_result;
-	struct ion_allocation_data alloc_data = {
-		.align	   = SZ_4K,
-		.len	   = size,
-		.heap_mask = heap_mask,
-		.flags	   = flags,
-	};
-	char *pre_alloc_list[MAX_PRE_ALLOC_SIZE];
-	memset(pre_alloc_list, 0, MAX_PRE_ALLOC_SIZE * sizeof(char *));
+	char **pre_alloc_list = NULL;
+	bool need_to_close_ionfd = true;
 
-	*alloc_ms = 0;
-	*free_ms = 0;
+	if (do_pre_alloc) {
+		char *plist[MAX_PRE_ALLOC_SIZE];
+		memset(plist, 0, MAX_PRE_ALLOC_SIZE * sizeof(char *));
+		if (alloc_mem_list(plist, ion_pre_alloc_size) < 0) {
+			rc = 1;
+			perror("couldn't create pre-allocated buffer");
+			goto out;
+		}
+		pre_alloc_list = plist;
+	}
+
+	if (alloc_ms)
+		*alloc_ms = 0;
+	if (free_ms)
+		*free_ms = 0;
 	if (map_ms) *map_ms = 0;
 	if (memset_ms) *memset_ms = 0;
 
-	if (alloc_mem_list(pre_alloc_list, ion_pre_alloc_size) < 0) {
-		rc = 1;
-		perror("couldn't create pre-allocated buffer");
-		goto out;
-	}
-
-	ionfd = open(ION_DEV, O_RDONLY);
 	if (ionfd < 0) {
-		rc = 1;
-		perror("couldn't open " ION_DEV);
-		goto free_mem_list;
+		ionfd = open(ION_DEV, O_RDONLY);
+		if (ionfd < 0) {
+			rc = 1;
+			perror("couldn't open " ION_DEV);
+			goto free_mem_list;
+		}
+	} else {
+		need_to_close_ionfd = false;
 	}
 
-	rc = gettimeofday(&tv_before, NULL);
-	if (rc) {
-		perror("couldn't get time of day");
-		goto close_ion;
-	}
 
-	rc2 = ioctl(ionfd, ION_IOC_ALLOC, &alloc_data);
-	rc = gettimeofday(&tv_after, NULL);
-	if (rc2) {
-		rc = rc2;
-		goto close_ion;
-	}
-	if (rc) {
-		perror("couldn't get time of day");
-		goto free;
-	}
+	if (!handle) {
+		struct ion_allocation_data alloc_data = {
+			.align	   = SZ_4K,
+			.len	   = size,
+			.heap_mask = heap_mask,
+			.flags	   = flags,
+		};
 
-	*alloc_ms = timeval_ms_diff(tv_after, tv_before);
+		rc = gettimeofday(&tv_before, NULL);
+		if (rc) {
+			perror("couldn't get time of day");
+			goto close_ion;
+		}
+
+		rc2 = ioctl(ionfd, ION_IOC_ALLOC, &alloc_data);
+		rc = gettimeofday(&tv_after, NULL);
+		if (rc2) {
+			rc = rc2;
+			goto close_ion;
+		}
+		if (rc) {
+			perror("couldn't get time of day");
+			goto free;
+		}
+
+		handle = alloc_data.handle;
+
+		if (alloc_ms)
+			*alloc_ms = timeval_ms_diff(tv_after, tv_before);
+	}
 
 	if (map_ms) {
 		rc = gettimeofday(&tv_before, NULL);
@@ -497,7 +523,7 @@ int profile_alloc_for_heap(unsigned int heap_mask,
 			goto free;
 		}
 
-		fd_data.handle = alloc_data.handle;
+		fd_data.handle = handle;
 
 		rc = ioctl(ionfd, ION_IOC_MAP, &fd_data);
 		if (rc) {
@@ -557,21 +583,43 @@ fd_data_close:
 	if (rc)
 		perror("couldn't get time of day");
 free:
-	ioctl(ionfd, ION_IOC_FREE, &alloc_data.handle);
-	rc2 = gettimeofday(&tv_after, NULL);
-	if (!rc) {
-		if (rc2) {
-			perror("couldn't get time of day");
-			goto close_ion;
+	if (do_free) {
+		struct ion_handle_data handle_data;
+		handle_data.handle = handle;
+		ioctl(ionfd, ION_IOC_FREE, &handle_data);
+		rc2 = gettimeofday(&tv_after, NULL);
+		if (!rc) {
+			if (rc2) {
+				perror("couldn't get time of day");
+				goto close_ion;
+			}
+			*free_ms = timeval_ms_diff(tv_after, tv_before);
 		}
-		*free_ms = timeval_ms_diff(tv_after, tv_before);
 	}
 close_ion:
-	close(ionfd);
+	if (need_to_close_ionfd)
+		close(ionfd);
 free_mem_list:
-	free_mem_list(pre_alloc_list);
+	if (do_pre_alloc)
+		free_mem_list(pre_alloc_list);
 out:
 	return rc;
+}
+
+/**
+ * Allocates an Ion buffer and profiles it. See
+ * `do_profile_alloc_for_heap'.
+ *
+ * Returns 0 on success, 1 on failure.
+ */
+int profile_alloc_for_heap(unsigned int heap_mask,
+			unsigned int flags, unsigned int size,
+			double *alloc_ms, double *map_ms,
+			double *memset_ms, double *free_ms)
+{
+	return do_profile_alloc_for_heap(
+		heap_mask, flags, size, alloc_ms, map_ms, memset_ms, free_ms,
+		true, 0, -1, true);
 }
 
 static int map_extra_test(void)
@@ -601,9 +649,9 @@ static int profile_kernel_alloc(void)
 	return rc;
 }
 
-static void print_stats_results(const char *name, const char *flags_label,
-				const char *size_string,
-				double stats[], int reps)
+void print_stats_results(const char *name, const char *flags_label,
+			const char *size_string,
+			double stats[], int reps)
 {
 	int i;
 	struct timeval tv;

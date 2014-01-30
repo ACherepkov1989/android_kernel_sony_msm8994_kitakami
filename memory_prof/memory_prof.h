@@ -82,10 +82,19 @@ struct alloc_profile_entry {
 struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path);
 struct alloc_profile_entry *get_default_alloc_profile(void);
 extern int ion_pre_alloc_size;
+int do_profile_alloc_for_heap(unsigned int heap_mask,
+			unsigned int flags, unsigned int size,
+			double *alloc_ms, double *map_ms,
+			double *memset_ms, double *free_ms,
+			bool do_pre_alloc, ion_user_handle_t handle,
+			int ionfd, bool do_free);
 int profile_alloc_for_heap(unsigned int heap_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
 			double *memset_ms, double *free_ms);
+void print_stats_results(const char *name, const char *flags_label,
+			const char *size_string,
+			double stats[], int reps);
 void print_a_bunch_of_stats_results(const char *name,
 				const char *flags_label,
 				const char *size_string,

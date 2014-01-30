@@ -43,6 +43,7 @@ static LIST_HEAD(simple_alloc_list, simple_alloc_node) simple_alloc_head;
 struct simple_alloc_node {
 	char *alloc_id;
 	ion_user_handle_t handle;
+	struct simple_alloc_op *simple_alloc_op;
 	LIST_ENTRY(simple_alloc_node) nodes;
 };
 
@@ -130,6 +131,7 @@ static int op_simple_alloc_run(struct alloc_profile_entry *entry)
 
 	np->handle = alloc_data.handle;
 	np->alloc_id = op->alloc_id;
+	np->simple_alloc_op = op;
 	LIST_INSERT_HEAD(&simple_alloc_head, np, nodes);
 	return 0;
 }
@@ -184,3 +186,74 @@ static struct alloc_profile_ops simple_free_ops = {
 
 ALLOC_PROFILE_OP_SIZED(&simple_free_ops, simple_free,
 		sizeof(struct simple_free_op));
+
+struct simple_profile_op {
+	char alloc_id[MAX_ALLOC_ID_STRING_LEN];
+};
+
+static int op_simple_profile_parse(struct alloc_profile_entry *entry,
+				struct line_info *li)
+{
+	struct simple_profile_op *op = (struct simple_profile_op *) entry->priv;
+	STRNCPY_SAFE(op->alloc_id, li->words[1], MAX_ALLOC_ID_STRING_LEN);
+	return 0;
+}
+
+static int op_simple_profile_run(struct alloc_profile_entry *entry)
+{
+	int i, ret;
+	double map_ms, memset_ms;
+	unsigned long size;
+	ion_user_handle_t handle;
+	char sbuf[70], *heap_id_string = NULL, *flags_string, *size_string;
+	struct simple_profile_op *op = (struct simple_profile_op *) entry->priv;
+	struct simple_alloc_node *np;
+
+	heap_id_string = flags_string = size_string = NULL;
+
+	/* find the parameters that were used for allocation */
+	for (np = simple_alloc_head.lh_first;
+	     np != NULL;
+	     np = np->nodes.le_next) {
+		if (strcmp(np->alloc_id, op->alloc_id))
+			continue;
+		heap_id_string = np->simple_alloc_op->heap_id_string;
+		flags_string = np->simple_alloc_op->flags_string;
+		size_string = np->simple_alloc_op->size_string;
+		size = np->simple_alloc_op->size;
+		handle = np->handle;
+	}
+	if (!heap_id_string) {
+		warnx("Couldn't find a simple allocation with id %s. Bailing.",
+			op->alloc_id);
+		return 1;
+	}
+
+	ret = do_profile_alloc_for_heap(
+		0, 0, size, NULL, &map_ms, &memset_ms, NULL,
+		false, handle, simple_ion_fd, false);
+
+	if (ret) {
+		warn("Couldn't profile %s. Bailing.",
+			op->alloc_id);
+		return 1;
+	}
+
+	snprintf(sbuf, 70, "mmap %s", heap_id_string);
+	print_stats_results(sbuf, flags_string, size_string, &map_ms, 1);
+
+	snprintf(sbuf, 70, "memset %s", heap_id_string);
+	print_stats_results(sbuf, flags_string, size_string, &memset_ms, 1);
+
+	putchar('\n');
+	fflush(stdout);
+	return 0;
+}
+
+static struct alloc_profile_ops simple_profile_ops = {
+	.parse = op_simple_profile_parse,
+	.run = op_simple_profile_run,
+};
+
+ALLOC_PROFILE_OP_SIZED(&simple_profile_ops, simple_profile,
+		sizeof(struct simple_profile_op));
