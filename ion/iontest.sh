@@ -33,7 +33,7 @@
 chmod 755 msm_iontest
 
 [ -d /system/lib/modules ] && modpath=/system/lib/modules
-[ -d /kernel-tests/modules/lib/modules/$(uname -r)/extra ] && modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
+[ -d /kernel-tests/modules/lib/modules/$(uname -r 2>/dev/null)/extra ] && modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
 [ -d /usr/kernel-tests/ion ] && modpath=/usr/kernel-tests/ion
 
 if [[ -z "$modpath" ]]; then
