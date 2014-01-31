@@ -1,6 +1,6 @@
 #! /bin/sh --
 
-# Copyright (c) 2013, The Linux Foundation. All rights reserved.
+# Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -66,7 +66,7 @@ then
         cd $directory"/stm" && sh stm_disable.sh
         cd $directory"/stm" && sh stm_etf_dump.sh
         cd $directory"/stm" && sh stm_etr_dump.sh
-        cd $directory"/byte-cntr" && sh byte_cntr.sh
+        cd $directory"/byte-cntr" && sh byte_cntr.sh "--source $source"
 fi
 if [ $stm -eq 1 ] && [ $etm -eq 1 ]
 then

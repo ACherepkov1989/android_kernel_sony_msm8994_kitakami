@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# Copyright (c) 2013, The Linux Foundation. All rights reserved.
+# Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -31,12 +31,19 @@
 echo "-----Coresight Byte Counter Test Starting-----"
 echo "--------------------------------------------"
 source "$(dirname $0)/../cs_common.sh"
+if [[ -z "$source" ]]
+then
+        source="all"
+fi
 data_size=262144
 stm_hwevent=$stmpath"/hwevent_enable"
 if [ -e "/dev/coresight-tmc-etr-stream" ]
 then
 	stm_disable
-	etm_disable_all_cores
+	if [[ $source != "stm" ]]
+	then
+		etm_disable_all_cores
+	fi
 	# Configure byte counter to generate interrupts after each 1KB of data
 	echo 0x80 > $tmcetrpath"/byte_cntr_value"
 	# Make etr current trace sink
