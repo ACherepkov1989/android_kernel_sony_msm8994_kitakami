@@ -41,7 +41,7 @@ if [[ -z "$modpath" ]]; then
 	exit 1
 fi
 
-ion_test_mod=${modpath}/msm_ion_test_module.ko
+ion_test_mod=${modpath}/msm_ion_test_mod.ko
 ion_dev=/dev/ion
 ion_dev_misc=/sys/class/misc/ion/dev
 ion_test_dev=/dev/msm_ion_test

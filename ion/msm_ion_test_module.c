@@ -25,6 +25,7 @@
 #include <linux/of_device.h>
 
 #include "iontest.h"
+#include "compat_msm_ion_test_module.h"
 
 #define ION_TEST_DEV_NAME "msm_ion_test"
 #define CLIENT_NAME "ion_test_client"
@@ -248,7 +249,7 @@ static long ion_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		ret = ion_phys(ion_test->ion_client, ion_test->ion_handle,
 							&phys_addr, &len);
 		if (!ret)
-			pr_info("size is 0x%x\n phys addr 0x%x", len,
+			pr_info("size is 0x%zx\n phys addr 0x%x", len,
 						(unsigned int)phys_addr);
 		break;
 	}
@@ -368,6 +369,7 @@ static int ion_test_release(struct inode *inode, struct file *file)
 static const struct file_operations ion_test_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = ion_test_ioctl,
+	.compat_ioctl = compat_ion_test_ioctl,
 	.open = ion_test_open,
 	.release = ion_test_release,
 };

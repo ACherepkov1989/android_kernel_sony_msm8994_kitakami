@@ -6,7 +6,7 @@ dist_ion_SCRIPTS	= iontest.sh run.sh
 
 KERNEL_FLAGS ?= ARCH=arm
 
-module = msm_ion_test_module.ko
+module = msm_ion_test_mod.ko
 kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
 $(module):
