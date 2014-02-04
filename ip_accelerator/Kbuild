@@ -1,0 +1,2 @@
+obj-m := ipa_test_module.o
+ipa_test_module-objs := ipa_test_module_impl.o ipa_rm_ut.o
