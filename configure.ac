@@ -15,6 +15,7 @@ AC_PROG_LIBTOOL
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+AC_PROG_CXX
 
 AC_ARG_WITH(sanitized-headers,
 	AS_HELP_STRING([--with-sanitized-headers=DIR],
@@ -86,6 +87,8 @@ ENABLE_KERNEL_TEST([ocmem],[include the ocmem test (default=yes)])
 # iommu
 ENABLE_KERNEL_TEST([iommu],[include the iommu test (default=yes)])
 
+# ip_accelerator
+ENABLE_KERNEL_TEST([ip_accelerator],[include the ip_accelerator test (default=yes)])
 
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
@@ -101,5 +104,6 @@ AC_CONFIG_FILES([
 	sps/Makefile
 	v4l2apps/Makefile
 	watchdog/Makefile
+	ip_accelerator/Makefile
 	])
 AC_OUTPUT
