@@ -105,5 +105,7 @@ void print_a_bunch_of_stats_results(const char *name,
 				int reps);
 int alloc_me_up_some_ion(int ionfd,
 			struct ion_allocation_data *alloc_data);
+int do_basic_ion_sanity_test(int ionfd, ion_user_handle_t handle,
+			unsigned long size);
 
 #endif /* __MEMORY_PROF_H__ */

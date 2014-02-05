@@ -1,8 +1,12 @@
 simple_alloc,1,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
 simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+simple_basic_sanity,1
+simple_basic_sanity,pizza
 simple_profile,1
 simple_profile,pizza
-print,Allocated and profiled two buffers from the system heap.
+# TODO: support printing commas so I can fix up this grammar:
+print,Allocated and did basic sanity testing and profiling of two buffers
+print,from the system heap.
 print,Now sleeping for 5 seconds for you to look at them.
 sleep,5000000
 simple_free,1

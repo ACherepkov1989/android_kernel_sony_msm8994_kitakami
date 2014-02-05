@@ -199,6 +199,19 @@ static int op_simple_profile_parse(struct alloc_profile_entry *entry,
 	return 0;
 }
 
+static struct simple_alloc_node *find_by_alloc_id(char *alloc_id)
+{
+	struct simple_alloc_node *np;
+	/* find the parameters that were used for allocation */
+	for (np = simple_alloc_head.lh_first;
+	     np != NULL;
+	     np = np->nodes.le_next) {
+		if (!strcmp(np->alloc_id, alloc_id))
+			return np;
+	}
+	return NULL;
+}
+
 static int op_simple_profile_run(struct alloc_profile_entry *entry)
 {
 	int i, ret;
@@ -212,22 +225,17 @@ static int op_simple_profile_run(struct alloc_profile_entry *entry)
 	heap_id_string = flags_string = size_string = NULL;
 
 	/* find the parameters that were used for allocation */
-	for (np = simple_alloc_head.lh_first;
-	     np != NULL;
-	     np = np->nodes.le_next) {
-		if (strcmp(np->alloc_id, op->alloc_id))
-			continue;
-		heap_id_string = np->simple_alloc_op->heap_id_string;
-		flags_string = np->simple_alloc_op->flags_string;
-		size_string = np->simple_alloc_op->size_string;
-		size = np->simple_alloc_op->size;
-		handle = np->handle;
-	}
-	if (!heap_id_string) {
+	np = find_by_alloc_id(op->alloc_id);
+	if (!np) {
 		warnx("Couldn't find a simple allocation with id %s. Bailing.",
 			op->alloc_id);
 		return 1;
 	}
+	heap_id_string = np->simple_alloc_op->heap_id_string;
+	flags_string = np->simple_alloc_op->flags_string;
+	size_string = np->simple_alloc_op->size_string;
+	size = np->simple_alloc_op->size;
+	handle = np->handle;
 
 	ret = do_profile_alloc_for_heap(
 		0, 0, size, NULL, &map_ms, &memset_ms, NULL,
@@ -257,3 +265,46 @@ static struct alloc_profile_ops simple_profile_ops = {
 
 ALLOC_PROFILE_OP_SIZED(&simple_profile_ops, simple_profile,
 		sizeof(struct simple_profile_op));
+
+struct simple_basic_sanity_op {
+	char alloc_id[MAX_ALLOC_ID_STRING_LEN];
+};
+
+static int op_simple_basic_sanity_parse(struct alloc_profile_entry *entry,
+				struct line_info *li)
+{
+	struct simple_basic_sanity_op *op =
+		(struct simple_basic_sanity_op *) entry->priv;
+	STRNCPY_SAFE(op->alloc_id, li->words[1], MAX_ALLOC_ID_STRING_LEN);
+	return 0;
+}
+
+static int op_simple_basic_sanity_run(struct alloc_profile_entry *entry)
+{
+	struct simple_basic_sanity_op *op =
+		(struct simple_basic_sanity_op *) entry->priv;
+	struct simple_alloc_node *np;
+
+	np = find_by_alloc_id(op->alloc_id);
+	if (!np) {
+		warnx("Couldn't find a simple allocation with id %s. Bailing.",
+			op->alloc_id);
+		return 1;
+	}
+
+	if (do_basic_ion_sanity_test(simple_ion_fd, np->handle,
+					np->simple_alloc_op->size)) {
+		warnx("Basic sanity test on %s failed!", op->alloc_id);
+		return 1;
+	}
+
+	return 0;
+}
+
+static struct alloc_profile_ops simple_basic_sanity_ops = {
+	.parse = op_simple_basic_sanity_parse,
+	.run = op_simple_basic_sanity_run,
+};
+
+ALLOC_PROFILE_OP_SIZED(&simple_basic_sanity_ops, simple_basic_sanity,
+		sizeof(struct simple_basic_sanity_op));
