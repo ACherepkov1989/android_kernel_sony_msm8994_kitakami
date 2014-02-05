@@ -712,26 +712,147 @@ void print_a_bunch_of_stats_results(const char *name,
 	print_stats_results(sbuf, flags_label, size_string, free_stats, reps);
 }
 
-static int heap_profiling(const char *alloc_profile_path)
+struct string_reader_getline_data {
+	char **lines;
+	int nlines;
+	int linum;
+};
+
+static const char *alloc_profile_string_reader_getline(
+	struct alloc_profile_reader *reader)
 {
-	struct alloc_profile_entry *alloc_profile, *entry;
-	struct alloc_profile_handler *iter;
-	int rc = 0;
+	struct string_reader_getline_data *data = reader->priv;
+	if (data->linum > data->nlines)
+		return NULL;
+	return data->lines[data->linum++ - 1];
+}
+
+static struct alloc_profile_entry *get_alloc_profile_from_string(
+	const char *eval_program)
+{
+	const char *tmp;
+	char **lines;
+	struct alloc_profile_entry *alloc_profile;
+	struct alloc_profile_reader reader;
+	struct string_reader_getline_data reader_data;
+	int nlines = 1, i;
+
+	for (tmp = eval_program; *tmp != '\0'; ++tmp) {
+		if (*tmp == ';')
+			nlines++;
+	}
+
+	MALLOC(char **, lines, sizeof(*lines) * nlines);
+
+	for (i = 0; i < nlines; ++i)
+		MALLOC(char *, lines[i], MAX_ALLOC_PROFILE_LINE_LEN);
+
+	i = split_string(eval_program, ';', lines, MAX_ALLOC_PROFILE_LINE_LEN);
+	if (i != nlines) {
+		warn("Error parsing --eval program! Expected %d lines, got %d",
+			nlines, i);
+		return NULL;
+	}
+
+	reader.getline = alloc_profile_string_reader_getline;
+	reader.priv = &reader_data;
+	reader_data.lines = lines;
+	reader_data.nlines = nlines;
+	reader_data.linum = 1;
 
 	/**
 	 * get_alloc_profile will run the necessary .ctor and
 	 * .parse callbacks to build up an array of
 	 * alloc_profile_entry objects
 	 */
+	alloc_profile = get_alloc_profile(&reader);
+
+	if (!alloc_profile)
+		warnx("Couldn't parse --eval program");
+
+	for (i = 0; i < nlines; ++i)
+		free(lines[i]);
+
+	free(lines);
+
+	return alloc_profile;
+}
+
+struct file_reader_getline_data {
+	char *buf;
+	FILE *fp;
+	int linum;
+	const char const *path;
+};
+
+static const char *alloc_profile_file_reader_getline(
+	struct alloc_profile_reader *reader)
+{
+	char *buf;
+	struct file_reader_getline_data *data = reader->priv;
+
+	for (;;) {
+		buf = fgets(data->buf, MAX_ALLOC_PROFILE_LINE_LEN, data->fp);
+		if (!buf) {
+			if (!feof(data->fp))
+				err(1, "Error reading line %d from %s",
+					data->linum, data->path);
+			return NULL;
+		}
+		if (!(buf[0] == '#' || buf[0] == '\n' || buf[0] == '\r'))
+			break;
+	}
+	data->linum++;
+	/* strip off trailing newline */
+	data->buf[strlen(data->buf) - 1] = '\0';
+	return data->buf;
+}
+
+static struct alloc_profile_entry *get_alloc_profile_from_file(
+	const char *alloc_profile_path)
+{
+	struct alloc_profile_entry *alloc_profile;
+	struct file_reader_getline_data reader_data;
+	struct alloc_profile_reader reader;
+	int rc = 0;
+
+	reader.getline = alloc_profile_file_reader_getline;
+	reader.priv = &reader_data;
+	reader_data.linum = 1;
+	reader_data.path = alloc_profile_path;
+
 	if (!alloc_profile_path)
 		alloc_profile_path = ALLOC_PROFILES_PATH_STRING "/builtin.txt";
-	alloc_profile = get_alloc_profile(alloc_profile_path);
 
-	if (!alloc_profile) {
+	printf("Using allocation profile: %s\n", alloc_profile_path);
+
+	MALLOC(char *, reader_data.buf, MAX_ALLOC_PROFILE_LINE_LEN);
+
+	reader_data.fp = fopen(alloc_profile_path, "r");
+	if (!reader_data.fp)
+		err(1, "Couldn't read %s\n", alloc_profile_path);
+
+	/**
+	 * get_alloc_profile will run the necessary .ctor and
+	 * .parse callbacks to build up an array of
+	 * alloc_profile_entry objects
+	 */
+	alloc_profile = get_alloc_profile(&reader);
+
+	if (!alloc_profile)
 		warnx("Couldn't parse allocation profile: %s\n",
 			alloc_profile_path);
-		return 1;
-	}
+
+	fclose(reader_data.fp);
+
+	return alloc_profile;
+}
+
+static int heap_profiling(struct alloc_profile_entry *alloc_profile)
+{
+	struct alloc_profile_entry *entry;
+	struct alloc_profile_handler *iter;
+	int rc = 0;
 
 	/**
 	 * Run .global_setup callbacks for any handlers being used in
@@ -1139,7 +1260,10 @@ static int file_exists(const char const *fname)
 	"             Does some memcpy's between various types of Ion buffers\n" \
 	"  --mmap-memcpy-test\n" \
 	"             Does some memcpy's between some large buffers allocated\n" \
-	"             by mmap\n"
+	"             by mmap\n"					\
+	"  --eval PROGRAM\n"						\
+	"             Evaluates PROGRAM as an allocation profile.\n"	\
+	"             Multiple commands should be separated by a semi-colon (;).\n"
 
 static void usage(char *progname)
 {
@@ -1149,6 +1273,7 @@ static void usage(char *progname)
 static struct option memory_prof_options[] = {
 	{"ion-memcpy-test", no_argument, 0, 0},
 	{"mmap-memcpy-test", no_argument, 0, 0},
+	{"eval", required_argument, 0, 0},
 	{0, 0, 0, 0}
 };
 
@@ -1167,9 +1292,10 @@ int main(int argc, char *argv[])
 	bool do_ion_memcpy_test = false;
 	bool do_mmap_memcpy_test = false;
 	bool did_something = false;
-	const char *alloc_profile = NULL;
+	char *alloc_profile_path = NULL;
 	int num_reps = 1;
 	int option_index = 0;
+	char *eval_program = NULL;
 
 	while (-1 != (opt = getopt_long(
 				argc,
@@ -1191,6 +1317,12 @@ int main(int argc, char *argv[])
 				do_mmap_memcpy_test = true;
 				break;
 			}
+			if (strcmp("eval",
+					memory_prof_options[option_index].name)
+				== 0) {
+				eval_program = strdup(optarg);
+				break;
+			}
 			printf("Unhandled longopt: %s\n",
 				memory_prof_options[option_index].name);
 			break;
@@ -1206,10 +1338,10 @@ int main(int argc, char *argv[])
 			do_heap_profiling = true;
 			break;
 		case 'i':
-			alloc_profile = optarg;
-			if (!file_exists(alloc_profile))
+			alloc_profile_path = strdup(optarg);
+			if (!file_exists(alloc_profile_path))
 				err(1, "Can't read alloc profile file: %s",
-					alloc_profile);
+					alloc_profile_path);
 			break;
 		case 'k':
 			do_kernel_alloc_profiling = true;
@@ -1259,8 +1391,16 @@ int main(int argc, char *argv[])
 		did_something = true;
 	}
 	if (do_heap_profiling) {
+		struct alloc_profile_entry *alloc_profile
+			= get_alloc_profile_from_file(alloc_profile_path);
 		for (i = 0; i < num_reps; ++i)
 			rc |= heap_profiling(alloc_profile);
+		did_something = true;
+	}
+	if (eval_program) {
+		struct alloc_profile_entry *alloc_profile
+			= get_alloc_profile_from_string(eval_program);
+		rc |= heap_profiling(alloc_profile);
 		did_something = true;
 	}
 	if (do_kernel_alloc_profiling) {
@@ -1291,6 +1431,9 @@ int main(int argc, char *argv[])
 
 	if (!did_something)
 		printf("Nothing to do. Try %s -h\n", argv[0]);
+
+	free(eval_program);
+	free(alloc_profile_path);
 
 	return rc;
 }

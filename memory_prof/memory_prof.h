@@ -79,8 +79,21 @@ struct alloc_profile_entry {
 	struct alloc_profile_handler *handler;
 };
 
-struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path);
-struct alloc_profile_entry *get_default_alloc_profile(void);
+/**
+ * A set of callbacks to be used for reading allocation profiles from
+ * various sources.
+ *
+ * @getline - Reads a line from the input stream. Should return NULL
+ *            when there's nothing more to read.
+ * @priv    - A private storage area.
+ */
+struct alloc_profile_reader {
+	const char * (*getline)(struct alloc_profile_reader *reader);
+	void *priv;
+};
+
+struct alloc_profile_entry *get_alloc_profile(
+	struct alloc_profile_reader *reader);
 extern int ion_pre_alloc_size;
 int do_profile_alloc_for_heap(unsigned int heap_mask,
 			unsigned int flags, unsigned int size,
