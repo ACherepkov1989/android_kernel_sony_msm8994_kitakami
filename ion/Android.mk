@@ -7,7 +7,8 @@ commonSources :=
 DLKM_DIR   := device/qcom/common/dlkm
 
 include $(CLEAR_VARS)
-LOCAL_MODULE      := msm_ion_test_module.ko
+LOCAL_SRC_FILES += msm_ion_test_module.c compat_msm_ion_test_module.c
+LOCAL_MODULE      := msm_ion_test_mod.ko
 LOCAL_MODULE_TAGS := debug
 include $(DLKM_DIR)/AndroidKernelModule.mk
 

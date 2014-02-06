@@ -1,1 +1,5 @@
-obj-m := msm_ion_test_module.o
+obj-m := msm_ion_test_mod.o
+msm_ion_test_mod-objs := msm_ion_test_module.o
+ifdef CONFIG_COMPAT
+msm_ion_test_mod-objs += compat_msm_ion_test_module.o
+endif
