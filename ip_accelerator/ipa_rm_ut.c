@@ -113,41 +113,41 @@ static void usb_mgr_notify_function(void *notify_cb_data,
 	IPA_UT_DBG("USB got event [%d]\n", event);
 }
 
-/* A2 device manager */
-static int a2_mux_mgr_release_function(void)
+/* HSIC device manager */
+static int hsic_mgr_release_function(void)
 {
 	int result = 0;
-	IPA_UT_DBG("A2 MUX Released\n");
-	IPA_UT_DBG("A2 MUX calling to IPA RM provided CB\n");
+	IPA_UT_DBG("HSIC Released\n");
+	IPA_UT_DBG("HSIC calling to IPA RM provided CB\n");
 	result = ipa_rm_ut_cb.consumer_cb(IPA_RM_RESOURCE_RELEASED,
-			IPA_RM_RESOURCE_A2_CONS);
+			IPA_RM_RESOURCE_HSIC_CONS);
 
 	return -EINPROGRESS;
 }
 
-static int a2_mux_mgr_request_function(void)
+static int hsic_mgr_request_function(void)
 {
 	int result = 0;
-	IPA_UT_DBG("A2 MUX Requested\n");
-	IPA_UT_DBG("A2 MUX calling to IPA RM provided CB\n");
+	IPA_UT_DBG("HSIC Requested\n");
+	IPA_UT_DBG("HSIC calling to IPA RM provided CB\n");
 	result = ipa_rm_ut_cb.consumer_cb(IPA_RM_RESOURCE_GRANTED,
-			IPA_RM_RESOURCE_A2_CONS);
+			IPA_RM_RESOURCE_HSIC_CONS);
 
 	return -EINPROGRESS;
 }
 
-static void a2_mux_notify_function(void *notify_cb_data,
+static void hsic_notify_function(void *notify_cb_data,
 		enum ipa_rm_event event,
 		unsigned long data)
 {
-	IPA_UT_DBG("A2 MUX got event [%d]\n", event);
+	IPA_UT_DBG("HSIC got event [%d]\n", event);
 }
 
-static struct device_manager_type a2_mux_device_manager = {
+static struct device_manager_type hsic_device_manager = {
 	NULL,
-	a2_mux_notify_function,
-	a2_mux_mgr_release_function,
-	a2_mux_mgr_request_function
+	hsic_notify_function,
+	hsic_mgr_release_function,
+	hsic_mgr_request_function
 };
 
 static void rmnet_bridge_mgr_notify_function
@@ -184,7 +184,7 @@ static void ipa_ut_wq_handler(struct work_struct *work)
 			ipa_rm_ut_cb.consumer_cb(IPA_RM_RESOURCE_GRANTED,
 					IPA_RM_RESOURCE_USB_CONS);
 			break;
-		case IPA_RM_RESOURCE_A2_CONS:
+		case IPA_RM_RESOURCE_HSIC_CONS:
 			break;
 		default:
 			return;
@@ -198,7 +198,7 @@ static void ipa_ut_wq_handler(struct work_struct *work)
 			ipa_rm_ut_cb.consumer_cb(IPA_RM_RESOURCE_RELEASED,
 					IPA_RM_RESOURCE_USB_CONS);
 			break;
-		case IPA_RM_RESOURCE_A2_CONS:
+		case IPA_RM_RESOURCE_HSIC_CONS:
 			break;
 		default:
 			return;
@@ -275,22 +275,22 @@ int build_rmnet_bridge_use_case_graph(
 	if (result)
 		goto bail;
 
-	/* create A2 PROD */
-	create_params.name = IPA_RM_RESOURCE_A2_PROD;
+	/* create HSIC PROD */
+	create_params.name = IPA_RM_RESOURCE_HSIC_PROD;
 	create_params.reg_params.notify_cb =
-			a2_mux_device_manager.notify_cb;
+			hsic_device_manager.notify_cb;
 	create_params.reg_params.user_data =
-			a2_mux_device_manager.user_data;
+			hsic_device_manager.user_data;
 	result = create_resource(&create_params);
 	if (result)
 		goto bail;
 
-	/* create A2 CONS */
-	create_params.name = IPA_RM_RESOURCE_A2_CONS;
+	/* create HSIC CONS */
+	create_params.name = IPA_RM_RESOURCE_HSIC_CONS;
 	create_params.release_resource =
-			a2_mux_device_manager.release_function;
+			hsic_device_manager.release_function;
 	create_params.request_resource =
-			a2_mux_device_manager.request_function;
+			hsic_device_manager.request_function;
 	result = create_resource(&create_params);
 	if (result)
 		goto bail;
@@ -338,15 +338,15 @@ int build_rmnet_bridge_use_case_dependencies(
 	ipa_rm_ut_cb.add_dependency = add_dependency;
 
 	result = add_dependency(IPA_RM_RESOURCE_USB_PROD,
-			IPA_RM_RESOURCE_A2_CONS);
+			IPA_RM_RESOURCE_HSIC_CONS);
 	if (result)
 		goto bail;
-	result = add_dependency(IPA_RM_RESOURCE_A2_PROD,
+	result = add_dependency(IPA_RM_RESOURCE_HSIC_PROD,
 			IPA_RM_RESOURCE_USB_CONS);
 	if (result)
 		goto bail;
 	result = add_dependency(IPA_RM_RESOURCE_BRIDGE_PROD,
-			IPA_RM_RESOURCE_A2_CONS);
+			IPA_RM_RESOURCE_HSIC_CONS);
 	if (result)
 		goto bail;
 	result = add_dependency(IPA_RM_RESOURCE_BRIDGE_PROD,
@@ -386,12 +386,12 @@ int request_release_resource_sequence(
 
 	result = resource_request(IPA_RM_RESOURCE_USB_PROD);
 	IPA_UT_DBG("result [%d]\n", result);
-	result = resource_request(IPA_RM_RESOURCE_A2_PROD);
+	result = resource_request(IPA_RM_RESOURCE_HSIC_PROD);
 	IPA_UT_DBG("result [%d]\n", result);
 
 	result = resource_release(IPA_RM_RESOURCE_USB_PROD);
 	IPA_UT_DBG("result [%d]\n", result);
-	result = resource_release(IPA_RM_RESOURCE_A2_PROD);
+	result = resource_release(IPA_RM_RESOURCE_HSIC_PROD);
 	IPA_UT_DBG("result [%d]\n", result);
 
 	IPA_UT_DBG("request_release_resource_sequence EXIT SUCCESS\n");
