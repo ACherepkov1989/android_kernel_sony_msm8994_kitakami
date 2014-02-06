@@ -814,6 +814,7 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	struct alloc_profile_entry *alloc_profile;
 	struct file_reader_getline_data reader_data;
 	struct alloc_profile_reader reader;
+	bool using_stdin = !strcmp(alloc_profile_path, "-");
 	int rc = 0;
 
 	reader.getline = alloc_profile_file_reader_getline;
@@ -824,13 +825,18 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	if (!alloc_profile_path)
 		alloc_profile_path = ALLOC_PROFILES_PATH_STRING "/builtin.txt";
 
-	printf("Using allocation profile: %s\n", alloc_profile_path);
+	printf("Using allocation profile: %s\n",
+		using_stdin ? "(STDIN)" : alloc_profile_path);
 
 	MALLOC(char *, reader_data.buf, MAX_ALLOC_PROFILE_LINE_LEN);
 
-	reader_data.fp = fopen(alloc_profile_path, "r");
-	if (!reader_data.fp)
-		err(1, "Couldn't read %s\n", alloc_profile_path);
+	if (using_stdin) {
+		reader_data.fp = stdin;
+	} else {
+		reader_data.fp = fopen(alloc_profile_path, "r");
+		if (!reader_data.fp)
+			err(1, "Couldn't read %s\n", alloc_profile_path);
+	}
 
 	/**
 	 * get_alloc_profile will run the necessary .ctor and
@@ -843,7 +849,8 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 		warnx("Couldn't parse allocation profile: %s\n",
 			alloc_profile_path);
 
-	fclose(reader_data.fp);
+	if (!using_stdin)
+		fclose(reader_data.fp);
 
 	return alloc_profile;
 }
@@ -1245,7 +1252,9 @@ static int file_exists(const char const *fname)
 	"             (default=1048576 (1MB))\n"			\
 	"  -e         Do Ion heap profiling.\n"				\
 	"  -i file    Input `alloc profile' for heap profiling (-e)\n"	\
-	"             (Runs a general default profile if omitted)\n"	\
+	"             (Runs a general default profile if omitted).\n"	\
+	"             If - is given, the allocation profile is read\n"	\
+	"             from stdin.\n"					\
 	"  -k         Do kernel alloc profiling (requires kernel module)\n" \
 	"  -l         Do leak test (leak an ion handle)\n"		\
 	"  -m         Do map extra test (requires kernel module)\n"	\
@@ -1339,7 +1348,8 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			alloc_profile_path = strdup(optarg);
-			if (!file_exists(alloc_profile_path))
+			if (strcmp(alloc_profile_path, "-") &&
+				!file_exists(alloc_profile_path))
 				err(1, "Can't read alloc profile file: %s",
 					alloc_profile_path);
 			break;
