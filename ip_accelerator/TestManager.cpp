@@ -145,7 +145,7 @@ bool TestManager::Run(vector<string> testSuiteList, vector<string> testNameList)
 	// Print summary
 	printf("\n\n");
 	printf("==================== RESULTS SUMMARY ========================\n");
-	printf("%d tests were run, %d failed.\n", m_numTestsRun, m_numTestsFailed);
+	printf("%zu tests were run, %zu failed.\n", m_numTestsRun, m_numTestsFailed);
 	if (0 != m_numTestsFailed) {
 		printf("Failed tests list:\n");
 		for (size_t i = 0; i < m_numTestsFailed; i++) {
@@ -189,7 +189,7 @@ TestManager& TestManager::operator=(TestManager const&)
 
 void TestManager::PrintRegisteredTests()
 {
-	printf("Test list: (%d registered)\n", m_testList.size());
+	printf("Test list: (%zu registered)\n", m_testList.size());
 	for (unsigned int i = 0; i < m_testList.size(); i++) {
 		printf("%d) name = %s, suite name = %s, regression = %d\n", i, m_testList[i]->m_name.c_str(),
 		       m_testList[i]->m_testSuiteName[0].c_str(), m_testList[i]->m_runInRegression);
