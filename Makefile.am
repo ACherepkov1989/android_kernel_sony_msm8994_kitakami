@@ -36,9 +36,6 @@ endif
 if USEV4L2APPS
 BUILD_TEST += v4l2apps
 endif
-if USEIP_ACCELERATOR
-BUILD_TEST += ip_accelerator
-endif
 
 SUBDIRS = $(BUILD_TEST)
 
