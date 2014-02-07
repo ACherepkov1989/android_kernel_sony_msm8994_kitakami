@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -83,7 +83,6 @@ static struct notifier_block test_client_nb = {
 	.notifier_call = test_client_notif_handler,
 };
 
-#ifdef CONFIG_MSM_OCMEM_NONSECURE
 static int ocmem_verify_access(int id, struct ocmem_buf *buffer)
 {
 	unsigned long start;
@@ -123,14 +122,6 @@ static int ocmem_verify_access(int id, struct ocmem_buf *buffer)
 	iounmap(vstart);
 	return failures;
 }
-#else
-static int ocmem_verify_access(int id, struct ocmem_buf *buffer)
-{
-	OCMEM_LOG("Secure mode, skipping read/write verification\n");
-	return 0;
-}
-#endif
-
 
 /*
  * Test Case: Single Allocation Test
