@@ -78,6 +78,7 @@ Appendix A: Allocation Profiles for memory_prof
         - print
         - simple_alloc
         - simple_free
+        - alloc_pages
 
     Each operation is described in detail below.
 
@@ -203,3 +204,47 @@ Appendix A: Allocation Profiles for memory_prof
           # there are now two Ion buffers allocated. Now free them both:
           simple_free,1
           simple_free,pizza
+
+    o `op' == alloc_pages
+
+      alloc_pages is used to directly profile the kernel's buddy
+      allocator.
+
+      The following remaining fields are defined:
+
+          order
+          gfp_flags
+
+      - order :: the order of the page to allocate with the kernel's
+        `alloc_pages' routine.
+
+      - gfp_flags :: the gfp flags to use. Note that these are not
+        real gfp flags as known by the kernel. Since the kernel's
+        actual gfp flags are not exported to userspace and it would be
+        too much effort to try to mirror all of them, we define some
+        new flags for the most commonly used gfp flags. Currently
+        supported flags:
+
+          MP_GFP_KERNEL
+          MP_GFP_HIGHMEM
+          MP_GFP_ZERO
+          MP_GFP_HIGHUSER
+          MP_GFP_NOWARN
+          MP_GFP_NORETRY
+          MP_GFP_NO_KSWAPD
+          MP_GFP_WAIT
+          MP_GFPNOT_WAIT
+
+        You can't compose gfp flags the same way you can in the kernel
+        like: GFP_KERNEL & ~GFP_WAIT since these are simple,
+        independent bitfields. To accomplish not'ing something out, a
+        dedicated flag must be used, like MP_GFPNOT_WAIT. Note,
+        however, that these *can* be |'d together just like the flags
+        in `alloc' and `simple_alloc', e.g.: MP_GFP_KERNEL|MP_GFP_ZERO.
+
+        Here's an example allocation profile using alloc_pages:
+
+          alloc_pages,1,MP_GFP_KERNEL
+          alloc_pages,1,MP_GFP_KERNEL|MP_GFP_ZERO
+          alloc_pages,9,MP_GFP_KERNEL
+          alloc_pages,9,MP_GFP_KERNEL|MP_GFP_ZERO

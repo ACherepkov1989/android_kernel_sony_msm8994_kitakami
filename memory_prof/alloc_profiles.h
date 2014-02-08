@@ -30,6 +30,7 @@
 #ifndef __ALLOC_PROFILES_H__
 #define __ALLOC_PROFILES_H__
 
+#include <stdint.h>
 #include "memory_prof.h"
 
 /**
@@ -140,7 +141,7 @@ extern struct alloc_profile_handler __stop_alloc_profile_handlers;
 
 int find_heap_id_value(const char * const heap_id_string, unsigned int *val);
 int find_flag_value(const char * const flag, int *val);
-unsigned int parse_flags(const char * const word);
+uint64_t parse_flags(const char * const word);
 bool parse_bool(const char * const word);
 void alloc_profile_free_priv(struct alloc_profile_entry *entry);
 

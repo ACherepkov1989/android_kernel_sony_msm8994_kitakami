@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,6 +30,13 @@
 
 struct memory_prof_module_data {
 	struct ion_client *client;
+	struct list_head danglers;
+};
+
+struct dangling_allocation {
+	struct list_head list;
+	struct page *page;
+	int order;
 };
 
 static struct class *memory_prof_class;
@@ -190,6 +197,45 @@ static void test_kernel_allocs(void)
 	timing_debug_dump_results();
 }
 
+static void free_all_danglers(struct list_head *danglers)
+{
+	struct list_head *iter, *tmp;
+	list_for_each_safe(iter, tmp, danglers) {
+		struct dangling_allocation *dangler =
+			container_of(iter, struct dangling_allocation, list);
+		__free_pages(dangler->page, dangler->order);
+		list_del(iter);
+		kfree(dangler);
+	}
+}
+
+static gfp_t get_gfp_from_memory_prof_gfp(u64 mp_gfp)
+{
+	gfp_t gfp = 0;
+
+	if (mp_gfp & MP_GFP_KERNEL)
+		gfp |= GFP_KERNEL;
+	if (mp_gfp & MP_GFP_HIGHMEM)
+		gfp |= __GFP_HIGHMEM;
+	if (mp_gfp & MP_GFP_ZERO)
+		gfp |= __GFP_ZERO;
+	if (mp_gfp & MP_GFP_HIGHUSER)
+		gfp |= GFP_HIGHUSER;
+	if (mp_gfp & MP_GFP_NOWARN)
+		gfp |= __GFP_NOWARN;
+	if (mp_gfp & MP_GFP_NORETRY)
+		gfp |= __GFP_NORETRY;
+	if (mp_gfp & MP_GFP_NO_KSWAPD)
+		gfp |= __GFP_NO_KSWAPD;
+	if (mp_gfp & MP_GFP_WAIT)
+		gfp |= __GFP_WAIT;
+
+	if (mp_gfp & MP_GFPNOT_WAIT)
+		gfp &= ~__GFP_WAIT;
+
+	return gfp;
+}
+
 static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 {
 	int ret = 0;
@@ -243,6 +289,51 @@ static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned lon
 		test_kernel_allocs();
 		break;
 	}
+	case MEMORY_PROF_IOC_TEST_ALLOC_PAGES:
+	{
+		struct dangling_allocation *new;
+		struct mp_alloc_pages_args args;
+		gfp_t gfp;
+		struct timespec before, after, diff;
+
+		if (copy_from_user(&args, (void __user *)arg,
+					sizeof(struct mp_alloc_pages_args)))
+			return -EFAULT;
+
+		new = (struct dangling_allocation *) kmalloc(sizeof(*new),
+							GFP_KERNEL);
+		if (!new)
+			return -ENOMEM;
+
+		gfp = get_gfp_from_memory_prof_gfp(args.gfp);
+		new->order = args.order;
+		getnstimeofday(&before);
+		new->page = alloc_pages(gfp, new->order);
+		getnstimeofday(&after);
+
+		if (!new->page) {
+			kfree(new);
+			return -ENOMEM;
+		}
+
+		diff = timespec_sub(after, before);
+		args.time_elapsed_us = div_s64(timespec_to_ns(&diff), 1000);
+
+		if (copy_to_user((void __user *)arg, &args,
+					sizeof(struct mp_alloc_pages_args))) {
+			kfree(new);
+			__free_pages(new->page, args.order);
+			return -EFAULT;
+		}
+
+		list_add(&new->list, &module_data->danglers);
+		break;
+	}
+	case MEMORY_PROF_IOC_CLEANUP_ALLOC_PAGES:
+	{
+		free_all_danglers(&module_data->danglers);
+		break;
+	}
 	default:
 		pr_info("command not supproted\n");
 		ret = -EINVAL;
@@ -258,6 +349,7 @@ static int memory_prof_test_open(struct inode *inode, struct file *file)
 	if (!module_data)
 		return -ENOMEM;
 
+	INIT_LIST_HEAD(&module_data->danglers);
 	file->private_data = module_data;
 
 	pr_info("memory_prof test device opened\n");
@@ -267,6 +359,9 @@ static int memory_prof_test_open(struct inode *inode, struct file *file)
 static int memory_prof_test_release(struct inode *inode, struct file *file)
 {
 	struct memory_prof_module_data *module_data = file->private_data;
+
+	free_all_danglers(&module_data->danglers);
+
 	kfree(module_data);
 	pr_info("memory_prof test device closed\n");
 	return 0;

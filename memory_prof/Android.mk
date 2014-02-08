@@ -21,7 +21,8 @@ LOCAL_SRC_FILES += memory_prof.c \
 	op-alloc.c \
 	op-print.c \
 	op-simple-ops.c \
-	op-sleep.c
+	op-sleep.c \
+	op-alloc-pages.c
 
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr

@@ -30,9 +30,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <err.h>
+#include <stdint.h>
 #include <linux/msm_ion.h>
 #include "memory_prof.h"
 #include "memory_prof_util.h"
+#include "memory_prof_module.h"
 #include "alloc_profiles.h"
 
 /**
@@ -125,6 +127,15 @@ struct flag_info {
 	MAKE_FLAG_INFO(ION_FLAG_CACHED_NEEDS_SYNC),
 	MAKE_FLAG_INFO(ION_SECURE),
 	MAKE_FLAG_INFO(ION_FLAG_SECURE),
+	MAKE_FLAG_INFO(MP_GFP_KERNEL),
+	MAKE_FLAG_INFO(MP_GFP_HIGHMEM),
+	MAKE_FLAG_INFO(MP_GFP_ZERO),
+	MAKE_FLAG_INFO(MP_GFP_HIGHUSER),
+	MAKE_FLAG_INFO(MP_GFP_NOWARN),
+	MAKE_FLAG_INFO(MP_GFP_NORETRY),
+	MAKE_FLAG_INFO(MP_GFP_NO_KSWAPD),
+	MAKE_FLAG_INFO(MP_GFP_WAIT),
+	MAKE_FLAG_INFO(MP_GFPNOT_WAIT),
 	/* sentinel */
 	{ .flag_string = NULL }
 };
@@ -145,9 +156,9 @@ int find_flag_value(const char * const flag, int *val)
 	return 1;
 }
 
-unsigned int parse_flags(const char * const word)
+uint64_t parse_flags(const char * const word)
 {
-	unsigned int ret = 0;
+	uint64_t ret = 0;
 	int i, nflags;
 	char *flags_words[MAX_FLAGS];
 	size_t len = strlen(word) + 1;

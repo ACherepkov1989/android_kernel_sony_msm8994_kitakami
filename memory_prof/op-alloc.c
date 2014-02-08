@@ -115,7 +115,7 @@ static int op_alloc_parse(struct alloc_profile_entry *entry,
 	STRNCPY_SAFE(op->heap_id_string,
 		words[LINE_IDX_HEAP_ID], MAX_HEAP_ID_STRING_LEN);
 
-	op->flags = parse_flags(words[LINE_IDX_FLAGS]);
+	op->flags = (unsigned int)parse_flags(words[LINE_IDX_FLAGS]);
 	STRNCPY_SAFE(op->flags_string,
 		words[LINE_IDX_FLAGS], MAX_FLAGS_STRING_LEN);
 
