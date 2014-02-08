@@ -47,8 +47,8 @@
  *
  * Returns the number of entries found
  */
-static int split_string(const char * const string, char delim, char *output[],
-			int output_sizes)
+int split_string(const char * const string, char delim, char *output[],
+		int output_sizes)
 {
 	char *word, *string_cpy;
 	int nentries = 0;
@@ -193,14 +193,12 @@ bool parse_bool(const char * const word)
 /**
  * get_alloc_profile() - Get allocation profile
  *
- * @alloc_profile_path: Filename of alloc profile (or NULL to use the
- *                 default). Should already have been verified that
- *                 the file exists.
+ * @reader: struct alloc_profile_reader to use for reading lines.
  */
-struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
+struct alloc_profile_entry *get_alloc_profile(
+	struct alloc_profile_reader *reader)
 {
-	FILE *fp;
-	char *buf;
+	char *buf = NULL;
 	char *words[MAX_ALLOC_PROFILE_FIELDS];
 	int i;
 	struct alloc_profile_entry *current = NULL, *base = NULL, new;
@@ -209,21 +207,20 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 	const size_t more_alloc_size = sizeof(struct alloc_profile_entry)
 		* MORE_PROFILE_ENTRIES;
 
-	printf("Using allocation profile: %s\n", alloc_profile_path);
-
-	MALLOC(char *, buf, MAX_ALLOC_PROFILE_LINE_LEN);
-
 	for (i = 0; i < MAX_ALLOC_PROFILE_FIELDS; ++i)
 		MALLOC(char *, words[i], MAX_ALLOC_PROFILE_WORD_LEN);
-
-	fp = fopen(alloc_profile_path, "r");
-	if (!fp)
-		err(1, "Couldn't read %s\n", alloc_profile_path);
 
 	for (;;) {
 		struct line_info line_info;
 		int nwords;
 		struct alloc_profile_handler *iter;
+		const char *tmp;
+		/*
+		 * On the first iteration, buf = NULL. On subsequent
+		 * interations buf is a pointer that was returned by
+		 * strdup. Free it.
+		 */
+		free(buf);
 
 		memset(&new, 0, sizeof(new));
 
@@ -237,19 +234,11 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 			current_capacity += MORE_PROFILE_ENTRIES;
 		}
 
-		buf = fgets(buf, MAX_ALLOC_PROFILE_LINE_LEN, fp);
-		if (!buf) {
-			if (feof(fp))
-				break;
-			err(1, "Error reading line %d from %s",
-				nentries + 1, alloc_profile_path);
-		}
+		tmp = reader->getline(reader);
+		if (!tmp)
+			break;
 
-		if (buf[0] == '#' || buf[0] == '\n' || buf[0] == '\r')
-			continue;
-
-		/* strip off trailing newline */
-		buf[strlen(buf) - 1] = '\0';
+		buf = strdup(tmp);
 
 		nwords = split_string(buf, ',', words,
 				MAX_ALLOC_PROFILE_WORD_LEN);
@@ -288,7 +277,6 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 	new.handler = NULL;
 	*current = new;
 
-	free(buf);
 	for (i = 0; i < MAX_ALLOC_PROFILE_FIELDS; ++i)
 		free(words[i]);
 

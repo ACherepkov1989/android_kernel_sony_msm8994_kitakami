@@ -139,6 +139,8 @@ extern struct alloc_profile_handler __stop_alloc_profile_handlers;
 	for_each_alloc_profile_entry(__entry, __alloc_profile)		\
 		if (!strcmp(__entry->handler->keyword, __op))
 
+int split_string(const char * const string, char delim, char *output[],
+		int output_sizes);
 int find_heap_id_value(const char * const heap_id_string, unsigned int *val);
 int find_flag_value(const char * const flag, int *val);
 uint64_t parse_flags(const char * const word);
