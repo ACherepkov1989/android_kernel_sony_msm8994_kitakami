@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -36,6 +36,7 @@
 #include <string.h>
 #include <err.h>
 
+#include <linux/msm_ion.h>
 #include "memory_prof_util.h"
 
 #define NUM_REPS_FOR_HEAP_PROFILING 50
@@ -55,6 +56,15 @@
 #define MEMORY_PROF_DEV "/dev/memory_prof"
 #define ION_DEV		"/dev/ion"
 
+#define xstr(s) str(s)
+#define str(s) #s
+
+#ifndef ALLOC_PROFILES_PATH
+#error Please define ALLOC_PROFILES_PATH!
+#endif
+
+#define ALLOC_PROFILES_PATH_STRING xstr(ALLOC_PROFILES_PATH)
+
 /*
  * Don't change the format of the following line strings. We need to
  * rely on them for parsing.
@@ -62,52 +72,29 @@
 #define ST_PREFIX_DATA_ROW	"=>"
 #define ST_PREFIX_PREALLOC_SIZE "==>"
 
-enum alloc_op_enum {
-	OP_NONE,
-	OP_ALLOC,
-	OP_SLEEP,
-	OP_PRINT,
-	OP_SIMPLE_ALLOC,
-	OP_SIMPLE_FREE,
-};
+struct alloc_profile_handler;
 
 struct alloc_profile_entry {
-	enum alloc_op_enum op;
-	union {
-		struct alloc_op {
-			int reps;
-			unsigned int heap_id;
-			char heap_id_string[MAX_HEAP_ID_STRING_LEN];
-			unsigned int flags;
-			char flags_string[MAX_FLAGS_STRING_LEN];
-			unsigned long size;
-			char size_string[MAX_SIZE_STRING_LEN];
-			bool quiet;
-			bool profile_mmap;
-			bool profile_memset;
-		} alloc_op;
-		struct sleep_op {
-			unsigned int time_us;
-		} sleep_op;
-		struct print_op {
-			char text[MAX_PRINT_STRING_LEN];
-		} print_op;
-		struct simple_alloc_op {
-			char alloc_id[MAX_ALLOC_ID_STRING_LEN];
-			unsigned int heap_id;
-			char heap_id_string[MAX_HEAP_ID_STRING_LEN];
-			unsigned int flags;
-			char flags_string[MAX_FLAGS_STRING_LEN];
-			unsigned long size;
-			char size_string[MAX_SIZE_STRING_LEN];
-		} simple_alloc_op;
-		struct simple_free_op {
-			char alloc_id[MAX_ALLOC_ID_STRING_LEN];
-		} simple_free_op;
-	} u;
+	void *priv;
+	struct alloc_profile_handler *handler;
 };
 
 struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path);
 struct alloc_profile_entry *get_default_alloc_profile(void);
+extern int ion_pre_alloc_size;
+int profile_alloc_for_heap(unsigned int heap_mask,
+			unsigned int flags, unsigned int size,
+			double *alloc_ms, double *map_ms,
+			double *memset_ms, double *free_ms);
+void print_a_bunch_of_stats_results(const char *name,
+				const char *flags_label,
+				const char *size_string,
+				double alloc_stats[],
+				double map_stats[],
+				double memset_stats[],
+				double free_stats[],
+				int reps);
+int alloc_me_up_some_ion(int ionfd,
+			struct ion_allocation_data *alloc_data);
 
 #endif /* __MEMORY_PROF_H__ */

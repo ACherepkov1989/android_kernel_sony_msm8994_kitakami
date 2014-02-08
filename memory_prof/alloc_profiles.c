@@ -33,44 +33,7 @@
 #include <linux/msm_ion.h>
 #include "memory_prof.h"
 #include "memory_prof_util.h"
-
-#define MAKE_ALLOC_PROFILES(size_mb, reps, quiet)			\
-	MAKE_ALLOC_PROFILE(ION_CP_MM_HEAP_ID, ION_FLAG_SECURE, size_mb, reps, quiet, false, false), \
-		MAKE_ALLOC_PROFILE(ION_IOMMU_HEAP_ID, 0, size_mb, reps, quiet, true, true), \
-		MAKE_ALLOC_PROFILE(ION_IOMMU_HEAP_ID, ION_FLAG_CACHED, size_mb, reps, quiet, true, true), \
-		MAKE_ALLOC_PROFILE(ION_SYSTEM_HEAP_ID, 0, size_mb, reps, quiet, false, false), \
-		MAKE_ALLOC_PROFILE(ION_SYSTEM_HEAP_ID, ION_FLAG_CACHED, size_mb, reps, quiet, true, true)
-
-#define MAKE_ALLOC_PROFILE(_heap_id, _flags, _size_mb, _reps, _quiet,	\
-			_profile_mmap, _profile_memset)			\
-			{ .op = OP_ALLOC,				\
-			.u.alloc_op.heap_id = ION_HEAP(_heap_id),	\
-			.u.alloc_op.heap_id_string = #_heap_id,		\
-			.u.alloc_op.flags = _flags,			\
-			.u.alloc_op.flags_string = #_flags,		\
-			.u.alloc_op.size = _size_mb * SZ_1M,		\
-			.u.alloc_op.size_string = #_size_mb "MB",	\
-			.u.alloc_op.reps = _reps,			\
-			.u.alloc_op.quiet = _quiet,			\
-			.u.alloc_op.profile_mmap = _profile_mmap,	\
-			.u.alloc_op.profile_memset = _profile_memset,	\
-			}
-
-static struct alloc_profile_entry default_alloc_profile[] = {
-	MAKE_ALLOC_PROFILES(1, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(3, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(5, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(8, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(10, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(13, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(20, NUM_REPS_FOR_HEAP_PROFILING, false),
-	MAKE_ALLOC_PROFILES(50, NUM_REPS_FOR_HEAP_PROFILING, true),
-	MAKE_ALLOC_PROFILES(100, NUM_REPS_FOR_HEAP_PROFILING, true),
-	{
-		/* sentinel */
-		.op = OP_NONE,
-	}
-};
+#include "alloc_profiles.h"
 
 /**
  * split_string() - split a string by a delimiter
@@ -139,7 +102,7 @@ struct heap_info {
 	{ .heap_id_string = NULL }
 };
 
-static int find_heap_id_value(const char * const heap_id_string,
+int find_heap_id_value(const char * const heap_id_string,
 			unsigned int *val)
 {
 	struct heap_info *h;
@@ -166,7 +129,7 @@ struct flag_info {
 	{ .flag_string = NULL }
 };
 
-static int find_flag_value(const char * const flag, int *val)
+int find_flag_value(const char * const flag, int *val)
 {
 	struct flag_info *f;
 	if (0 == strcmp(flag, "0")) {
@@ -182,7 +145,7 @@ static int find_flag_value(const char * const flag, int *val)
 	return 1;
 }
 
-static unsigned int parse_flags(const char * const word)
+unsigned int parse_flags(const char * const word)
 {
 	unsigned int ret = 0;
 	int i, nflags;
@@ -208,37 +171,10 @@ static unsigned int parse_flags(const char * const word)
 	return ret;
 }
 
-static bool parse_bool(const char * const word)
+bool parse_bool(const char * const word)
 {
 	return 0 == strcmp("true", word);
 }
-
-enum alloc_op_line_idx {
-	LINE_IDX_REPS = 1,
-	LINE_IDX_HEAP_ID,
-	LINE_IDX_FLAGS,
-	LINE_IDX_ALLOC_SIZE_BYTES,
-	LINE_IDX_ALLOC_SIZE_LABEL,
-	LINE_IDX_QUIET_ON_FAILURE,
-	LINE_IDX_PROFILE_MMAP,
-	LINE_IDX_PROFILE_MEMSET,
-};
-
-enum sleep_op_line_idx {
-	LINE_IDX_TIME_US = 1,
-};
-
-enum print_op_line_idx {
-	PRINT_LINE_IDX_TEXT = 1,
-};
-
-enum simple_alloc_op_line_idx {
-	SA_LINE_IDX_ALLOC_ID = 1,
-	SA_LINE_IDX_HEAP_ID,
-	SA_LINE_IDX_FLAGS,
-	SA_LINE_IDX_ALLOC_SIZE_BYTES,
-	SA_LINE_IDX_ALLOC_SIZE_LABEL,
-};
 
 /* how many more alloc profile entries to {re-,m}alloc when we need more */
 #define MORE_PROFILE_ENTRIES 30
@@ -256,7 +192,7 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 	char *buf;
 	char *words[MAX_ALLOC_PROFILE_FIELDS];
 	int i;
-	struct alloc_profile_entry *current = NULL, *base = NULL;
+	struct alloc_profile_entry *current = NULL, *base = NULL, new;
 	int nentries = 0;
 	int current_capacity = 0;
 	const size_t more_alloc_size = sizeof(struct alloc_profile_entry)
@@ -274,14 +210,19 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 		err(1, "Couldn't read %s\n", alloc_profile_path);
 
 	for (;;) {
-		struct alloc_profile_entry new;
+		struct line_info line_info;
 		int nwords;
+		struct alloc_profile_handler *iter;
+
+		memset(&new, 0, sizeof(new));
+
 		if (current_capacity == nentries) {
 			size_t current_size = (current_capacity
 					* sizeof(struct alloc_profile_entry));
 			REALLOC(struct alloc_profile_entry *,
 				base, current_size + more_alloc_size);
 			current = base + nentries;
+			memset(current, 0, more_alloc_size);
 			current_capacity += MORE_PROFILE_ENTRIES;
 		}
 
@@ -301,102 +242,44 @@ struct alloc_profile_entry *get_alloc_profile(const char *alloc_profile_path)
 
 		nwords = split_string(buf, ',', words,
 				MAX_ALLOC_PROFILE_WORD_LEN);
-		if (nwords < 1)
-			errx(1, "Malformed line: `%s'", buf);
-
-		if (0 == strcmp(words[0], "alloc")) {
-			unsigned int heap_id;
-			new.op = OP_ALLOC;
-
-			STRTOL(new.u.alloc_op.reps, words[LINE_IDX_REPS], 0);
-
-			if (find_heap_id_value(words[LINE_IDX_HEAP_ID],
-						&heap_id))
-				errx(1, "Unknown heap_id: %s",
-					words[LINE_IDX_HEAP_ID]);
-
-			new.u.alloc_op.heap_id = ION_HEAP(heap_id);
-			STRNCPY_SAFE(new.u.alloc_op.heap_id_string,
-				words[LINE_IDX_HEAP_ID],
-				MAX_HEAP_ID_STRING_LEN);
-
-			new.u.alloc_op.flags
-				= parse_flags(words[LINE_IDX_FLAGS]);
-			STRNCPY_SAFE(new.u.alloc_op.flags_string,
-				words[LINE_IDX_FLAGS],
-				MAX_FLAGS_STRING_LEN);
-
-			STRTOL(new.u.alloc_op.size,
-				words[LINE_IDX_ALLOC_SIZE_BYTES], 0);
-			STRNCPY_SAFE(new.u.alloc_op.size_string,
-				words[LINE_IDX_ALLOC_SIZE_LABEL],
-				MAX_SIZE_STRING_LEN);
-
-			new.u.alloc_op.quiet
-				= parse_bool(words[LINE_IDX_QUIET_ON_FAILURE]);
-			new.u.alloc_op.profile_mmap
-				= parse_bool(words[LINE_IDX_PROFILE_MMAP]);
-			new.u.alloc_op.profile_memset
-				= parse_bool(words[LINE_IDX_PROFILE_MEMSET]);
-		} else if (0 == strcmp(words[0], "sleep")) {
-			new.op = OP_SLEEP;
-			STRTOL(new.u.sleep_op.time_us,
-				words[LINE_IDX_TIME_US], 0);
-		} else if (0 == strcmp(words[0], "print")) {
-			new.op = OP_PRINT;
-			STRNCPY_SAFE(new.u.print_op.text,
-				words[PRINT_LINE_IDX_TEXT],
-				MAX_PRINT_STRING_LEN);
-		} else if (0 == strcmp(words[0], "simple_alloc")) {
-			unsigned int heap_id;
-
-			new.op = OP_SIMPLE_ALLOC;
-			STRNCPY_SAFE(new.u.simple_alloc_op.alloc_id,
-				words[SA_LINE_IDX_ALLOC_ID],
-				MAX_ALLOC_ID_STRING_LEN);
-
-			if (find_heap_id_value(words[SA_LINE_IDX_HEAP_ID],
-						&heap_id))
-				errx(1, "Unknown heap_id: %s",
-					words[SA_LINE_IDX_HEAP_ID]);
-
-			new.u.simple_alloc_op.heap_id = ION_HEAP(heap_id);
-			STRNCPY_SAFE(new.u.simple_alloc_op.heap_id_string,
-				words[SA_LINE_IDX_HEAP_ID],
-				MAX_HEAP_ID_STRING_LEN);
-
-			new.u.simple_alloc_op.flags
-				= parse_flags(words[SA_LINE_IDX_FLAGS]);
-			STRNCPY_SAFE(new.u.simple_alloc_op.flags_string,
-				words[SA_LINE_IDX_FLAGS],
-				MAX_FLAGS_STRING_LEN);
-
-			STRTOL(new.u.simple_alloc_op.size,
-				words[SA_LINE_IDX_ALLOC_SIZE_BYTES], 0);
-			STRNCPY_SAFE(new.u.simple_alloc_op.size_string,
-				words[SA_LINE_IDX_ALLOC_SIZE_LABEL],
-				MAX_SIZE_STRING_LEN);
-		} else if (0 == strcmp(words[0], "simple_free")) {
-			new.op = OP_SIMPLE_FREE;
-			STRNCPY_SAFE(new.u.simple_free_op.alloc_id,
-				words[SA_LINE_IDX_ALLOC_ID],
-				MAX_ALLOC_ID_STRING_LEN);
-		} else {
-			errx(1, "Malformed line: `%s'", buf);
+		if (nwords < 1) {
+			warn("Malformed line: `%s'", buf);
+			continue;
 		}
+
+		for_each_alloc_profile_handler(iter) {
+			if (strcmp(words[0], iter->keyword))
+				continue;
+			new.handler = iter;
+			break;
+		}
+		if (!new.handler) {
+			warnx("Couldn't find parser for %s\n",
+				words[0]);
+			continue;
+		}
+		if (iter->ops->ctor)
+			iter->ops->ctor(&new);
+
+		if (iter->priv_size)
+			MALLOC(void *, new.priv, iter->priv_size);
+
+		line_info.words = &words[0];
+		line_info.nwords = nwords;
+		if (iter->ops->parse && iter->ops->parse(&new, &line_info))
+			warnx("Error in parser for %s\n", words[0]);
 
 		*current++ = new;
 		nentries++;
 	}
 
+	/* sentinel */
+	new.handler = NULL;
+	*current = new;
+
 	free(buf);
 	for (i = 0; i < MAX_ALLOC_PROFILE_FIELDS; ++i)
 		free(words[i]);
 
-	return base;
-}
-
-struct alloc_profile_entry *get_default_alloc_profile(void)
-{
-	return default_alloc_profile;
+	return nentries ? base : NULL;
 }
