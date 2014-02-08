@@ -296,7 +296,9 @@ static int ConfigureSystem(int testConfiguration, int fd)
 
 	while ( strcmp(str, testConfigurationStr) ) {
 		// Sleep for 5 msec
-		struct timespec time = {0, 50e6};
+		struct timespec time;
+		time.tv_sec = 0;
+		time.tv_nsec = 50e6;
 		nanosleep(&time, NULL);
 		ret = read(fd, str, sizeof(str));
 		if (ret < 0) {
