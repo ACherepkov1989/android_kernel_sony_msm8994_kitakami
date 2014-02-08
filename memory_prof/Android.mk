@@ -13,7 +13,7 @@ include $(DLKM_DIR)/AndroidKernelModule.mk
 # the userspace test programs
 include $(CLEAR_VARS)
 LOCAL_MODULE := memory_prof
-LOCAL_CFLAGS += -Wno-missing-field-initializers -g
+LOCAL_CFLAGS += -Wno-missing-field-initializers -Werror -g
 LOCAL_STRIP_MODULE = false
 LOCAL_SRC_FILES += memory_prof.c alloc_profiles.c memory_prof_util.c
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/
