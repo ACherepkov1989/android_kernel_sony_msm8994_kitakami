@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -94,8 +94,10 @@ static int split_string(const char * const string, char delim, char *output[],
 	STRNCPY_SAFE(string_cpy, string, len);
 
 	word = strtok(string_cpy, delim_string);
-	if (!word)
-		errx(1, "Malformed line: %s", string_cpy);
+	if (!word) {
+		warnx("Malformed line: %s", string_cpy);
+		return 0;
+	}
 	STRNCPY_SAFE(*output, word, output_sizes);
 	output++;
 	nentries++;
@@ -195,7 +197,7 @@ static unsigned int parse_flags(const char * const word)
 	for (i = 0; i < nflags; ++i) {
 		int f;
 		if (find_flag_value(flags_words[i], &f))
-			errx(1, "Unknown flag: %s\n", flags_words[i]);
+			warnx("Unknown flag: %s\n", flags_words[i]);
 		else
 			ret |= f;
 	}
