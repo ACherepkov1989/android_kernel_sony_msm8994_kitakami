@@ -53,8 +53,28 @@ maybe_make_node()
 {
 	thedev=$1
 	themisc=$2
-	[ -e $thedev ] || \
-	    mknod $thedev c $(cut -d: -f1 $themisc) $(cut -d: -f2 $themisc)
+	[[ -e $thedev ]] && return
+	type cut >/dev/null && have_cut=yes
+	type awk >/dev/null && have_awk=yes
+	type sed >/dev/null && have_sed=yes
+	type grep >/dev/null && have_grep=yes
+	if [[ $have_cut = yes ]]; then
+		mknod $thedev c $(cut -d: -f1 $themisc) $(cut -d: -f2 $themisc)
+	elif [[ $have_awk = yes ]]; then
+		mknod $thedev c $(awk -F: '{print $1}' $themisc) $(awk -F: '{print $2}' $themisc)
+	elif [[ $have_sed = yes ]]; then
+		mknod $thedev c $(sed 's/\([[:digit:]]\+\):.*/\1/' $themisc) $(sed 's/.*:\([[:digit:]]\+\)/\2/' $themisc)
+	elif [[ $have_grep = yes ]]; then
+		# we don't have sed, awk, or cut. this is going to get
+		# ugly. Use repeated applications of grep's `-o' option to
+		# trim things out.
+		mknod $thedev c $(grep -Eoh '[[:digit:]]+:' $themisc | grep -Eoh '[[:digit:]]') $(grep -Eoh ':[[:digit:]]+' $themisc | grep -Eoh '[[:digit:]]')
+	else
+		echo "Can't create $thedev because we don't have cut, sed, awk, grep"
+		echo "or a magnetized needle and a steady heand."
+		return 1
+	fi
+	return 0
 }
 
 for i in $*
@@ -77,7 +97,7 @@ do
 done
 
 # create ion device if it doesn't exist
-maybe_make_node $ion_dev $ion_dev_misc
+maybe_make_node $ion_dev $ion_dev_misc || exit 1
 
 if [ ! -e $ion_test_mod ]; then
 	echo "ERROR: Kernel Test Module not present"
@@ -95,7 +115,7 @@ if [ ! -e $ion_test_dev_sys ]; then
 fi
 
 # create the ion test device if it doesn't exist
-maybe_make_node $ion_test_dev $ion_test_dev_sys
+maybe_make_node $ion_test_dev $ion_test_dev_sys || exit 1
 
 
 #invoke test
