@@ -716,6 +716,7 @@ static int heap_profiling(const char *alloc_profile_path)
 {
 	struct alloc_profile_entry *alloc_profile, *entry;
 	struct alloc_profile_handler *iter;
+	int rc = 0;
 
 	/**
 	 * get_alloc_profile will run the necessary .ctor and
@@ -756,7 +757,7 @@ static int heap_profiling(const char *alloc_profile_path)
 
 	/* Run .run callbacks */
 	for_each_alloc_profile_entry(entry, alloc_profile)
-		entry->handler->ops->run(entry);
+		rc |= entry->handler->ops->run(entry);
 
 	/**
 	 * Run .global_teardown callbacks for any handlers being used
@@ -783,7 +784,7 @@ static int heap_profiling(const char *alloc_profile_path)
 			free(entry->priv);
 	}
 
-	return 0;
+	return rc;
 }
 
 static int oom_test(void)
