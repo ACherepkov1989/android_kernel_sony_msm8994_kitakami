@@ -77,6 +77,7 @@ Appendix A: Allocation Profiles for memory_prof
         - sleep
         - print
         - simple_alloc
+        - simple_basic_sanity
         - simple_profile
         - simple_free
         - alloc_pages
@@ -185,6 +186,31 @@ Appendix A: Allocation Profiles for memory_prof
         was as for the `alloc' op, above
 
       See `simple_free' for an example of how this can be used.
+
+    o `op' == simple_basic_sanity
+
+      When `op' == simple_basic_sanity, we iterate through all buffers
+      previously allocated with `simple_alloc' until we find one with
+      a matching alloc_id. We do basic sanity testing of the first one
+      we find with the same algorithm as `./memory_prof -b'.
+
+      The following remaining fields are defined:
+
+          alloc_id
+
+      Important: this operation will always fail on anything except a
+      freshly allocated buffer. For example, the following sequence is
+      BAD:
+
+          simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+          simple_profile,pizza
+          simple_basic_sanity,pizza
+
+      But the following sequence is GOOD:
+
+          simple_alloc,pizza,ION_SYSTEM_HEAP_ID,ION_FLAG_CACHED,0x100000,1MB
+          simple_basic_sanity,pizza
+          simple_profile,pizza
 
     o `op' == simple_profile
 

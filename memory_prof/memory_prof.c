@@ -143,37 +143,26 @@ static int alloc_and_map_some_ion(int ionfd,
 	return rc;
 }
 
-static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
+int do_basic_ion_sanity_test(int ionfd, ion_user_handle_t handle,
+			unsigned long size)
 {
-	uint8_t *buf;
-	int ionfd, rc = 0;
+	int rc;
 	unsigned long i, squelched = 0;
-	bool integrity_good = true;
 	struct ion_fd_data fd_data;
-	struct ion_custom_data custom_data;
 	struct ion_flush_data flush_data;
+	struct ion_custom_data custom_data;
+	uint8_t *buf;
+	bool integrity_good = true;
 	int error_vals[256];
-	unsigned long size = alloc_data.len;
 
 	memset(error_vals, 0, sizeof(error_vals));
 
-	ionfd = open(ION_DEV, O_RDONLY);
-	if (ionfd < 0) {
-		perror("couldn't open " ION_DEV);
-		rc = ionfd;
-		goto out;
-	}
-
-	rc = alloc_me_up_some_ion(ionfd, &alloc_data);
-	if (rc)
-		goto err0;
-
-	fd_data.handle = alloc_data.handle;
+	fd_data.handle = handle;
 
 	rc = ioctl(ionfd, ION_IOC_MAP, &fd_data);
 	if (rc) {
 		perror("couldn't do ION_IOC_MAP");
-		goto err1;
+		goto err_out;
 	}
 
 	buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -182,7 +171,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
 	if (buf == MAP_FAILED) {
 		perror("couldn't do mmap");
 		rc = (int) MAP_FAILED;
-		goto err2;
+		goto err_close_fd_data;
 	}
 
 	for (i = 0; i < size; ++i)
@@ -190,11 +179,11 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
 			printf("Buffer wasn't zero'd at offset %ld! got: %x\n",
 				i, buf[i]);
 			rc = 1;
-			goto err3;
+			goto err_munmap;
 		}
 
 	memset(buf, 0xA5, size);
-	flush_data.handle = alloc_data.handle;
+	flush_data.handle = handle;
 	flush_data.vaddr = buf;
 	flush_data.length = size;
 	custom_data.cmd = ION_IOC_CLEAN_INV_CACHES;
@@ -202,7 +191,7 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
 	if (ioctl(ionfd, ION_IOC_CUSTOM, &custom_data)) {
 		perror("Couldn't flush caches");
 		rc = 1;
-		goto err3;
+		goto err_munmap;
 	} else {
 		puts("flushed caches");
 	}
@@ -233,14 +222,36 @@ static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
 				printf("Saw %d instead of 0xA5 %d times\n",
 					(int) i, error_vals[i]);
 
-err3:
+err_munmap:
 	if (munmap(buf, size)) {
 		rc = 1;
 		perror("couldn't do munmap");
 	}
 
-err2:
+err_close_fd_data:
 	close(fd_data.fd);
+err_out:
+	return rc;
+}
+
+static int basic_ion_sanity_test(struct ion_allocation_data alloc_data)
+{
+	int ionfd, rc = 0;
+	unsigned long size = alloc_data.len;
+
+	ionfd = open(ION_DEV, O_RDONLY);
+	if (ionfd < 0) {
+		perror("couldn't open " ION_DEV);
+		rc = ionfd;
+		goto out;
+	}
+
+	rc = alloc_me_up_some_ion(ionfd, &alloc_data);
+	if (rc)
+		goto err0;
+
+	rc |= do_basic_ion_sanity_test(ionfd, alloc_data.handle, size);
+
 err1:
 	rc |= ioctl(ionfd, ION_IOC_FREE, &alloc_data.handle);
 err0:
