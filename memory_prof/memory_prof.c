@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -98,7 +98,7 @@ static int alloc_me_up_some_ion(int ionfd,
  *
  * Returns 0 on success, 1 otherwise
  */
-static int mmap_my_ion_buffer(int ionfd, struct ion_handle *handle, size_t len,
+static int mmap_my_ion_buffer(int ionfd, ion_user_handle_t handle, size_t len,
 			char **buf, int *map_fd)
 {
 	struct ion_fd_data fd_data;
