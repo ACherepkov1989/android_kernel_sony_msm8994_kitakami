@@ -1165,6 +1165,7 @@ int main(int argc, char *argv[])
 	bool do_leak_test = false;
 	bool do_ion_memcpy_test = false;
 	bool do_mmap_memcpy_test = false;
+	bool did_something = false;
 	const char *alloc_profile = NULL;
 	int num_reps = 1;
 	int option_index = 0;
@@ -1246,30 +1247,49 @@ int main(int argc, char *argv[])
 	set_oom_score_adj_self(-1000);
 	set_oom_score_adj_parent(-1000);
 
-	if (do_basic_sanity_tests)
+	if (do_basic_sanity_tests) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= basic_sanity_tests(basic_sanity_size);
-	if (do_map_extra_test)
+		did_something = true;
+	}
+	if (do_map_extra_test) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= map_extra_test();
-	if (do_heap_profiling)
+		did_something = true;
+	}
+	if (do_heap_profiling) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= heap_profiling(alloc_profile);
-	if (do_kernel_alloc_profiling)
+		did_something = true;
+	}
+	if (do_kernel_alloc_profiling) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= profile_kernel_alloc();
-	if (do_oom_test)
+		did_something = true;
+	}
+	if (do_oom_test) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= oom_test();
-	if (do_leak_test)
+		did_something = true;
+	}
+	if (do_leak_test) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= leak_test();
+		did_something = true;
+	}
 
-	if (do_ion_memcpy_test)
+	if (do_ion_memcpy_test) {
 		rc |= ion_memcpy_test();
+		did_something = true;
+	}
 
-	if (do_mmap_memcpy_test)
+	if (do_mmap_memcpy_test) {
 		rc |= mmap_memcpy_test();
+		did_something = true;
+	}
+
+	if (!did_something)
+		printf("Nothing to do. Try %s -h\n", argv[0]);
 
 	return rc;
 }
