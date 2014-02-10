@@ -13,7 +13,7 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
-#include <mach/ipa.h>
+#include <linux/ipa.h>
 #include <linux/msm_ipa.h>
 #include <linux/kernel.h>
 #include "ipa_rm_ut.h"

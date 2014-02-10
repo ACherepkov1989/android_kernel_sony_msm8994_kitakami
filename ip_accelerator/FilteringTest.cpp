@@ -118,19 +118,19 @@ public:
 			LOG_MSG_ERROR("Failed default Packet\n");
 			return false;
 		}
-		printf ("Loaded %d Bytes to Buffer 1\n",m_sendSize);
+		printf ("Loaded %zu Bytes to Buffer 1\n",m_sendSize);
 
 		if (!LoadDefaultPacket(ip, m_sendBuffer2, m_sendSize2)) {
 			LOG_MSG_ERROR("Failed default Packet\n");
 			return false;
 		}
-		printf ("Loaded %d Bytes to Buffer 2\n",m_sendSize2);
+		printf ("Loaded %zu Bytes to Buffer 2\n",m_sendSize2);
 
 		if (!LoadDefaultPacket(ip, m_sendBuffer3, m_sendSize3)) {
 			LOG_MSG_ERROR("Failed default Packet\n");
 			return false;
 		}
-		printf ("Loaded %d Bytes to Buffer 3\n",m_sendSize3);
+		printf ("Loaded %zu Bytes to Buffer 3\n",m_sendSize3);
 
 		return true;
 	}
@@ -150,7 +150,7 @@ public:
 		}
 
 		receivedSize = cons.ReceiveData(rxBuff1, 0x400);
-		printf("Received %d bytes on %s.\n", receivedSize, cons.m_fromChannelName.c_str());
+		printf("Received %zu bytes on %s.\n", receivedSize, cons.m_fromChannelName.c_str());
 
 		// Compare results
 		isSuccess &= CompareResultVsGolden(send, send_sz, rxBuff1, receivedSize);
@@ -164,12 +164,12 @@ public:
 		for(j = 0; j < receivedSize; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
-		printf("Expected Value (%d)\n%s\n, Received Value1(%d)\n%s\n",send_sz,SentBuffer,receivedSize,recievedBuffer);
+		printf("Expected Value (%zu)\n%s\n, Received Value1(%zu)\n%s\n",send_sz,SentBuffer,receivedSize,recievedBuffer);
 
 		delete[] rxBuff1;
 
 		receivedSize = excp_cons.ReceiveData(rxBuff1, 0x400);
-		printf("Received %d bytes on %s.\n", receivedSize, excp_cons.m_fromChannelName.c_str());
+		printf("Received %zu bytes on %s.\n", receivedSize, excp_cons.m_fromChannelName.c_str());
 
 		return isSuccess;
 	}
@@ -193,13 +193,13 @@ public:
 		}
 
 		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
-		printf("Received %d bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
 
 		receivedSize2 = m_consumer2.ReceiveData(rxBuff2, 0x400);
-		printf("Received %d bytes on %s.\n", receivedSize2, m_consumer2.m_fromChannelName.c_str());
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer2.m_fromChannelName.c_str());
 
 		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
-		printf("Received %d bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
 
 		// Compare results
 		if (!CompareResultVsGolden(m_sendBuffer, m_sendSize, rxBuff1, receivedSize))
@@ -217,21 +217,21 @@ public:
 		for(j = 0; j < receivedSize; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
-		printf("Expected Value1 (%d)\n%s\n, Received Value1(%d)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
 
 		for(j = 0; j < m_sendSize2; j++)
 			sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
 		for(j = 0; j < receivedSize2; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
-		printf("Expected Value2 (%d)\n%s\n, Received Value2(%d)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
 
 		for(j = 0; j < m_sendSize3; j++)
 			sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
 		for(j = 0; j < receivedSize3; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
-		printf("Expected Value3 (%d)\n%s\n, Received Value3(%d)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
 
 		isSuccess &= CompareResultVsGolden(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
 		isSuccess &= CompareResultVsGolden(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);

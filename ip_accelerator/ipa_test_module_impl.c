@@ -24,10 +24,8 @@
 #include <linux/dma-mapping.h>	/* dma_alloc_coherent() */
 #include <linux/io.h>
 #include <linux/uaccess.h>
-#include <mach/irqs.h>		/* SPS_BAM_DMA_IRQ */
-#include <mach/msm_iomap.h>	/* MSM_CLK_CTL_BASE */
-#include <mach/sps.h>		/* SPS API*/
-#include <mach/ipa.h>
+#include <linux/msm-sps.h>		/* SPS API*/
+#include <linux/ipa.h>
 #include <linux/skbuff.h>	/* sk_buff */
 #include <linux/kfifo.h>  /* Kernel FIFO Implementation */
 #include <linux/delay.h> /* msleep() */
@@ -151,7 +149,7 @@ static struct channel_dev *to_ipa_devs[MAX_CHANNEL_DEVS/2];
 static struct channel_dev *from_ipa_devs[MAX_CHANNEL_DEVS/2];
 
 /*A handle to the BAM of the BAM-DMA HW.*/
-static u32 dma_bam_hdl;
+static unsigned long dma_bam_hdl;
 
 /*This structure holds all the data required for the test module.*/
 struct test_context {
@@ -191,7 +189,7 @@ static void test_alloc_mem(struct sps_mem_buffer *mem)
 
 #ifndef IPA_ON_R3PC
 	/* need to check return value in formal code */
-	mem->base = dma_alloc_coherent(NULL, mem->size, &dma_addr, 0);
+	mem->base = dma_alloc_coherent(ipa_test->dev, mem->size, &dma_addr, 0);
 #else
 	mem->base = ipa_mem_alloc(mem->size, &dma_addr);
 #endif
@@ -210,7 +208,7 @@ static void test_free_mem(struct sps_mem_buffer *mem)
 
 	if (dma_addr)
 #ifndef IPA_ON_R3PC
-		dma_free_coherent(NULL, mem->size, mem->base, dma_addr);
+		dma_free_coherent(ipa_test->dev, mem->size, mem->base, dma_addr);
 #else
 		ipa_mem_free(mem->base);
 #endif
@@ -230,7 +228,7 @@ void print_buff(void *data, size_t size)
 		num_lines++;
 
 	pr_debug(DRV_NAME
-			":Printing buffer at address 0x%p, size = %d:\n"
+			":Printing buffer at address 0x%p, size = %zu:\n"
 			, data, size);
 	for (i = 0; i < num_lines; i++) {
 		strlcpy(str, "\0", sizeof(str));
@@ -275,7 +273,7 @@ static int wait_xfer_completion(int use_irq,
 	return 0;
 }
 
-static ssize_t channel_open(struct inode *inode, struct file *filp)
+static int channel_open(struct inode *inode, struct file *filp)
 {
 	struct channel_dev *channel_dev;
 
@@ -367,7 +365,7 @@ static ssize_t channel_read(struct file *filp, char __user *buf,
 	struct sps_iovec tmp_io_vec;
 	u32 offset = 0;
 
-	pr_debug(DRV_NAME ":%s() size to read = %d\n", __func__, count);
+	pr_debug(DRV_NAME ":%s() size to read = %zu\n", __func__, count);
 
 	res = wait_xfer_completion(false, &channel_dev->ep.xfer_done,
 				   channel_dev->ep.sps, 1, 3, 5);
@@ -501,9 +499,9 @@ int create_channel_device(const int index,
 		ret = -ENODEV;
 		goto create_channel_device_failure;
 	}
-	pr_debug(DRV_NAME ":mem phys=0x%x.virt=0x%x.\n",
-			channel_dev->desc_fifo.phys_base,
-			(u32) channel_dev->desc_fifo.base);
+	pr_debug(DRV_NAME ":mem phys=0x%pa.virt=0x%p.\n",
+			&channel_dev->desc_fifo.phys_base,
+			channel_dev->desc_fifo.base);
 	/*To be on the safe side the descriptor fifo is cleared*/
 	memset(channel_dev->desc_fifo.base, 0x00, channel_dev->desc_fifo.size);
 
@@ -516,8 +514,8 @@ int create_channel_device(const int index,
 		ret = -ENODEV;
 		goto create_channel_device_failure;
 	}
-	pr_debug(DRV_NAME ":mem phys=0x%x.virt=0x%x.\n",
-		channel_dev->mem.phys_base, (u32) channel_dev->mem.base);
+	pr_debug(DRV_NAME ":mem phys=0x%pa.virt=0x%p.\n",
+		&channel_dev->mem.phys_base, channel_dev->mem.base);
 	memset(channel_dev->mem.base, 0xbb, channel_dev->mem.size);
 
 	/* Add a pointer from the channel device to the test context info */
@@ -579,8 +577,8 @@ int connect_bamdma_to_apps(struct test_endpoint_sys *rx_ep,
 	/*The completion object will be notify for EOT.*/
 	init_completion(&rx_ep->xfer_done);
 	rx_event->xfer_done = &rx_ep->xfer_done;
-	pr_debug(DRV_NAME ":rx_event.event=0x%x.\n",
-			(u32) rx_event->xfer_done);
+	pr_debug(DRV_NAME ":rx_event.event=0x%p.\n",
+			rx_event->xfer_done);
 	/*Register our completion object to
 	 * know when the connection was made*/
 	res = sps_register_event(rx_ep->sps, rx_event);
@@ -626,7 +624,7 @@ int connect_ipa_to_apps(struct test_endpoint_sys *rx_ep,
 	rx_event->options = SPS_O_EOT;
 	init_completion(&rx_ep->xfer_done);
 	rx_event->xfer_done = &rx_ep->xfer_done;
-	pr_debug(DRV_NAME ":rx_event.event=0x%x.\n", (u32) rx_event->xfer_done);
+	pr_debug(DRV_NAME ":rx_event.event=0x%p.\n", rx_event->xfer_done);
 	res = sps_register_event(rx_ep->sps, rx_event);
 	if (res) {
 		pr_err(DRV_NAME ":fail to register event.\n");
@@ -3481,7 +3479,7 @@ ssize_t exception_kfifo_read(struct file *filp, char __user *buf,
 			(&(p_exception_hdl_data
 					->notify_cb_data.exception_kfifo));
 	if (data_len > count) {
-		pr_err("[%s:%d, %s()]buffer(%d) too small (%d) required\n"
+		pr_err("[%s:%d, %s()]buffer(%zu) too small (%zu) required\n"
 				, __FILE__, __LINE__,
 				__func__, data_len, count);
 		return -ENOSPC;
@@ -3494,7 +3492,7 @@ ssize_t exception_kfifo_read(struct file *filp, char __user *buf,
 	{
 		int i = 0;
 
-		pr_debug("Exception packet's length=%d, Packet's content:\n"
+		pr_debug("Exception packet's length=%zu, Packet's content:\n"
 					, data_len);
 		if (data_len - 3 > 0) {
 			for (i = 0; i < data_len-4; i += 4) {
@@ -3526,7 +3524,7 @@ ssize_t exception_kfifo_write(struct file *file, const char __user *buf,
 			(&(p_exception_hdl_data->notify_cb_data.exception_kfifo)
 					, buf, count, &copied);
 	if (ret) {
-		pr_err("[%s:%d, %s()](%d/%d) Bytes were written to kfifo.\n"
+		pr_err("[%s:%d, %s()](%d/%zu) Bytes were written to kfifo.\n"
 				, __FILE__, __LINE__, __func__
 				, copied, count);
 	}
@@ -3571,7 +3569,7 @@ void notify_upon_exception(void *priv,
 #endif
 
 #if (EXCEPTION_KFIFO_DEBUG_VERBOSE)
-		pr_debug("Exception packet length = %d,Packet content:\n",
+		pr_debug("Exception packet length = %zu,Packet content:\n",
 				data_len);
 		for (i = 0; i < data_len - 4; i += 4) {
 			pr_debug("%02x %02x %02x %02x",
@@ -3583,7 +3581,7 @@ void notify_upon_exception(void *priv,
 			&p_notify_cb_data->exception_kfifo,
 			p_data , data_len);
 	if (res != data_len) {
-		pr_err("[%s:%d, %s()] kfifo_in copied %d Bytes instead of %d\n"
+		pr_err("[%s:%d, %s()] kfifo_in copied %d Bytes instead of %zu\n"
 				, __FILE__, __LINE__, __func__,
 				res, data_len);
 		return;
@@ -3608,7 +3606,7 @@ int exception_hdl_init(void)
 	p_exception_hdl_data =
 			kzalloc(sizeof(struct exception_hdl_data), GFP_KERNEL);
 	if (NULL == p_exception_hdl_data) {
-		pr_err("[%s:%d,%s()]kzalloc return NULL(%p), can't alloc %d Bytes\n"
+		pr_err("[%s:%d,%s()]kzalloc return NULL(%p), can't alloc %zu Bytes\n"
 				, __FILE__, __LINE__, __func__
 				, p_exception_hdl_data,
 				sizeof(struct exception_hdl_data));
@@ -4644,7 +4642,7 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		pr_err(DRV_NAME ":fail to get DMA BAM handle\n");
 		return -ENODEV;
 	}
-	pr_debug(DRV_NAME ":DMA BAM hdl 0x%x -----\n", dma_bam_hdl);
+	pr_debug(DRV_NAME ":DMA BAM hdl 0x%lx -----\n", dma_bam_hdl);
 #endif
 
 	switch (ipa_test->configuration_idx) {

@@ -360,6 +360,8 @@ void ConfigureScenario(int testConfiguration)
 		return;
 	}
 
+	system("mdev -s");
+
 	close(fd);
 }//func
 
@@ -416,7 +418,7 @@ void print_buff(void *data, size_t size)
 	if (size % bytes_in_line > 0)
 		num_lines++;
 
-	printf("Printing buffer at address 0x%p, size = %d: \n", data, size);
+	printf("Printing buffer at address 0x%p, size = %zu: \n", data, size);
 	for (i = 0 ; i < num_lines; i++) {
 		strncpy(str, "\0", sizeof(str));
 		for (j = 0; (j < bytes_in_line) && ((i * bytes_in_line + j) < size); j++) {

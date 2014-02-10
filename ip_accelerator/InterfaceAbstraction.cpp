@@ -74,7 +74,7 @@ bool InterfaceAbstraction::SendData(unsigned char *buf, size_t size)
 {
 	int bytesWritten = 0;
 
-	printf("Trying to write %d bytes to %d.\n", size, m_toIPADescriptor);
+	printf("Trying to write %zu bytes to %d.\n", size, m_toIPADescriptor);
 
 	bytesWritten = write(m_toIPADescriptor, buf, size);
 	if (-1 == bytesWritten)
@@ -84,7 +84,7 @@ bool InterfaceAbstraction::SendData(unsigned char *buf, size_t size)
 		"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 		printf(
 		"Failed to execute command\n write(m_toIPADescriptor, buf, size);\n "
-		"m_toIPADescriptor=%d, buf=0x%p, size=%d",m_toIPADescriptor,
+		"m_toIPADescriptor=%d, buf=0x%p, size=%zu",m_toIPADescriptor,
 		buf,
 		size);
 		printf("Error on write execution, errno=%d, Quitting!\n", err);
@@ -106,10 +106,10 @@ int InterfaceAbstraction::ReceiveData(unsigned char *buf, size_t size)
 
 	do
 	{
-		printf("Trying to read %d bytes from %d.\n", size, m_fromIPADescriptor);
+		printf("Trying to read %zu bytes from %d.\n", size, m_fromIPADescriptor);
 
 		bytesRead = read(m_fromIPADescriptor, (void*)buf, size);
-		printf("Read %d bytes.\n", bytesRead);
+		printf("Read %zu bytes.\n", bytesRead);
 		totalBytesRead += bytesRead;
 		if (bytesRead == size)
 			continueRead = true;
