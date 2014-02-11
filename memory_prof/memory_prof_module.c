@@ -19,7 +19,7 @@
 #include <linux/mm.h>
 #include <asm/cacheflush.h>
 #include <asm-generic/sizes.h>
-#include <mach/iommu_domains.h>
+#include <linux/msm_iommu_domains.h>
 #include <linux/msm_ion.h>
 #include <asm/uaccess.h>
 
