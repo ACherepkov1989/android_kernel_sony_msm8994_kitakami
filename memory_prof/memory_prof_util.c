@@ -100,14 +100,24 @@ struct timeval timeval_sub(struct timeval t1, struct timeval t2)
 }
 
 /**
+ * timeval_us_diff - gets the difference (in US) between t1 and t2
+ *
+ * Returns the US diff between t1 and t2 (t1 - t2)
+ */
+double timeval_us_diff(struct timeval t1, struct timeval t2)
+{
+	struct timeval tv_result = timeval_sub(t1, t2);
+	return tv_result.tv_usec + S_TO_US(tv_result.tv_sec);
+}
+
+/**
  * timeval_ms_diff - gets the difference (in MS) between t1 and t2
  *
  * Returns the MS diff between t1 and t2 (t1 - t2)
  */
 double timeval_ms_diff(struct timeval t1, struct timeval t2)
 {
-	struct timeval tv_result = timeval_sub(t1, t2);
-	return US_TO_MS(tv_result.tv_usec) + S_TO_MS(tv_result.tv_sec);
+	return US_TO_MS(timeval_us_diff(t1, t2));
 }
 
 void mprof_tick(struct timeval *tv)
