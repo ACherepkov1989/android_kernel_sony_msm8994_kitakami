@@ -44,7 +44,7 @@ struct alloc_pages_op {
 	char gfp_string[MAX_FLAGS_STRING_LEN];
 };
 
-int memory_prof_fd;
+static int memory_prof_fd;
 
 static int op_simple_alloc_global_setup(struct alloc_profile_entry entries[])
 {
