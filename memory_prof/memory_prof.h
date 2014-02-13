@@ -79,6 +79,19 @@ struct alloc_profile_entry {
 	struct alloc_profile_handler *handler;
 };
 
+enum size_type {
+	ST_BYTES,
+	ST_KB,
+	ST_MB,
+	ST_GB,
+};
+
+struct size_suffix_size_type_mapping {
+	char *suffix;
+	enum size_type size_type;
+	unsigned long multiplier;
+};
+
 /**
  * A set of callbacks to be used for reading allocation profiles from
  * various sources.

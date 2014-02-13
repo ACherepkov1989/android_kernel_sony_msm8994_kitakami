@@ -79,6 +79,48 @@ int split_string(const char * const string, char delim, char *output[],
 	return nentries;
 }
 
+bool endswith(const char * const string, const char * const suffix)
+{
+	int s1 = strlen(string);
+	int s2 = strlen(suffix);
+	int len = MIN(s1, s2);
+	return 0 == strcmp(string + (s1 - len), suffix + (s2 - len));
+}
+
+int parse_size_string(const char * const size_string,
+		unsigned int *bytes,
+		struct size_suffix_size_type_mapping *size_map)
+{
+	const struct size_suffix_size_type_mapping *smap;
+	char *scopy;
+	for (smap = &size_suffix_to_size_type_mappings[0];
+	     smap->suffix;
+	     smap++) {
+		if (endswith(size_string, smap->suffix))
+			break;
+	}
+	if (!smap->suffix) {
+		STRTOL(*bytes, size_string, 0);
+		return 0;
+	}
+	scopy = strdup(size_string);
+	/* chop off the suffix */
+	scopy[strlen(scopy) - strlen(smap->suffix)] = '\0';
+	*size_map = *smap;
+	STRTOL(*bytes, scopy, 0);
+	*bytes *= smap->multiplier;
+	free(scopy);
+	return 0;
+}
+
+const struct size_suffix_size_type_mapping size_suffix_to_size_type_mappings[] =
+{
+	{.suffix = "KB", .size_type=ST_KB, .multiplier = 1024},
+	{.suffix = "MB", .size_type=ST_MB, .multiplier = 1024 * 1024},
+	{.suffix = "GB", .size_type=ST_GB, .multiplier = 1024 * 1024 * 1024},
+	{.suffix = NULL},
+};
+
 #define MAKE_HEAP_INFO(heap) { .heap_id = heap, .heap_id_string = #heap }
 
 struct heap_info {
