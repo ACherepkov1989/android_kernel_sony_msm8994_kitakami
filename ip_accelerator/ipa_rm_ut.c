@@ -249,7 +249,7 @@ int build_rmnet_bridge_use_case_graph(
 				enum ipa_rm_resource_name resource_name))
 {
 	int result = 0;
-	struct ipa_rm_create_params create_params;
+	struct ipa_rm_create_params create_params = {0};
 
 	IPA_UT_DBG("build_rmnet_bridge_use_case_graph ENTER\n");
 
