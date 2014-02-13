@@ -83,6 +83,7 @@ Appendix A: Allocation Profiles for memory_prof
         - alloc_pages
         - create_unused_client
         - free_all_unused_clients
+        - user_alloc
 
     Each operation is described in detail below.
 
@@ -303,3 +304,41 @@ Appendix A: Allocation Profiles for memory_prof
       When `op' == free_all_unused_clients, all clients previously
       created with create_unused_client are free'd by close()'ing all
       file descriptors returned by the previous calls to open().
+
+    o `op' == user_alloc
+
+      When `op' == user_alloc, profile the libc `malloc' or `mmap'
+      functions.
+
+      The following remaining fields are defined:
+
+          allocator
+          alloc_size
+          usage_size
+          usage_fn
+
+      - allocator :: the underlying memory allocation function to
+        profile. Currently supported values: "malloc", "mmap". Note
+        that when mmap is used we also pass the MAP_POPULATE flag, so
+        the result will also include the time taken to fault the pages
+        in.
+
+      - alloc_size :: the size of the buffer to profile. Can be any
+        valid size string (e.g. "4KB", "2MB", etc). Supported suffixes
+        are "KB" "MB" and "GB" (or no suffix for bytes).
+
+      - usage_size :: how many of the allocated bytes to run through
+        usage_fn. Can be any valid size string, similar to alloc_size.
+
+      - usage_fn :: the function to use to fiddle with the allocated
+        memory. Supported values:
+
+          - nop :: don't touch the memory
+
+          - memset-n :: memset the memory to `n'
+
+            `n' is passed to `strtol' with a `base' of 0 so it can
+            take any of the values supported there (see strtol(3)).
+
+            e.g. memset-0xa5 would result in memset(buf, 0xa5, size)
+                 memset-0 would result in memset(buf, 0, size)
