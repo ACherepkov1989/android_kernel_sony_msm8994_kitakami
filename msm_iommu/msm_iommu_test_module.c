@@ -26,6 +26,7 @@
 #include <asm/sizes.h>
 #include <mach/iommu.h>
 #include <mach/iommu_domains.h>
+#include <asm/cacheflush.h>
 
 #include "iommutest.h"
 
@@ -735,6 +736,154 @@ unreg_dom:
 	return ret;
 }
 
+void __iomem *smmu_local_base;
+#define SMMU_LOCAL_BASE			0x1EF0000
+#define SMMU_CATS_128_BIT_CTL_SEC	0x18
+#define ENABLE_CATS			0x1
+#define TBU_ID_SHIFT			0x1
+#define TBU_ID_MASK			0xF
+#define VA_REMAP_MASK			0xE0000000
+#define VA_REMAP_SHIFT			0x5
+#define VA_REMAP			0x1D
+#define ENABLE_CUSTOM_SID		0x1
+#define ENABLE_CUSTOM_SID_SHIFT		0x8
+#define CUSTOM_SID_SHIFT		0x9
+#define CUSTOM_SID_MASK			0x3FF
+
+static int cats_test(const struct msm_iommu_test *iommu_test,
+				struct test_iommu *tst_iommu)
+{
+	int ret = 0;
+	int domain_id;
+	int prot = IOMMU_WRITE | IOMMU_READ;
+	struct iommu_domain *domain;
+	struct iommu *smmu = &iommu_test->iommu_list[tst_iommu->iommu_no];
+	const char *ctx_name = smmu->cb_list[tst_iommu->cb_no].name;
+	struct device *dev;
+	struct msm_iommu_drvdata *drvdata;
+	struct msm_iommu_ctx_drvdata *ctx_drvdata;
+	unsigned int i;
+	unsigned long *magic_virt;
+	unsigned long *cats_virt;
+	unsigned long pattern;
+	phys_addr_t magic_phys;
+	phys_addr_t cats_phys;
+	u32 mux, iova;
+	u32 *sids = NULL;
+
+	if (iommu_test->iommu_rev != 2)
+		goto out;
+
+	domain_id = create_domain(&domain);
+
+	magic_virt = kmalloc(SZ_4K, GFP_KERNEL);
+	if (!magic_virt) {
+		pr_err("%s: Could not get memory for magic number\n", __func__);
+		ret = -ENOMEM;
+		goto unreg_dom;
+	}
+
+	magic_phys = virt_to_phys(magic_virt);
+
+	dev  = msm_iommu_get_ctx(ctx_name);
+	if (IS_ERR_OR_NULL(dev)) {
+		pr_err("context %s not found: %ld\n", ctx_name, PTR_ERR(dev));
+		ret = -EINVAL;
+		goto unreg_dom;
+	}
+
+	drvdata = dev_get_drvdata(dev->parent);
+	ctx_drvdata = dev_get_drvdata(dev);
+
+	if (is_ctx_busy(dev)) {
+		ret = -EBUSY;
+		goto unreg_dom;
+	}
+
+	if (tst_iommu->cats_tbu_id == -1) {
+		ret = -EINVAL;
+		goto unreg_dom;
+	}
+
+	ret = iommu_attach_device(domain, dev);
+	if (ret) {
+		pr_err("iommu attach failed: %x\n", ret);
+		goto unreg_dom;
+	}
+
+	smmu_local_base = ioremap((phys_addr_t)SMMU_LOCAL_BASE, SZ_64K);
+
+	sids = ctx_drvdata->sids;
+
+	/* Any random VA to be used */
+	iova = 0x0abcd000;
+	for (i = 0; i < 15; i++) {
+		iova += (1 << 28);
+		ret = iommu_map(domain, iova, magic_phys, SZ_4K, prot);
+		if (ret) {
+			pr_err("%s: could not map 0x%u in domain %p\n",
+						__func__, iova, domain);
+			goto detach;
+		}
+
+		mux = 0;
+		mux |= ENABLE_CATS;
+		mux |= ((tst_iommu->cats_tbu_id & TBU_ID_MASK) << TBU_ID_SHIFT);
+		mux |= (((iova & VA_REMAP_MASK) >> VA_REMAP) << VA_REMAP_SHIFT);
+		mux |= (ENABLE_CUSTOM_SID << ENABLE_CUSTOM_SID_SHIFT);
+		mux |= ((sids[0] & CUSTOM_SID_MASK) << CUSTOM_SID_SHIFT);
+
+		writel_relaxed(mux, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
+		pr_debug("CATS MUX value 0x%x", mux);
+
+		cats_phys = (iova & 0x1FFFFFFF) + 0x40000000;
+		cats_virt = ioremap(cats_phys, SZ_4K);
+
+		/* CATS reads */
+		*magic_virt = 0xabababab;
+		dmac_flush_range(magic_virt, magic_virt+0x10);
+		pattern = readl_relaxed(cats_virt);
+
+		if (*magic_virt != pattern) {
+			pr_err("CPU write 0x%lx, CATS read 0x%lx\n",
+					*magic_virt, pattern);
+			ret = -EFAULT;
+			iounmap(cats_virt);
+			iommu_unmap(domain, iova, SZ_4K);
+			break;
+		}
+
+		/* CATS writes */
+		pattern = 0xcdcdcdcd;
+		writel_relaxed(pattern, cats_virt);
+		dmac_inv_range(magic_virt, magic_virt+0x10);
+
+		if (*magic_virt != pattern) {
+			pr_err("CATS write 0x%lx, CPU read 0x%lx\n",
+					pattern, *magic_virt);
+			ret = -EFAULT;
+			iounmap(cats_virt);
+			iommu_unmap(domain, iova, SZ_4K);
+			break;
+		}
+
+		iounmap(cats_virt);
+		iommu_unmap(domain, iova, SZ_4K);
+	}
+
+	/* Reset the CATS MUX */
+	writel_relaxed(0, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
+detach:
+	iounmap(smmu_local_base);
+	iommu_detach_device(domain, dev);
+unreg_dom:
+	kfree(magic_virt);
+	msm_unregister_domain(domain);
+out:
+	tst_iommu->ret_code = ret;
+	return ret;
+}
+
 #define CTX_SHIFT 12
 
 #define GET_GLOBAL_REG(reg, base) (readl_relaxed((base) + (reg)))
@@ -988,6 +1137,20 @@ static long iommu_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 
 		if (!ret) {
 			ret = test_iommu_bfb(iommu_test, &tst_iommu);
+			if (copy_to_user((void __user *)arg, &tst_iommu,
+					 sizeof(tst_iommu)))
+				ret = -EFAULT;
+		}
+		break;
+	}
+	case IOC_IOMMU_TEST_CATS:
+	{
+		if (copy_from_user(&tst_iommu, (void __user *)arg, sizeof
+				   (tst_iommu)))
+			ret = -EFAULT;
+
+		if (!ret) {
+			ret = cats_test(iommu_test, &tst_iommu);
 			if (copy_to_user((void __user *)arg, &tst_iommu,
 					 sizeof(tst_iommu)))
 				ret = -EFAULT;
