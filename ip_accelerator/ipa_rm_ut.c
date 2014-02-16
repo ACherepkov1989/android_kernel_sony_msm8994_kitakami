@@ -296,7 +296,7 @@ int build_rmnet_bridge_use_case_graph(
 		goto bail;
 
 	/* BRIDGE PROD */
-	create_params.name = IPA_RM_RESOURCE_BRIDGE_PROD;
+	create_params.name = IPA_RM_RESOURCE_WWAN_0_PROD;
 	create_params.reg_params.notify_cb =
 			rmnet_bridge_device_manager.notify_cb;
 	create_params.reg_params.user_data =
@@ -345,11 +345,11 @@ int build_rmnet_bridge_use_case_dependencies(
 			IPA_RM_RESOURCE_USB_CONS);
 	if (result)
 		goto bail;
-	result = add_dependency(IPA_RM_RESOURCE_BRIDGE_PROD,
+	result = add_dependency(IPA_RM_RESOURCE_WWAN_0_PROD,
 			IPA_RM_RESOURCE_HSIC_CONS);
 	if (result)
 		goto bail;
-	result = add_dependency(IPA_RM_RESOURCE_BRIDGE_PROD,
+	result = add_dependency(IPA_RM_RESOURCE_WWAN_0_PROD,
 			IPA_RM_RESOURCE_USB_CONS);
 
 	if (result)
