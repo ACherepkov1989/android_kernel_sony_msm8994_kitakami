@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -76,7 +76,7 @@ void configureclient(struct msm_bus_test_scale_pdata *pdata, int target)
 		}
 	} else if (target == 8974 || target == 9625 || target == 8226
 			|| target == 8610 || target == 'B' ||
-			target == 'b' || target == 8084 || target == "msm8916") {
+			target == 'b' || target == 8084 || target == 8916) {
 		for (i = 0; i < NUM_USECASES; i++) {
 			pdata->usecase[i].vectors[0].src =
 				MSM_BUS_TEST_MASTER_AMPSS_M0;
