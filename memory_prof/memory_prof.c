@@ -170,7 +170,7 @@ int do_basic_ion_sanity_test(int ionfd, ion_user_handle_t handle,
 
 	if (buf == MAP_FAILED) {
 		perror("couldn't do mmap");
-		rc = (int) MAP_FAILED;
+		rc = 1;
 		goto err_close_fd_data;
 	}
 
