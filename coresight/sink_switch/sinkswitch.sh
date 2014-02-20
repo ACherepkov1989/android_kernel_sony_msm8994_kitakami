@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2013, The Linux Foundation. All rights reserved.
+# Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -50,20 +50,16 @@ then
         stm_enable
 fi
 echo 1 > $etrsink
-read etfstatus < $etfsink
 read etrstatus < $etrsink
-read tpiustatus < $tpiusink
-if [ $etfstatus = 0 ] && [ $etrstatus = 1 ] && [ $tpiustatus = 0 ]
+if [ $etrstatus = 1 ]
 then
         echo "PASS: Changed current sink to ETR"
 else
         echo "FAIL: Sink Switching to ETR failed ****"
 fi
 echo 1 > $tpiusink
-read etfstatus < $etfsink
-read etrstatus < $etrsink
 read tpiustatus < $tpiusink
-if [ $etfstatus = 0 ] && [ $etrstatus = 0 ] && [ $tpiustatus = 1 ]
+if [ $tpiustatus = 1 ]
 then
         echo "PASS: Changed current sink to TPIU"
 else
@@ -71,9 +67,7 @@ else
 fi
 echo 1 > $etfsink
 read etfstatus < $etfsink
-read etrstatus < $etrsink
-read tpiustatus < $tpiusink
-if [ $etfstatus = 1 ] && [ $etrstatus = 0 ] && [ $tpiustatus = 0 ]
+if [ $etfstatus = 1 ]
 then
         echo "PASS: Changed current sink to ETF"
 else
