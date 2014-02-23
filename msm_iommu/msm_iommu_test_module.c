@@ -739,6 +739,10 @@ unreg_dom:
 void __iomem *smmu_local_base;
 #define SMMU_LOCAL_BASE			0x1EF0000
 #define SMMU_CATS_128_BIT_CTL_SEC	0x18
+#define SMMU_CATS_64_BIT_CTL_SEC	0x10
+#define CATS_128_BIT_ADDR_BASE		0x40000000
+#define CATS_64_BIT_ADDR_BASE		0x60000000
+
 #define ENABLE_CATS			0x1
 #define TBU_ID_SHIFT			0x1
 #define TBU_ID_MASK			0xF
@@ -833,10 +837,21 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 		mux |= (ENABLE_CUSTOM_SID << ENABLE_CUSTOM_SID_SHIFT);
 		mux |= ((sids[0] & CUSTOM_SID_MASK) << CUSTOM_SID_SHIFT);
 
-		writel_relaxed(mux, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
-		pr_debug("CATS MUX value 0x%x", mux);
+		if (tst_iommu->is_mm_tbu) {
+			writel_relaxed(mux, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
+			pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
+				SMMU_LOCAL_BASE + SMMU_CATS_128_BIT_CTL_SEC);
 
-		cats_phys = (iova & 0x1FFFFFFF) + 0x40000000;
+			cats_phys = (iova & 0x1FFFFFFF) + CATS_128_BIT_ADDR_BASE;
+		} else {
+			writel_relaxed(mux, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
+			pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
+				SMMU_LOCAL_BASE + SMMU_CATS_64_BIT_CTL_SEC);
+
+			cats_phys = (iova & 0x1FFFFFFF) + CATS_64_BIT_ADDR_BASE;
+		}
+		mb();
+
 		cats_virt = ioremap(cats_phys, SZ_4K);
 
 		/* CATS reads */
@@ -856,6 +871,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 		/* CATS writes */
 		pattern = 0xcdcdcdcd;
 		writel_relaxed(pattern, cats_virt);
+		mb();
 		dmac_inv_range(magic_virt, magic_virt+0x10);
 
 		if (*magic_virt != pattern) {
@@ -873,6 +889,8 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 
 	/* Reset the CATS MUX */
 	writel_relaxed(0, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
+	writel_relaxed(0, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
+	mb();
 detach:
 	iounmap(smmu_local_base);
 	iommu_detach_device(domain, dev);

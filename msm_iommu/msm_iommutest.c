@@ -70,6 +70,7 @@ static unsigned int do_basic_va2pa_test;
 static unsigned int cats_data_read = 0;
 static char *tbu_id_cb_name;
 static char iommu_to_test[NAME_LEN];
+static unsigned int *mm_tbu;
 
 #define NUM_TBUS		20
 #define TBU_NAME_LENGTH		50
@@ -226,6 +227,7 @@ int read_cats_tbu_id(struct target_struct *target)
 	char cb_name[50];
 	char line[101];
 	unsigned int tbu_id;
+	unsigned int is_mm_tbu;
 
 	snprintf(file_name, 100, "%s_cats.txt", target->name);
 	fp = fopen(file_name, "r");
@@ -236,14 +238,27 @@ int read_cats_tbu_id(struct target_struct *target)
 	}
 
 	tbu_id_cb_name = malloc((sizeof(char)) * NUM_TBUS * TBU_NAME_LENGTH);
+	if (!tbu_id_cb_name) {
+		 ret = -ENOMEM;
+		 goto out;
+	}
+
+	mm_tbu = malloc(sizeof(unsigned int) * NUM_TBUS);
+	if (!mm_tbu) {
+		ret = -ENOMEM;
+		free(tbu_id_cb_name);
+		goto out;
+	}
+
 	while (fgets(line, 100, fp) != NULL) {
-		sscanf(line, "%x %s", &tbu_id, cb_name);
+		sscanf(line, "%x %x %s", &tbu_id, &is_mm_tbu, cb_name);
 
 		if (tbu_id > NUM_TBUS)
 			continue;
 
 		memcpy(&tbu_id_cb_name[tbu_id * TBU_NAME_LENGTH], cb_name,
 				TBU_NAME_LENGTH);
+		mm_tbu[tbu_id] = is_mm_tbu;
 	}
 
 	fclose(fp);
@@ -268,7 +283,12 @@ int do_cats_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped,
 
 	if (!cats_data_read) {
 		ret = read_cats_tbu_id(target);
-		if (ret) {
+		if (ret == -ENOMEM) {
+			debug(INFO, PRINT_FORMAT ": Testing CATS: FAILED! (no memory)\n",
+				gnc->iommu_name, gnc->cb_name);
+			*skipped = 1;
+			return 0;
+		} else if (ret) {
 			*skipped = 1;
 			debug(INFO, PRINT_FORMAT ": Testing CATS: SKIPPED! (Setting Missing)\n",
 				gnc->iommu_name, gnc->cb_name);
@@ -280,6 +300,7 @@ int do_cats_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped,
 	for (i = 0; i < NUM_TBUS; i++) {
 		if (!strcmp(&tbu_id_cb_name[i * TBU_NAME_LENGTH], gnc->cb_name)) {
 			tst_iommu.cats_tbu_id = i;
+			tst_iommu.is_mm_tbu = mm_tbu[i];
 			break;
 		} else
 			tst_iommu.cats_tbu_id = -1;
@@ -492,6 +513,10 @@ struct test_results run_nominal_tests(void)
 		}
 	}
 out:
+	if (tbu_id_cb_name)
+		free(tbu_id_cb_name);
+	if (mm_tbu)
+		free(mm_tbu);
 	close(iommu_test_fd);
 	return result;
 }
