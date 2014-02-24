@@ -366,7 +366,7 @@ static int test_map_phys_range(struct iommu_domain *domain,
 	}
 
 	sg_init_table(sglist, 1);
-	sg_dma_len(sglist) = size;
+	sglist->length = size;
 	sglist->offset = 0;
 	sg_dma_address(sglist) = phys;
 
@@ -547,7 +547,7 @@ static int do_map_range_test(struct iommu_domain *domain, const char *ctx_name)
 	pa = MAP_SIZES[num_pages_sizes-1];
 	sg = table->sgl;
 	for(i = 0; i < num_pages_sizes; ++i) {
-		sg_dma_len(sg) = MAP_SIZES[num_pages_sizes-i-1];
+		sg->length = MAP_SIZES[num_pages_sizes-i-1];
 		sg->offset = 0;
 		sg_dma_address(sg) = pa;
 		sg = sg_next(sg);
