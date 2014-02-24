@@ -1,10 +1,5 @@
-BOARD_PLATFORM_LIST := msm8974
-BOARD_PLATFORM_LIST += msm8226
-BOARD_PLATFORM_LIST += msm8610
-BOARD_PLATFORM_LIST += apq8084
-BOARD_PLATFORM_LIST += msm8916
-
-ifneq (,$(filter $(BOARD_PLATFORM_LIST),$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
 
 LOCAL_PATH := $(call my-dir)
 
@@ -25,4 +20,5 @@ $(foreach TEST,$(TEST_LIST),$(eval $(call ADD_TEST,$(TEST))))
 
 include $(LOCAL_PATH)/*/Android.mk
 
+endif
 endif
