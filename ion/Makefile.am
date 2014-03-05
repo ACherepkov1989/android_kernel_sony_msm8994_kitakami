@@ -1,6 +1,7 @@
 iondir			= $(prefix)/ion
 ion_PROGRAMS		= msm_iontest
 msm_iontest_SOURCES	= msm_iontest.c cp_ion_tests.c ion_test_utils.c kernel_ion_tests.c user_ion_tests.c
+msm_iontest_CFLAGS	= -Werror
 dist_ion_SCRIPTS	= iontest.sh run.sh
 
 
