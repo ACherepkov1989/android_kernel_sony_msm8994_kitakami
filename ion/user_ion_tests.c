@@ -339,7 +339,7 @@ static int test_uimp(const char *ion_dev, const char *msm_ion_dev,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
-	int ion_fd, map_fd, rc, wr_fd;
+	int ion_fd, map_fd, rc, wr_fd = -1;
 	int sock_fd;
 	char buf[32];
 	void *addr;
@@ -347,7 +347,7 @@ static int test_uimp(const char *ion_dev, const char *msm_ion_dev,
 	struct ion_fd_data fd_data;
 	int child_status;
 	static char ubuf[100];
-	pid_t tpid, child_pid;
+	pid_t tpid, child_pid = 0;
 	struct ion_test_data *test_data =
 		(struct ion_test_data *)ion_tp->test_plan_data;
 
