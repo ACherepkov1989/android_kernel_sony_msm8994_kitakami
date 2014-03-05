@@ -24,8 +24,8 @@
 #include <linux/iommu.h>
 #include <linux/vmalloc.h>
 #include <asm/sizes.h>
-#include <mach/iommu.h>
-#include <mach/iommu_domains.h>
+#include <linux/qcom_iommu.h>
+#include <linux/msm_iommu_domains.h>
 #include <asm/cacheflush.h>
 
 #include "iommutest.h"
