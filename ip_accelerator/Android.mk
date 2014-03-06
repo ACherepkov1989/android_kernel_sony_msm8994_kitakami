@@ -1,37 +1,44 @@
 ifeq ($(call is-vendor-board-platform,QCOM),true)
-ifeq ($(TARGET_ARCH),arm)
+ifneq (, $(filter aarch64 arm, $(TARGET_ARCH)))
 
+DLKM_DIR := device/qcom/common/dlkm
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE      := ipa_test_module.ko
 LOCAL_MODULE_TAGS := eng
-LOCAL_CFLAGS += -DIPA_ON_R3PC=1
-
-
-# include $(TOP)/build/dlkm/AndroidKernelModule.mk
-# For APQ8064
-include $(TOP)/device/qcom/common/dlkm/AndroidKernelModule.mk
-#KBUILD_OPTIONS      := -DIPA_ON_R3PC=1
-#LOCAL_CFLAGS      := -DIPA_ON_R3PC=1
-
+#LOCAL_CFLAGS += -DIPA_ON_R3PC=1
+include $(DLKM_DIR)/AndroidKernelModule.mk
 
 include $(CLEAR_VARS)
 LOCAL_C_INCLUDES := external/connectivity/stlport/stlport
-LOCAL_CFLAGS += -include system/core/include/arch/linux-arm/AndroidConfig.h
+ifeq ($(TARGET_ARCH),aarch64)
+LOCAL_CFLAGS += -include build/core/combo/include/arch/linux-aarch64/AndroidConfig.h
+else
+LOCAL_CFLAGS += -include build/core/combo/include/arch/linux-arm/AndroidConfig.h
+endif
 LOCAL_CFLAGS += -I$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+LOCAL_C_INCLUDES :=   external/stlport/stlport bionic/ bionic/libstdc++/include
 # For APQ8064
 LOCAL_CFLAGS += -I$(TOP)/kernel/include
-LOCAL_CFLAGS += -DIPA_ON_R3PC=1
+#LOCAL_CFLAGS += -DIPA_ON_R3PC=1
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
-LOCAL_MODULE      := ipa
+LOCAL_MODULE      := ip_accelerator
 LOCAL_SRC_FILES   := \
-		main.cpp \
 		TestManager.cpp \
 		TestBase.cpp \
 		InterfaceAbstraction.cpp \
-		TestsUtils.cpp \
+		Pipe.cpp \
+		PipeTestFixture.cpp \
+		PipeTests.cpp \
+		TLPAggregationTestFixture.cpp \
+		TLPAggregationTests.cpp \
+		MBIMAggregationTestFixture.cpp \
+		MBIMAggregationTestFixtureConf10.cpp \
+		MBIMAggregationTestFixtureConf11.cpp \
+		MBIMAggregationTestFixtureConf12.cpp \
+		MBIMAggregationTests.cpp \
 		Logger.cpp \
 		RoutingDriverWrapper.cpp \
 		RoutingTests.cpp \
@@ -40,37 +47,37 @@ LOCAL_SRC_FILES   := \
 		FilteringTest.cpp \
 		HeaderInsertion.cpp \
 		HeaderInsertionTests.cpp \
-		Pipe.cpp \
-		PipeTestFixture.cpp \
-		PipeTests.cpp \
+		TestsUtils.cpp \
 		HeaderRemovalTestFixture.cpp \
 		HeaderRemovalTests.cpp \
-		USBIntegrationFixture.cpp \
-		USBIntegration.cpp \
-		WLANIntegrationTests.cpp \
 		IPv4Packet.cpp \
-		MBIMAggregationTestFixture.cpp \
-		MBIMAggregationTestFixtureConf10.cpp \
-		MBIMAggregationTestFixtureConf11.cpp \
-		MBIMAggregationTestFixtureConf12.cpp \
-		MBIMAggregationTests.cpp \
-		TLPAggregationTestFixture.cpp \
-		TLPAggregationTests.cpp \
 		RNDISAggregationTestFixture.cpp \
-		RNDISAggregationTests.cpp
+		RNDISAggregationTests.cpp \
+		main.cpp
 
-#LOCAL_SHARED_LIBRARIES := \
-#    libutils \
-#    libcutils \
-#    liblog \
-#    libc \
-#    libdl \
+LOCAL_SHARED_LIBRARIES := \
+		libstlport \
 
 LOCAL_MODULE_TAGS := eng
-LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
+LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests/ip_accelerator
 include $(BUILD_EXECUTABLE)
 
-endif
+define ADD_TEST
+
+include $(CLEAR_VARS)
+LOCAL_MODULE       := $1
+LOCAL_SRC_FILES    := $1
+LOCAL_MODULE_CLASS := ip_accelerator_ETC
+LOCAL_MODULE_TAGS  := debug
+LOCAL_MODULE_PATH  := $(TARGET_OUT_DATA)/kernel-tests/ip_accelerator
+include $(BUILD_PREBUILT)
+
+endef
+
+IP_ACCELERATOR_ETC_FILE_LIST := README.txt run.sh test_env_setup.sh
+$(foreach TEST,$(IP_ACCELERATOR_ETC_FILE_LIST),$(eval $(call ADD_TEST,$(TEST))))
+
+endif # $(TARGET_ARCH)
 endif
 
 
