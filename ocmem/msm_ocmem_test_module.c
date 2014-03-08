@@ -23,8 +23,7 @@
 #include <linux/io.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
-#include <mach/irqs.h>
-#include <mach/ocmem.h>
+#include <soc/qcom/ocmem.h>
 
 
 #define OCMEM_KERNEL_TEST_MAGIC 0xc1
