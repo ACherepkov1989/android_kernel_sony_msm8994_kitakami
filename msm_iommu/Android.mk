@@ -46,7 +46,7 @@ include $(BUILD_PREBUILT)
 
 endef
 
-ETC_FILE_LIST := msm8916_cats.txt msm8974_bfb.txt msm8226_bfb.txt apq8084_bfb.txt apq8084_lpae_bfb.txt mpq8092_bfb.txt msmsama_bfb.txt README.txt
+ETC_FILE_LIST := msm8916_cats.txt msm8974_bfb.txt msm8226_bfb.txt apq8084_bfb.txt apq8084_lpae_bfb.txt mpq8092_bfb.txt msmsama_bfb.txt msmplut_bfb.txt README.txt
 $(foreach TEST,$(ETC_FILE_LIST),$(eval $(call ADD_TEST,$(TEST))))
 
 endif
