@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -69,6 +69,8 @@ unsigned int force = 0;
 static unsigned int do_basic_va2pa_test;
 static unsigned int cats_data_read = 0;
 static char *tbu_id_cb_name;
+static char iommu_to_test[NAME_LEN];
+
 #define NUM_TBUS		20
 #define TBU_NAME_LENGTH		50
 
@@ -78,7 +80,7 @@ int parse_args(int argc, char **argv)
 {
 	unsigned int level;
 
-	if (argc != 6)
+	if (argc != 7)
 		return 1;
 
 	switch (argv[1][0]) {
@@ -115,6 +117,8 @@ int parse_args(int argc, char **argv)
 
 	force = atoi(argv[4]);
 	do_basic_va2pa_test = atoi(argv[5]);
+
+	STRNCPY_SAFE(iommu_to_test, argv[6], NAME_LEN);
 	return 0;
 }
 
@@ -228,7 +232,6 @@ int read_cats_tbu_id(struct target_struct *target)
 
 	if (fp == NULL) {
 		ret = -EINVAL;
-		debug(ERR, "CATS TBU info file not found !!\n");
 		goto out;
 	}
 
@@ -267,7 +270,9 @@ int do_cats_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped,
 		ret = read_cats_tbu_id(target);
 		if (ret) {
 			*skipped = 1;
-			return ret;
+			debug(INFO, PRINT_FORMAT ": Testing CATS: SKIPPED! (Setting Missing)\n",
+				gnc->iommu_name, gnc->cb_name);
+			return 0;
 		}
 		cats_data_read++;
 	}
@@ -425,42 +430,50 @@ struct test_results run_nominal_tests(void)
 		gnc.lpae_enabled ? "LPAE" : "VMSA");
 
 	while (gnc.valid_iommu) {
-		if (current_iommu != gnc.iommu_no) {
-			ret = do_bfb_test(iommu_test_fd, &gnc, &target,
-					  &skipped);
-			if (ret)
-				++result.no_failed;
+		if (strcmp(iommu_to_test, "all") == 0 ||
+		    strcmp(iommu_to_test, gnc.iommu_name) == 0) {
+			if (current_iommu != gnc.iommu_no) {
+				ret = do_bfb_test(iommu_test_fd, &gnc, &target,
+						  &skipped);
+				if (ret)
+					++result.no_failed;
 
-			result.no_skipped += skipped;
-			++result.no_tests;
+				result.no_skipped += skipped;
+				++result.no_tests;
 
-			current_iommu = gnc.iommu_no;
-		}
-		if (gnc.valid_cb) {
-			ret = do_int_test(iommu_test_fd, &gnc, &skipped);
+				current_iommu = gnc.iommu_no;
+			}
+			if (gnc.valid_cb) {
+				ret = do_int_test(iommu_test_fd, &gnc,
+						  &skipped);
 
-			if (ret)
-				++result.no_failed;
+				if (ret)
+					++result.no_failed;
 
-			result.no_skipped += skipped;
-			++result.no_tests;
+				result.no_skipped += skipped;
+				++result.no_tests;
 
-			ret = do_va2pa_test(iommu_test_fd, &gnc, &skipped);
-			if (ret)
-				++result.no_failed;
+				ret = do_va2pa_test(iommu_test_fd, &gnc,
+						    &skipped);
+				if (ret)
+					++result.no_failed;
 
-			result.no_skipped += skipped;
-			++result.no_tests;
+				result.no_skipped += skipped;
+				++result.no_tests;
 
-			ret = do_cats_test(iommu_test_fd, &gnc, &skipped,
-						&target);
-			if (ret)
-				++result.no_failed;
+				ret = do_cats_test(iommu_test_fd, &gnc,
+						   &skipped, &target);
+				if (ret)
+					++result.no_failed;
 
-			result.no_skipped += skipped;
-			++result.no_tests;
+				result.no_skipped += skipped;
+				++result.no_tests;
 
-			++cb_idx;
+				++cb_idx;
+			} else {
+				++iommu_idx;
+				cb_idx = 0;
+			}
 		} else {
 			++iommu_idx;
 			cb_idx = 0;

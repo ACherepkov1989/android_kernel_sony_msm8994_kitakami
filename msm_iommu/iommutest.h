@@ -38,6 +38,20 @@ struct target_struct {
 	char name[NAME_LEN];
 };
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+/*
+ * strncpy is considered "unsafe" and strlcpy doesn't exist on all
+ * systems (notably glibc-based ones). Here's a strncpy that
+ * guarantees null termination.
+ */
+#define STRNCPY_SAFE(dst, src, n) do {				\
+		char *p;					\
+		int l = MIN((int) (n-1), (int) strlen(src));	\
+		p = (char *) memcpy(dst, src, l);		\
+		*(p + l) = '\0';				\
+	} while (0)
+
 #define IOC_IOMMU_GET_NXT_IOMMU_CB _IOWR(MSM_IOMMU_MAGIC, 0, struct get_next_cb)
 #define IOC_IOMMU_GET_TARGET _IOR(MSM_IOMMU_MAGIC, 1, struct target_struct)
 #define IOC_IOMMU_TEST_IOMMU_VA2PA _IOWR(MSM_IOMMU_MAGIC, 2, \

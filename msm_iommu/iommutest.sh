@@ -46,6 +46,7 @@ level=0
 force=0
 basic=0
 repeat=1
+iommu_to_test=all
 
 maybe_make_node()
 {
@@ -109,12 +110,18 @@ while [ $# -gt 0 ]; do
 		basic=1
 		shift 1
 	;;
+	-i | --iommu)
+		shift 1
+                echo "Specified $1 iommu"
+		iommu_to_test=$1
+		shift 1
+	;;
 	-v | --verbose)
 		level=1
 		shift 1
 		;;
 	-h | --help | *)
-		echo "Usage: $0 [-n | --nominal] [-a | --adversarial] [-s | --stress] [-r <num> | --repeatabiliy <num>] [-v] [-b | --basic] [-f | --force]";
+		echo "Usage: $0 [-n | --nominal] [-a | --adversarial] [-s | --stress] [-r <num> | --repeatabiliy <num>] [-v] [-b | --basic] [-f | --force] [-i | --iommu] <name of iommu to test>";
 		exit 1
 		;;
         esac
@@ -135,7 +142,7 @@ maybe_make_node $iommu_test_dev $iommu_test_dev_sys || exit 1
 
 
 #invoke test
-./msm_iommutest $test_type $repeat $level $force $basic
+./msm_iommutest $test_type $repeat $level $force $basic $iommu_to_test
 ret=$?
 if [ $ret -ne 0 ];then
 	echo "Test Failed"
