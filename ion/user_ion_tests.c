@@ -47,6 +47,10 @@
 #include "ion_test_plan.h"
 #include "ion_test_utils.h"
 
+#ifndef __maybe_unused
+#define __maybe_unused __attribute__((unused))
+#endif
+
 #define ARRAY_SIZE(arr)	(sizeof(arr) / sizeof((arr)[0]))
 
 static struct ion_test_data mm_heap_test = {
@@ -68,7 +72,7 @@ static struct ion_test_data *mm_heap_data_settings[] = {
 	[ADV_TEST] = &adv_mm_heap_test,
 };
 
-static int test_ualloc(const char *ion_dev, const char *msm_ion_dev,
+static int test_ualloc(const char *ion_dev, const char *msm_ion_dev __maybe_unused,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
@@ -128,7 +132,7 @@ static struct ion_test_plan ualloc_test = {
 	.test_fn = test_ualloc,
 };
 
-static int test_umap(const char *ion_dev, const char *msm_ion_dev,
+static int test_umap(const char *ion_dev, const char *msm_ion_dev __maybe_unused,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
@@ -335,7 +339,7 @@ static int uimp_spawn_process(pid_t *pid, int *wr_fd)
 	}
 }
 
-static int test_uimp(const char *ion_dev, const char *msm_ion_dev,
+static int test_uimp(const char *ion_dev, const char *msm_ion_dev __maybe_unused,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
