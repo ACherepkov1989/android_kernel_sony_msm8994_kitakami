@@ -24,8 +24,11 @@
 #include <asm/io.h>
 #include <asm-generic/sizes.h>
 #include <soc/qcom/scm.h>
+#include <linux/of_platform.h>
 
+#define REG_MPM2_8916_WDOG_BASE		0x4AA000
 #define REG_MPM2_WDOG_BASE		0xFC4AA000
+
 #define REG_OFFSET_MPM2_WDOG_RESET	0x0
 #define REG_OFFSET_MPM2_WDOG_BITE_VAL	0x10
 
@@ -168,8 +171,16 @@ static void apps_bite_work(struct work_struct *work)
 static void sec_wdog_bite_work(struct work_struct *work)
 {
 	static void *sec_wdog_virt;
+	int rc;
+
 	bring_other_cpus_down();
-	sec_wdog_virt = ioremap(REG_MPM2_WDOG_BASE, SZ_4K);
+
+	rc = of_machine_is_compatible("qcom,msm8916");
+	if (rc)
+		sec_wdog_virt = ioremap(REG_MPM2_8916_WDOG_BASE, SZ_4K);
+	else
+		sec_wdog_virt = ioremap(REG_MPM2_WDOG_BASE, SZ_4K);
+
 	if (!sec_wdog_virt) {
 		pr_info("unable to map sec wdog page\n");
 		goto err;
