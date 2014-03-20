@@ -1,8 +1,14 @@
-	Bus Timeout Documentation
+Test:Bus Timeout Documentation
 
-Usage: insert module
+Usage: bus_timeout_test.sh [-c | --camera-timeout] [ -u | --usb-timeout]
+                           [-p | --pc-save] [-h | --help]
 
-OPTIONS: (none)
+OPTIONS:
+The following options can be used:
+-c | --camera-timeout         trigger a camera bus timeout
+-u | --usb-timeout            trigger a usb bus timeout
+-p | --pc-save                trigger a sec wdog bite which will save the last
+                                  executing instruction.
 
 TEST BEHAVIOR: Force a bus hang. If successful, the target will be reset by
 the watchdog. The kernel will panic on a failure. Returning back to the command
@@ -16,5 +22,3 @@ system is not using the required clocks.
 
 For this module, the camera must not be on while attempting to do the
 test since the camera registers are used for testing.
-
-TARGETS: 8974
