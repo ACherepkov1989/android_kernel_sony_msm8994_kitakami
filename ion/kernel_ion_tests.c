@@ -45,6 +45,10 @@
 #include "ion_test_plan.h"
 #include "ion_test_utils.h"
 
+#ifndef __maybe_unused
+#define __maybe_unused __attribute__((unused))
+#endif
+
 #define ARRAY_SIZE(arr)	(sizeof(arr) / sizeof((arr)[0]))
 static struct ion_test_data mm_heap_test = {
 	.align = 0x1000,
@@ -83,8 +87,8 @@ static struct ion_test_data *mm_heap_data_settings[] = {
 /*
  * Kernel ion client create test
  */
-int test_kclient(const char *ion_dev, const char *msm_ion_dev,
-			struct ion_test_plan *ion_tp, int test_type,
+int test_kclient(const char *ion_dev __maybe_unused, const char *msm_ion_dev,
+			struct ion_test_plan *ion_tp  __maybe_unused, int test_type __maybe_unused,
 			int *test_skipped)
 {
 	int ion_kernel_fd, rc;
@@ -116,7 +120,7 @@ static struct ion_test_plan kclient_test = {
  * Nominal test: Using mm heap.
  * ADV test: Invalid client, and erroneous alloc request
  */
-int test_kalloc(const char *ion_dev, const char *msm_ion_dev,
+int test_kalloc(const char *ion_dev __maybe_unused, const char *msm_ion_dev,
 		struct ion_test_plan *ion_tp, int test_type,
 		int *test_skipped)
 {
@@ -180,7 +184,7 @@ static struct ion_test_plan kalloc_test = {
  * Nominal test: use mm heap settings
  * Adeveserial test: Invalid handle and client
  */
-int test_kphys(const char *ion_dev, const char *msm_ion_dev,
+int test_kphys(const char *ion_dev __maybe_unused, const char *msm_ion_dev,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
@@ -265,7 +269,7 @@ static struct ion_test_plan kphys_test = {
  * Kernel ion system phys attr
  * Adeveserial test: get phys attr from system heap
  */
-int test_ksystem_phys(const char *ion_dev, const char *msm_ion_dev,
+int test_ksystem_phys(const char *ion_dev __maybe_unused, const char *msm_ion_dev,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
@@ -318,7 +322,7 @@ static struct ion_test_plan ksystem_test = {
 /*
  * Kernel ion map
  */
-int test_kmap(const char *ion_dev, const char *msm_ion_dev,
+int test_kmap(const char *ion_dev __maybe_unused, const char *msm_ion_dev,
 			struct ion_test_plan *ion_tp, int test_type,
 			int *test_skipped)
 {
