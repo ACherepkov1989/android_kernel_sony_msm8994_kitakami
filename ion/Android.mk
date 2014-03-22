@@ -1,5 +1,5 @@
 ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
-ifeq ($(TARGET_ARCH),arm)
+ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
 LOCAL_PATH := $(call my-dir)
 commonSources :=
 
