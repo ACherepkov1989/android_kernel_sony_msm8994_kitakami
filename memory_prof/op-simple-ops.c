@@ -103,7 +103,12 @@ static int op_simple_alloc_parse(struct alloc_profile_entry *entry,
 	STRNCPY_SAFE(op->flags_string, words[SA_LINE_IDX_FLAGS],
 		MAX_FLAGS_STRING_LEN);
 
-	STRTOL(op->size, words[SA_LINE_IDX_ALLOC_SIZE_BYTES], 0);
+	if (parse_size_string(words[SA_LINE_IDX_ALLOC_SIZE_BYTES],
+				&op->size)) {
+		warnx("Couldn't parse alloc_bytes %s into a size",
+			words[SA_LINE_IDX_ALLOC_SIZE_BYTES]);
+		return 1;
+	}
 	STRNCPY_SAFE(op->size_string, words[SA_LINE_IDX_ALLOC_SIZE_LABEL],
 		MAX_SIZE_STRING_LEN);
 
