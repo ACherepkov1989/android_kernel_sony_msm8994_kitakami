@@ -87,8 +87,8 @@ bool endswith(const char * const string, const char * const suffix)
 	return 0 == strcmp(string + (s1 - len), suffix + (s2 - len));
 }
 
-int parse_size_string(const char * const size_string,
-		unsigned int *bytes,
+int parse_size_string_smap(const char * const size_string,
+		unsigned long *bytes,
 		struct size_suffix_size_type_mapping *size_map)
 {
 	const struct size_suffix_size_type_mapping *smap;
@@ -111,6 +111,13 @@ int parse_size_string(const char * const size_string,
 	*bytes *= smap->multiplier;
 	free(scopy);
 	return 0;
+}
+
+int parse_size_string(const char * const size_string,
+	unsigned long *bytes)
+{
+	struct size_suffix_size_type_mapping smap;
+	return parse_size_string_smap(size_string, bytes, &smap);
 }
 
 const struct size_suffix_size_type_mapping size_suffix_to_size_type_mappings[] =
