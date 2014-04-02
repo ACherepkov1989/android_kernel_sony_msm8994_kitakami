@@ -2,6 +2,7 @@ AC_PREREQ(2.64)
 
 AC_INIT([kernel-tests],[1.0.0])
 AM_INIT_AUTOMAKE([-Wall -Werror gnu foreign])
+m4_ifdef([AM_PROG_AR], [AM_INIT_AUTOMAKE([-Wall -Werror gnu foreign -Wno-extra-portability -Wno-portability])])
 
 AM_MAINTAINER_MODE
 
@@ -11,6 +12,7 @@ AC_CONFIG_MACRO_DIR([m4])
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_LIBTOOL
 AC_PROG_CPP
 AC_PROG_INSTALL
