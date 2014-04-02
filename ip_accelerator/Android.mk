@@ -6,7 +6,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE      := ipa_test_module.ko
-LOCAL_MODULE_TAGS := eng
+LOCAL_MODULE_TAGS  := debug
 #LOCAL_CFLAGS += -DIPA_ON_R3PC=1
 include $(DLKM_DIR)/AndroidKernelModule.mk
 
@@ -58,7 +58,7 @@ LOCAL_SRC_FILES   := \
 LOCAL_SHARED_LIBRARIES := \
 		libstlport \
 
-LOCAL_MODULE_TAGS := eng
+LOCAL_MODULE_TAGS := debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests/ip_accelerator
 include $(BUILD_EXECUTABLE)
 
@@ -67,15 +67,15 @@ define ADD_TEST
 include $(CLEAR_VARS)
 LOCAL_MODULE       := $1
 LOCAL_SRC_FILES    := $1
-LOCAL_MODULE_CLASS := ip_accelerator_ETC
+LOCAL_MODULE_CLASS := ip_accelerator
 LOCAL_MODULE_TAGS  := debug
 LOCAL_MODULE_PATH  := $(TARGET_OUT_DATA)/kernel-tests/ip_accelerator
 include $(BUILD_PREBUILT)
 
 endef
 
-IP_ACCELERATOR_ETC_FILE_LIST := README.txt run.sh test_env_setup.sh
-$(foreach TEST,$(IP_ACCELERATOR_ETC_FILE_LIST),$(eval $(call ADD_TEST,$(TEST))))
+IP_ACCELERATOR_FILE_LIST := README.txt run.sh test_env_setup.sh
+$(foreach TEST,$(IP_ACCELERATOR_FILE_LIST),$(eval $(call ADD_TEST,$(TEST))))
 
 endif # $(TARGET_ARCH)
 endif
