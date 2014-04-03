@@ -660,6 +660,20 @@ static int profile_kernel_alloc(void)
 	return rc;
 }
 
+void compute_stats(double stats[], int num,
+		double *average, double *std_dev)
+{
+	int i;
+	double sum = 0, sum_of_squares = 0;
+	for (i = 0; i < num; ++i)
+		sum += stats[i];
+	*average = sum / num;
+
+	for (i = 0; i < num; ++i)
+		sum_of_squares += pow(stats[i] - *average, 2);
+	*std_dev = sqrt(sum_of_squares / num);
+}
+
 void print_stats_results(const char *name, const char *flags_label,
 			const char *size_string,
 			double stats[], int reps)
@@ -667,17 +681,9 @@ void print_stats_results(const char *name, const char *flags_label,
 	int i;
 	struct timeval tv;
 	unsigned long long time_ms;
-	double sum = 0, sum_of_squares = 0, average, std_dev;
+	double average, std_dev;
 
-	for (i = 0; i < reps; ++i) {
-		sum += stats[i];
-	}
-	average = sum / reps;
-
-	for (i = 0; i < reps; ++i) {
-		sum_of_squares += pow(stats[i] - average, 2);
-	}
-	std_dev = sqrt(sum_of_squares / reps);
+	compute_stats(stats, reps, &average, &std_dev);
 
 	gettimeofday(&tv, NULL);
 	time_ms = TV_TO_MS(tv);
