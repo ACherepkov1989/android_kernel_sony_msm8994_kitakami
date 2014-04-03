@@ -754,11 +754,10 @@ static struct alloc_profile_entry *get_alloc_profile_from_string(
 		MALLOC(char *, lines[i], MAX_ALLOC_PROFILE_LINE_LEN);
 
 	i = split_string(eval_program, ';', lines, MAX_ALLOC_PROFILE_LINE_LEN);
-	if (i != nlines) {
-		warn("Error parsing --eval program! Expected %d lines, got %d",
+	if (i != nlines)
+		errx(1,
+			"Error parsing --eval program! Expected %d lines, got %d (check for trailing ;)",
 			nlines, i);
-		return NULL;
-	}
 
 	reader.getline = alloc_profile_string_reader_getline;
 	reader.priv = &reader_data;
@@ -774,7 +773,7 @@ static struct alloc_profile_entry *get_alloc_profile_from_string(
 	alloc_profile = get_alloc_profile(&reader);
 
 	if (!alloc_profile)
-		warnx("Couldn't parse --eval program");
+		errx(1, "Couldn't parse --eval program");
 
 	for (i = 0; i < nlines; ++i)
 		free(lines[i]);
@@ -852,7 +851,7 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	alloc_profile = get_alloc_profile(&reader);
 
 	if (!alloc_profile)
-		warnx("Couldn't parse allocation profile: %s\n",
+		errx(1, "Couldn't parse allocation profile: %s\n",
 			alloc_profile_path);
 
 	if (!using_stdin)
