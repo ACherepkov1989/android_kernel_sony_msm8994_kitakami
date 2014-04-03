@@ -107,7 +107,7 @@ Appendix A: Allocation Profiles for memory_prof
           reps
           heap_id
           flags
-          alloc_size_bytes
+          alloc_size
           alloc_size_label
           quiet_on_failure
           profile_mmap
@@ -123,10 +123,9 @@ Appendix A: Allocation Profiles for memory_prof
                  ION_FLAG_* constants (e.g.:
                  ION_SECURE|ION_FLAG_CACHED). No spaces please.
 
-      - alloc_size_bytes :: The number of bytes to be allocated. This
-           field can be formatted in octal, decimal, or hex, but '0' and
-           '0x' prefixes must be used for octal and hex,
-           respectively. See STRTOL(3) where base == 0.
+      - alloc_size :: The size of the buffer to be allocated. Can be
+        any valid size string (e.g. "4KB", "2MB", etc). Supported
+        suffixes are "KB" "MB" and "GB" (or no suffix for bytes).
 
       - alloc_size_label :: A human- (and script-) readable string
            describing the allocation size
@@ -177,14 +176,14 @@ Appendix A: Allocation Profiles for memory_prof
           alloc_id
           heap_id
           flags
-          alloc_size_bytes
+          alloc_size
           alloc_size_label
 
       - alloc_id :: a user-defined ID that can be used in a
         `simple_free' line (see below) to free this allocation. This
         can actually be any string.
 
-      - heap_id, flags, alloc_size_bytes, alloc_size_label :: the same
+      - heap_id, flags, alloc_size, alloc_size_label :: the same
         was as for the `alloc' op, above
 
       See `simple_free' for an example of how this can be used.

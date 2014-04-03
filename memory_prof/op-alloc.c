@@ -52,7 +52,7 @@ enum alloc_op_line_idx {
 	LINE_IDX_REPS = 1,
 	LINE_IDX_HEAP_ID,
 	LINE_IDX_FLAGS,
-	LINE_IDX_ALLOC_SIZE_BYTES,
+	LINE_IDX_ALLOC_SIZE,
 	LINE_IDX_ALLOC_SIZE_LABEL,
 	LINE_IDX_QUIET_ON_FAILURE,
 	LINE_IDX_PROFILE_MMAP,
@@ -119,7 +119,11 @@ static int op_alloc_parse(struct alloc_profile_entry *entry,
 	STRNCPY_SAFE(op->flags_string,
 		words[LINE_IDX_FLAGS], MAX_FLAGS_STRING_LEN);
 
-	STRTOL(op->size, words[LINE_IDX_ALLOC_SIZE_BYTES], 0);
+	if (parse_size_string(words[LINE_IDX_ALLOC_SIZE], &op->size)) {
+		warnx("Couldn't parse alloc_size %s into a size",
+			words[LINE_IDX_ALLOC_SIZE]);
+		return 1;
+	}
 	STRNCPY_SAFE(op->size_string,
 		words[LINE_IDX_ALLOC_SIZE_LABEL], MAX_SIZE_STRING_LEN);
 
