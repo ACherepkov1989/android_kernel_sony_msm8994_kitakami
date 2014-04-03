@@ -311,8 +311,11 @@ struct alloc_profile_entry *get_alloc_profile(
 
 		line_info.words = &words[0];
 		line_info.nwords = nwords;
-		if (iter->ops->parse && iter->ops->parse(&new, &line_info))
-			warnx("Error in parser for %s\n", words[0]);
+		if (iter->ops->parse)
+			if (iter->ops->parse(&new, &line_info)) {
+				warnx("Error in parser for %s\n", words[0]);
+				continue;
+			}
 
 		*current++ = new;
 		nentries++;
