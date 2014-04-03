@@ -819,7 +819,8 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	struct alloc_profile_entry *alloc_profile;
 	struct file_reader_getline_data reader_data;
 	struct alloc_profile_reader reader;
-	bool using_stdin = !strcmp(alloc_profile_path, "-");
+	bool using_stdin = alloc_profile_path &&
+		!strcmp(alloc_profile_path, "-");
 	int rc = 0;
 
 	reader.getline = alloc_profile_file_reader_getline;
