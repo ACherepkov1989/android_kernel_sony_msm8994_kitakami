@@ -48,8 +48,8 @@ struct user_alloc_op {
 	enum user_allocator user_allocator;
 	enum usage_fn usage_fn;
 	unsigned int memset_n_arg; /* only for USAGE_FN_MEMSET_N */
-	unsigned int alloc_bytes;
-	unsigned int usage_bytes;
+	unsigned long alloc_bytes;
+	unsigned long usage_bytes;
 
 	char user_allocator_string[MAX_ALLOC_PROFILE_WORD_LEN];
 	char usage_fn_string[MAX_ALLOC_PROFILE_WORD_LEN];
@@ -65,7 +65,6 @@ struct user_alloc_op {
 static int op_user_alloc_parse(struct alloc_profile_entry *entry,
 				struct line_info *li)
 {
-	struct size_suffix_size_type_mapping tmp_smap;
 	struct user_alloc_op *op = (struct user_alloc_op *) entry->priv;
 	char **words = li->words;
 	char *cur;
@@ -83,7 +82,7 @@ static int op_user_alloc_parse(struct alloc_profile_entry *entry,
 		MAX_ALLOC_PROFILE_WORD_LEN);
 
 	cur = words[LINE_IDX_ALLOC_BYTES];
-	if (parse_size_string(cur, &op->alloc_bytes, &tmp_smap)) {
+	if (parse_size_string(cur, &op->alloc_bytes)) {
 		warnx("Couldn't parse alloc_bytes %s into a size",
 			cur);
 		return 1;
@@ -91,7 +90,7 @@ static int op_user_alloc_parse(struct alloc_profile_entry *entry,
 	STRNCPY_SAFE(op->alloc_bytes_string, cur, MAX_ALLOC_PROFILE_WORD_LEN);
 
 	cur = words[LINE_IDX_USAGE_BYTES];
-	if (parse_size_string(cur, &op->usage_bytes, &tmp_smap)) {
+	if (parse_size_string(cur, &op->usage_bytes)) {
 		warnx("Couldn't parse usage_bytes %s into a size", cur);
 		return 1;
 	}

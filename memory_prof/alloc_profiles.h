@@ -142,9 +142,11 @@ extern struct alloc_profile_handler __stop_alloc_profile_handlers;
 int split_string(const char * const string, char delim, char *output[],
 		int output_sizes);
 bool endswith(const char * const string, const char * const suffix);
+int parse_size_string_smap(const char * const size_string,
+			unsigned long *bytes,
+			struct size_suffix_size_type_mapping *size_map);
 int parse_size_string(const char * const size_string,
-		unsigned int *bytes,
-		struct size_suffix_size_type_mapping *size_map);
+		unsigned long *bytes);
 int find_heap_id_value(const char * const heap_id_string, unsigned int *val);
 int find_flag_value(const char * const flag, int *val);
 uint64_t parse_flags(const char * const word);
