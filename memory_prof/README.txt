@@ -84,6 +84,7 @@ Appendix A: Allocation Profiles for memory_prof
         - create_unused_client
         - free_all_unused_clients
         - user_alloc
+        - iommu_map_range
 
     Each operation is described in detail below.
 
@@ -342,3 +343,35 @@ Appendix A: Allocation Profiles for memory_prof
 
             e.g. memset-0xa5 would result in memset(buf, 0xa5, size)
                  memset-0 would result in memset(buf, 0, size)
+
+    o `op' == iommu_map_range
+
+      When `op' == iommu_map_range, profile the iommu_map_range kernel
+      function.
+
+      The following remaining fields are defined:
+
+          domain_name
+          chunk_order
+          nchunks
+          prot
+
+      - domain_name :: the Iommu domain to use
+
+      - chunk_order :: the order of the pages to be used for each
+        chunk
+
+      - nchunks :: how many chunks to allocate
+
+      - prot :: protection flags to be used for the mapping. Similar
+        to the gfp_flags field for the `alloc_pages' op, the real
+        kernel Iommu prot flags are not exported to userspace so we
+        create some of our own definitions that later get mapped to
+        the kernel's Iommu prot flags
+
+          MP_IOMMU_WRITE
+          MP_IOMMU_READ
+          MP_IOMMU_CACHE
+
+        The note on the gfp_kernel field about flag composition also
+        applies here.

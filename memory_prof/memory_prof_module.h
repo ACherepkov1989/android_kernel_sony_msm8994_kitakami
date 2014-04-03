@@ -27,6 +27,9 @@ struct memory_prof_map_extra_args {
  * since these are simple, independent bitfields. To accomplish
  * not'ing something out, a dedicated flag must be used, like
  * MP_GFPNOT_WAIT.
+ *
+ * If you add any flags here make sure you also add them to
+ * struct flag_info flag_info[].
  */
 #define MP_GFP_KERNEL		(1<<0)
 #define MP_GFP_HIGHMEM		(1<<1)
@@ -38,10 +41,30 @@ struct memory_prof_map_extra_args {
 #define MP_GFP_WAIT		(1<<7)
 #define MP_GFPNOT_WAIT		(1<<8)
 
+/**
+ * Similar "mirror" definitions for IOMMU prot flags...
+ *
+ * If you add any flags here make sure you also add them to
+ * struct flag_info flag_info[].
+ */
+#define MP_IOMMU_WRITE	(1<<0)
+#define MP_IOMMU_READ	(1<<1)
+#define MP_IOMMU_CACHE	(1<<2)
+
 struct mp_alloc_pages_args {
 	unsigned int order;
-	uint64_t gfp;
-	uint64_t time_elapsed_us;
+	unsigned long long gfp;
+	unsigned long long time_elapsed_us;
+};
+
+#define MAX_IOMMU_DOMAIN_NAME 64
+
+struct mp_iommu_map_range_test_args {
+	char domain_name[MAX_IOMMU_DOMAIN_NAME];
+	size_t chunk_order;
+	int nchunks;
+	int prot;
+	unsigned long long time_elapsed_us;
 };
 
 #define MEMORY_PROF_MAGIC     'H'
@@ -58,5 +81,7 @@ struct mp_alloc_pages_args {
 	_IOWR(MEMORY_PROF_MAGIC, 4, struct mp_alloc_pages_args)
 #define MEMORY_PROF_IOC_CLEANUP_ALLOC_PAGES _IO(MEMORY_PROF_MAGIC, 5)
 
+#define MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST \
+	_IOWR(MEMORY_PROF_MAGIC, 6, struct mp_iommu_map_range_test_args)
 
 #endif /* #ifndef _MEMORY_PROF_MODULE_H */

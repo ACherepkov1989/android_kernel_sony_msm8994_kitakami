@@ -17,6 +17,8 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
+#include <linux/scatterlist.h>
+#include <linux/iommu.h>
 #include <asm/cacheflush.h>
 #include <asm-generic/sizes.h>
 #include <linux/msm_iommu_domains.h>
@@ -236,6 +238,76 @@ static gfp_t get_gfp_from_memory_prof_gfp(u64 mp_gfp)
 	return gfp;
 }
 
+static int get_iommu_prot_from_memory_prof_prot(int mp_prot)
+{
+	int prot = 0;
+	if (mp_prot & MP_IOMMU_WRITE)
+		prot |= IOMMU_WRITE;
+	if (mp_prot & MP_IOMMU_READ)
+		prot |= IOMMU_READ;
+	if (mp_prot & MP_IOMMU_CACHE)
+		prot |= IOMMU_CACHE;
+	return prot;
+}
+
+#ifndef MAP_RANGE_TEST_IOVA
+/* Arbitrary but might need to change if there's already a mapping here */
+#define MAP_RANGE_TEST_IOVA 0x1000
+#endif
+
+static int do_iommu_map_range_test(void __user *arg,
+				struct mp_iommu_map_range_test_args *args)
+{
+	int i, prot, len, rc = 0;
+	struct timespec before, after, diff;
+	struct sg_table table;
+	struct scatterlist *sg;
+	struct iommu_domain *domain;
+
+	if (sg_alloc_table(&table, args->nchunks, GFP_KERNEL))
+		return -ENOMEM;
+
+	for_each_sg(table.sgl, sg, args->nchunks, i) {
+		struct page *page = alloc_pages(GFP_KERNEL, args->chunk_order);
+		if (!page) {
+			rc = -ENOMEM;
+			goto free_chunks;
+		}
+		sg_set_page(sg, page, (1 << args->chunk_order) * PAGE_SIZE, 0);
+	}
+
+	domain = msm_iommu_domain_find(args->domain_name);
+	if (!domain) {
+		rc = -EINVAL;
+		goto free_chunks;
+	}
+
+	len = args->nchunks * ((1 << args->chunk_order) * PAGE_SIZE);
+	prot = get_iommu_prot_from_memory_prof_prot(args->prot);
+	getnstimeofday(&before);
+	rc = iommu_map_range(domain, MAP_RANGE_TEST_IOVA, table.sgl, len, prot);
+	getnstimeofday(&after);
+
+	if (rc)
+		goto free_chunks;
+
+	diff = timespec_sub(after, before);
+	args->time_elapsed_us = div_s64(timespec_to_ns(&diff), 1000);
+
+	if ((rc = iommu_unmap_range(domain, 0x1000, len)))
+		goto free_chunks;
+
+	rc = copy_to_user((void __user *)arg, args,
+			sizeof(struct mp_iommu_map_range_test_args));
+
+free_chunks:
+	for_each_sg(table.sgl, sg, args->nchunks, i)
+		__free_pages(sg_page(sg), args->chunk_order);
+	sg_free_table(&table);
+
+	return rc;
+}
+
 static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 {
 	int ret = 0;
@@ -332,6 +404,18 @@ static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned lon
 	case MEMORY_PROF_IOC_CLEANUP_ALLOC_PAGES:
 	{
 		free_all_danglers(&module_data->danglers);
+		break;
+	}
+	case MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST:
+	{
+		struct mp_iommu_map_range_test_args args;
+
+		if (copy_from_user(
+				&args, (void __user *)arg,
+				sizeof(struct mp_iommu_map_range_test_args)))
+			return -EFAULT;
+
+		ret = do_iommu_map_range_test((void __user *)arg, &args);
 		break;
 	}
 	default:
