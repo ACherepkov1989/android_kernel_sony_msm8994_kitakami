@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -39,6 +39,7 @@ void set_oom_score_adj_parent(int adj);
 void set_oom_score_adj_self(int adj);
 
 struct timeval timeval_sub(struct timeval t1, struct timeval t2);
+double timeval_us_diff(struct timeval t1, struct timeval t2);
 double timeval_ms_diff(struct timeval t1, struct timeval t2);
 void mprof_tick(struct timeval *tv);
 double mprof_tock(struct timeval *tv);
