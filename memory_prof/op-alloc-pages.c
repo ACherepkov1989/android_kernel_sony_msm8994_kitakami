@@ -46,7 +46,8 @@ struct alloc_pages_op {
 
 static int memory_prof_fd;
 
-static int op_simple_alloc_global_setup(struct alloc_profile_entry entries[])
+static int op_simple_alloc_global_setup(
+	struct alloc_profile_entry entries[] __unused)
 {
 	memory_prof_fd = open(MEMORY_PROF_DEV, O_RDONLY);
 	if (memory_prof_fd < 0)

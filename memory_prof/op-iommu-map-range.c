@@ -49,7 +49,8 @@ struct iommu_map_range_op {
 
 static int memory_prof_fd;
 
-static int op_iommu_map_range_global_setup(struct alloc_profile_entry entries[])
+static int op_iommu_map_range_global_setup(
+	struct alloc_profile_entry entries[] __unused)
 {
 	memory_prof_fd = open(MEMORY_PROF_DEV, O_RDONLY);
 	if (memory_prof_fd < 0)
@@ -85,9 +86,9 @@ static int op_iommu_map_range_run(struct alloc_profile_entry *entry)
 		return 1;
 	}
 	printf(ST_PREFIX_DATA_ROW
-		" iommu_map_range time: %llu us domain: %s chunk_order: %d nchunks: %d flags: %s ",
+		" iommu_map_range time: %llu us domain: %s chunk_order: %lu nchunks: %d flags: %s ",
 		op->args.time_elapsed_us,
-		op->args.domain_name, op->args.chunk_order,
+		op->args.domain_name, (unsigned long) op->args.chunk_order,
 		op->args.nchunks, op->prot_string);
 	return 0;
 }
