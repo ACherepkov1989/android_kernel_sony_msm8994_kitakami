@@ -53,6 +53,14 @@ else
 fi
 AM_CONDITIONAL(KERNELMODULES, [test -n "${with_kernel}"])
 
+msm_iommu_configured=no
+autoconf="${with_kernel}/include/generated/autoconf.h"
+if test -f ${autoconf}; then
+	if grep -q "^#define CONFIG_MSM_IOMMU 1" ${autoconf}; then
+		msm_iommu_configured=yes
+	fi
+fi
+
 #
 # Build all kernel tests by default
 #
@@ -69,7 +77,7 @@ ENABLE_KERNEL_TEST([ion],[include the ion test (default=yes)])
 ENABLE_KERNEL_TEST([ipc_logging],[include the ipc_logging test (default=yes)])
 
 # memory_prof
-ENABLE_KERNEL_TEST([memory_prof],[include the memory profiling test (default=yes)])
+ENABLE_KERNEL_TEST([memory_prof],[include the memory profiling test (default=yes)],[$msm_iommu_configured])
 
 # msm-bus
 ENABLE_KERNEL_TEST([msm-bus],[include the MSM bus test (default=yes)])
