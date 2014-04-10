@@ -114,7 +114,7 @@ bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
  */
 #define STRNCPY_SAFE(dst, src, n) do {				\
 		char *p;					\
-		int l = MIN((int) n, (int) strlen(src));	\
+		int l = MIN((int) (n - 1), (int) strlen(src));	\
 		p = (char *) memcpy(dst, src, l);		\
 		*(p + l) = '\0';				\
 	} while (0)
