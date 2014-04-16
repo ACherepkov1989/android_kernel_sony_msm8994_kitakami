@@ -82,6 +82,12 @@ int ipa_sys_setup(struct ipa_sys_connect_params *sys_in, u32 *ipa_bam_hdl,
 int ipa_sys_teardown(u32 clnt_hdl);
 #endif
 
+enum fops_type {
+	IPA_TEST_REG_CHANNEL,
+	IPA_TEST_DATA_PATH_TEST_CHANNEL,
+	MAX_FOPS
+};
+
 struct notify_cb_data_st {
 	struct kfifo_rec_ptr_2 exception_kfifo;
 };
@@ -208,7 +214,10 @@ static void test_free_mem(struct sps_mem_buffer *mem)
 
 	if (dma_addr)
 #ifndef IPA_ON_R3PC
-		dma_free_coherent(ipa_test->dev, mem->size, mem->base, dma_addr);
+		dma_free_coherent(
+				ipa_test->dev,
+				mem->size,
+				mem->base, dma_addr);
 #else
 		ipa_mem_free(mem->base);
 #endif
@@ -228,8 +237,8 @@ void print_buff(void *data, size_t size)
 		num_lines++;
 
 	pr_debug(DRV_NAME
-			":Printing buffer at address 0x%p, size = %zu:\n"
-			, data, size);
+		":Printing buffer at address 0x%p, size = %zu:\n"
+		, data, size);
 	for (i = 0; i < num_lines; i++) {
 		strlcpy(str, "\0", sizeof(str));
 		for (j = 0; (j < bytes_in_line) &&
@@ -426,14 +435,39 @@ static const struct file_operations channel_dev_fops = {
 	.read = channel_read,
 };
 
+static ssize_t set_skb_for_user(struct file *filp, char __user *buf,
+		       size_t size, loff_t *p_pos);
+
+static ssize_t get_skb_from_user(struct file *filp, const char __user *buf,
+		       size_t size, loff_t *f_pos);
+
+static const struct file_operations data_path_fops = {
+	.owner = THIS_MODULE,
+	.open = channel_open,
+	.read =	set_skb_for_user,
+	.write = get_skb_from_user,
+};
+
+
 /*
- * This will create the char device named "<dev_name>_<index>" and allocate
- * data FIFO(size mem_size) and descriptor FIFO(size DESC_FIFO_SZ) for it.
+ * This will create the char device named
+ * "<dev_name>_<index>" and allocate data
+ * FIFO(size mem_size) and descriptor
+ * FIFO(size DESC_FIFO_SZ) for it.
+ * In this case, we will differentiate
+ * channel_dev_fops, which are used for
+ * regular data transmission
+ * in all the tests,and data_path_fops
+ * which will be used
+ * in DataPath tests for handling
+ * the SKB we will transfer
  */
-int create_channel_device(const int index,
-			  const char *dev_name,
-			  struct channel_dev **channel_dev_ptr,
-			  size_t mem_size)
+int create_channel_device_by_type(
+			const int index,
+			const char *dev_name,
+			struct channel_dev **channel_dev_ptr,
+			size_t mem_size,
+			enum fops_type type)
 {
 	int ret;
 	char name[MAX_CHANNEL_NAME];
@@ -442,8 +476,8 @@ int create_channel_device(const int index,
 	scnprintf(name, sizeof(name), "%s_%d", dev_name, index);
 
 	pr_debug(DRV_NAME
-			":Creating channel %d device, name = %s.\n"
-			, index, name);
+		":Creating channel %d device, name = %s.\n"
+		, index, name);
 
 	/* Allocate memory for the device */
 	*channel_dev_ptr = kzalloc(sizeof(struct channel_dev), GFP_KERNEL);
@@ -478,7 +512,18 @@ int create_channel_device(const int index,
 		goto create_channel_device_failure;
 	}
 
-	cdev_init(&channel_dev->cdev, &channel_dev_fops);
+	switch (type) {
+	case IPA_TEST_REG_CHANNEL:
+		cdev_init(&channel_dev->cdev, &channel_dev_fops);
+		break;
+	case IPA_TEST_DATA_PATH_TEST_CHANNEL:
+		cdev_init(&channel_dev->cdev, &data_path_fops);
+		break;
+	default:
+		pr_debug("Wrong fops type in function %s", __func__);
+		ret = -EINVAL;
+		goto create_channel_device_failure;
+	}
 	channel_dev->cdev.owner = THIS_MODULE;
 
 	ret = cdev_add(&channel_dev->cdev, channel_dev->dev_num, 1);
@@ -491,7 +536,8 @@ int create_channel_device(const int index,
 	strlcpy(channel_dev->name, name, MAX_CHANNEL_NAME);
 
 	/* Allocate desc FIFO of the pipe for the S2B/B2S pipes.*/
-	pr_debug(DRV_NAME ":-----Allocate desc FIFO for System2Bam/Bam2System-----\n");
+	pr_debug(DRV_NAME
+		":-----Allocate desc FIFO for System2Bam/Bam2System-----\n");
 	channel_dev->desc_fifo.size = DESC_FIFO_SZ;
 	test_alloc_mem(&channel_dev->desc_fifo);
 	if (NULL == channel_dev->desc_fifo.base) {
@@ -503,7 +549,9 @@ int create_channel_device(const int index,
 			&channel_dev->desc_fifo.phys_base,
 			channel_dev->desc_fifo.base);
 	/*To be on the safe side the descriptor fifo is cleared*/
-	memset(channel_dev->desc_fifo.base, 0x00, channel_dev->desc_fifo.size);
+	memset(
+		channel_dev->desc_fifo.base,
+		0x00, channel_dev->desc_fifo.size);
 
 	/* Allocate memory data buffer for the pipe(S2B/B2S)*/
 	pr_debug(DRV_NAME ":-----Allocate memory buffer-----\n");
@@ -534,7 +582,323 @@ create_channel_device_failure:
 	pr_debug(DRV_NAME
 			":Channel device %d, name %s creation FAILED.\n"
 			, index, name);
+
 	return ret;
+}
+
+int create_channel_device(const int index,
+			  const char *dev_name,
+			  struct channel_dev **channel_dev_ptr,
+			  size_t mem_size) {
+	return create_channel_device_by_type(
+			index,
+			dev_name,
+			channel_dev_ptr,
+			mem_size,
+			IPA_TEST_REG_CHANNEL);
+}
+
+/*
+ * DataPath test definitions:
+ */
+
+#define MAX_TEST_SKB 5
+
+#define TIME_OUT_TIME 600
+
+struct datapath_ctx {
+	struct mutex lock;
+	struct kfifo_rec_ptr_2 fifo;
+	struct completion write_done_completion;
+	struct completion ipa_receive_completion;
+};
+
+struct datapath_ctx *p_data_path_ctx;
+
+
+/*
+ * Inits the kfifo needed for the    *
+ * DataPath tests				     *
+ */
+int datapath_ds_init(void)
+{
+	int res = 0;
+
+	p_data_path_ctx = kzalloc(sizeof(struct datapath_ctx), GFP_KERNEL);
+	if (!p_data_path_ctx) {
+		pr_err("[%s:%d, %s()]kzalloc returned error (%d)\n"
+				, __FILE__, __LINE__
+				, __func__, res);
+		return res;
+	}
+	pr_debug("[%s:%d, %s()] called.\n",
+		__FILE__, __LINE__, __func__);
+
+	res = kfifo_alloc(&p_data_path_ctx->fifo
+			, (sizeof(struct sk_buff *)*MAX_TEST_SKB)
+			, GFP_KERNEL);
+	if (0 != res) {
+		pr_err("[%s:%d, %s()]kfifo_alloc returned error (%d)\n",
+			__FILE__, __LINE__,
+			__func__, res);
+		kfree(p_data_path_ctx);
+		return res;
+	}
+
+	mutex_init(&p_data_path_ctx->lock);
+	init_completion(&p_data_path_ctx->ipa_receive_completion);
+
+	pr_debug("[%s:%d, %s()] completed.(%d)\n",
+		__FILE__, __LINE__, __func__, res);
+
+	return res;
+}
+
+static struct sk_buff *datapath_create_skb(const char *buf, size_t size)
+{
+	struct sk_buff *skb;
+	unsigned char *data;
+	int err = 0;
+
+	pr_debug(DRV_NAME ":%s():Entering\n", __func__);
+	pr_debug("allocating SKB, len=%zu", size);
+	skb = alloc_skb(size, GFP_KERNEL);
+	if (unlikely(!skb))
+		return NULL;
+	pr_debug("skb allocated, skb->len=%d", skb->len);
+	pr_debug("putting skb");
+	data = skb_put(skb, size);
+	if (unlikely(!data)) {
+		kfree_skb(skb);
+		return NULL;
+	}
+	pr_debug("skb put finish, skb->len=%d", skb->len);
+	pr_debug("copying data\n");
+	skb->csum = csum_and_copy_from_user(
+			buf, data,
+			size, 0, &err);
+	if (err) {
+		kfree_skb(skb);
+		return NULL;
+	}
+	pr_debug("The following packet was created:\n");
+	print_buff(skb->data, size);
+	pr_debug(DRV_NAME ":%s():Exiting\n", __func__);
+
+	return skb;
+}
+
+static int datapath_read_data(void *element, int size)
+{
+	int res;
+
+	pr_debug(DRV_NAME ":%s():Entering\n", __func__);
+
+	INIT_COMPLETION(p_data_path_ctx->ipa_receive_completion);
+	pr_debug(DRV_NAME ":%s() Init completion\n", __func__);
+	mutex_lock(&p_data_path_ctx->lock);
+	pr_debug(DRV_NAME ":%s() Checking if kfifo is empty\n", __func__);
+	if (kfifo_is_empty(&p_data_path_ctx->fifo)) {
+		pr_debug(DRV_NAME ":%s() kfifo is empty\n", __func__);
+		mutex_unlock(&p_data_path_ctx->lock);
+		pr_debug(DRV_NAME ":%s() wait_for_ipa_receive_completion\n"
+			, __func__);
+		res = wait_for_completion_timeout(
+			&p_data_path_ctx->ipa_receive_completion,
+			TIME_OUT_TIME);
+		pr_debug(DRV_NAME
+			":%s() came back from wait_for_completion_timeout\n"
+			, __func__);
+		if (!res) {
+			pr_debug(DRV_NAME
+			":%s() Error in wait_for_ipa_receive_completion\n"
+			, __func__);
+			return -EINVAL;
+		}
+	}
+	pr_debug(DRV_NAME ":%s() locking lock\n", __func__);
+	mutex_lock(&p_data_path_ctx->lock);
+	res = kfifo_out(&p_data_path_ctx->fifo, element, size);
+	if (res != size) {
+		pr_debug(DRV_NAME
+			":%s() Error in taking out an element\n",
+			__func__);
+		return -EINVAL;
+	}
+	pr_debug(DRV_NAME
+		":%s() took %d bytes out\n" , __func__, res);
+	pr_debug(DRV_NAME ":%s() unlocking lock\n", __func__);
+	mutex_unlock(&p_data_path_ctx->lock);
+	pr_debug(DRV_NAME ":%s():Exiting\n", __func__);
+	return res;
+}
+
+static int datapath_write_fifo(
+		void *element,
+		int size) {
+
+	int res;
+
+	pr_debug(DRV_NAME ":%s():Entering\n", __func__);
+	mutex_lock(&p_data_path_ctx->lock);
+	pr_debug(DRV_NAME ":%s() Mutex locked\n", __func__);
+	pr_debug(DRV_NAME ":%s() putting %p into fifo\n", __func__, element);
+	res = kfifo_in(&p_data_path_ctx->fifo, &element, size);
+	pr_debug(DRV_NAME ":%s() finished kfifo in\n", __func__);
+	mutex_unlock(&p_data_path_ctx->lock);
+	if (res != size) {
+		pr_debug(DRV_NAME ":%s() Error in saving element\n", __func__);
+		return -EINVAL;
+	}
+	pr_debug(DRV_NAME ":%s():Mutex unlocked\n", __func__);
+
+	complete(&p_data_path_ctx->ipa_receive_completion);
+	pr_debug(DRV_NAME ":%s():Completed ipa_receive_completion\n", __func__);
+	return 0;
+}
+
+/*
+ * Receives from the user space the buff,
+ * create an SKB, and send it through
+ * ipa_tx_dp that was received in the system
+ */
+static ssize_t get_skb_from_user(struct file *filp, const char __user *buf,
+		       size_t size, loff_t *f_pos) {
+
+	int res = 0;
+	struct sk_buff *skb;
+
+	pr_debug(DRV_NAME ":%s() Entering\n", __func__);
+	/* Copy the data from the user and transmit */
+	pr_debug(DRV_NAME
+		":%s() -----Copy the data from the user-----\n", __func__);
+
+	/* Print the data */
+	pr_debug(DRV_NAME ":%s() Printing buff\n", __func__);
+	print_buff((void *)buf, size);
+
+	pr_debug(DRV_NAME ":%s() Creating SKB\n", __func__);
+
+	skb = datapath_create_skb(buf, size);
+	if (!skb)
+		return -EINVAL;
+	init_completion(&p_data_path_ctx->write_done_completion);
+	pr_debug(DRV_NAME
+		":%s() Starting transfer through ipa_tx_dp\n", __func__);
+	res = ipa_tx_dp(IPA_CLIENT_USB_CONS, skb,
+			       NULL);
+	pr_debug(DRV_NAME ":%s() ipa_tx_dp res = %d.\n"
+			, __func__, res);
+	res = wait_for_completion_timeout(
+			&p_data_path_ctx->write_done_completion,
+			TIME_OUT_TIME);
+	pr_debug(DRV_NAME ":%s() timeout result = %d"
+			, __func__, res);
+	if (!res)
+		return -EINVAL;
+	pr_debug(DRV_NAME ":%s() -----Exiting-----\n", __func__);
+
+	return size;
+}
+
+/*
+ * Sends the user space the next SKB
+ * that was received in the system
+ */
+
+static ssize_t set_skb_for_user(struct file *filp, char __user *buf,
+		       size_t size, loff_t *p_pos)
+{
+	int res;
+	struct sk_buff *p_skb;
+
+	pr_debug(DRV_NAME ":%s() Entering\n", __func__);
+	/* Copy the result to the user buffer */
+
+	pr_debug(DRV_NAME ":%s() datapath_read_data\n", __func__);
+	if (datapath_read_data(
+			(void *)&p_skb,
+			sizeof(struct sk_buff *)) < 0) {
+		pr_debug(DRV_NAME
+			":%s() error in datapath_read_data\n", __func__);
+		return -EINVAL;
+	}
+	print_buff(p_skb->data, size);
+	pr_debug(DRV_NAME ":%s() Copying data back to user\n", __func__);
+	res = copy_to_user(buf, p_skb->data, size);
+	kfree_skb(p_skb);
+	/* Return the number of bytes copied to the user */
+
+	return res;
+}
+
+static void datapath_ds_clean(void)
+{
+	kfifo_reset(&p_data_path_ctx->fifo);
+}
+
+/*
+ * Destroy the kfifo needed for the
+ * DataPath tests
+ */
+
+static void datapath_exit(void)
+{
+	kfifo_free(&p_data_path_ctx->fifo);
+	/* freeing kfifo */
+	kfree(p_data_path_ctx);
+	p_data_path_ctx = NULL;
+}
+
+/*
+ * CB func. for the IPA_WRITE_DONE
+ * event. Used in IpaTxDpTest
+ */
+
+static void notify_ipa_write_done(
+		void *priv,
+		enum ipa_dp_evt_type evt,
+		unsigned long data) {
+
+	pr_debug("Entering %s function\n", __func__);
+
+	if (evt == IPA_WRITE_DONE) {
+		pr_debug("evt IPA_WRITE_DONE in function %s\n", __func__);
+		pr_debug("Printing received buff from IPA\n");
+		print_buff(
+			((struct sk_buff *)data)->data,
+			((struct sk_buff *)data)->len);
+
+		kfree_skb((struct sk_buff *)data);
+		complete(&p_data_path_ctx->write_done_completion);
+
+	} else {
+		pr_debug("Error in %s, wrong event %d", __func__, evt);
+	}
+}
+
+/*
+ * CB func. for the IPA_RECEIVE
+ * event. Used in IPAToAppsTest
+ */
+
+static void notify_ipa_received(
+		void *priv,
+		enum ipa_dp_evt_type evt,
+		unsigned long data){
+
+	struct sk_buff *p_skb = (struct sk_buff *)data;
+
+	pr_debug("Entering %s function\n", __func__);
+
+	if (evt == IPA_RECEIVE) {
+		pr_debug("evt IPA_RECEIVE in function %s\n", __func__);
+		pr_debug("Printing received buff from IPA\n");
+		print_buff(p_skb->data, p_skb->len);
+		datapath_write_fifo(p_skb, sizeof(struct sk_buff *));
+	} else {
+		pr_debug("Error in %s, wrong event %d", __func__, evt);
+	}
 }
 
 int connect_bamdma_to_apps(struct test_endpoint_sys *rx_ep,
@@ -3442,6 +3806,123 @@ fail:
 	return res;
 }
 
+int configure_system_18(void)
+{
+	int res = 0;
+	struct ipa_ep_cfg ipa_ep_cfg;
+#ifdef IPA_ON_R3PC
+	struct ipa_sys_connect_params sys_in;
+	u32 ipa_bam_hdl;
+	u32 ipa_pipe_num;
+#endif
+
+	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
+
+	datapath_ds_clean();
+#ifndef IPA_ON_R3PC
+	/* Setup BAM-DMA pipes */
+	to_ipa_devs[0]->dma_ep.chan.src_pipe_index    = 4;
+	to_ipa_devs[0]->dma_ep.chan.dest_pipe_index   = 5;
+
+	from_ipa_devs[0]->dma_ep.chan.src_pipe_index  = 6;
+	from_ipa_devs[0]->dma_ep.chan.dest_pipe_index = 7;
+
+	/* Connect Rx BAM-DMA --> A5 MEM */
+	res = connect_bamdma_to_apps(&from_ipa_devs[0]->ep,
+			from_ipa_devs[0]->dma_ep.chan.dest_pipe_index,
+			&from_ipa_devs[0]->desc_fifo,
+			&from_ipa_devs[0]->rx_event);
+	if (res)
+		goto fail;
+
+#endif
+
+	/* Connect IPA -> Rx BAM-DMA */
+	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
+
+#ifndef IPA_ON_R3PC
+	res = connect_ipa_to_bamdma(
+			&from_ipa_devs[0]->dma_ep,
+			IPA_CLIENT_USB_CONS,
+			&ipa_ep_cfg,
+			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
+			notify_ipa_write_done,
+			NULL);
+
+#else
+	/* Connect Rx IPA --> A5 MEM */
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.ipa_ep_cfg = ipa_ep_cfg;
+	sys_in.notify = notify_ipa_write_done;
+	if (ipa_sys_setup(&sys_in,
+				&ipa_bam_hdl,
+				&ipa_pipe_num,
+				&from_ipa_devs[0]->ipa_client_hdl))
+		goto fail;
+
+	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
+				  ipa_pipe_num,
+				  &from_ipa_devs[0]->desc_fifo,
+				  &from_ipa_devs[0]->rx_event,
+				  ipa_bam_hdl);
+#endif
+	if (res)
+		goto fail;
+
+	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
+
+	/* Connect Tx BAM-DMA -> IPA */
+	/* Prepare an endpoint configuration structure */
+	res = configure_ipa_endpoint(&ipa_ep_cfg, IPA_BASIC);
+	if (res)
+		goto fail;
+
+	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
+
+#ifndef IPA_ON_R3PC
+	/* Connect using the endpoint configuration created */
+	res = connect_bamdma_to_ipa(
+			&to_ipa_devs[0]->dma_ep,
+			&ipa_ep_cfg,
+			IPA_CLIENT_USB_PROD,
+			notify_ipa_received,
+			NULL);
+	if (res)
+		goto fail;
+
+	/* Connect A5 MEM --> Tx BAM-DMA */
+	res = connect_apps_to_bamdma(&to_ipa_devs[0]->ep,
+			to_ipa_devs[0]->dma_ep.chan.src_pipe_index,
+			&to_ipa_devs[0]->desc_fifo);
+	if (res)
+		goto fail;
+#else
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.ipa_ep_cfg = ipa_ep_cfg;
+	sys_in.notify = notify_ipa_received;
+	if (ipa_sys_setup(&sys_in,
+			&ipa_bam_hdl,
+			&ipa_pipe_num,
+			&to_ipa_devs[0]->ipa_client_hdl))
+		goto fail;
+
+	/* Connect A5 MEM --> Tx IPA */
+	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
+				  ipa_pipe_num,
+				  &to_ipa_devs[0]->desc_fifo,
+				  ipa_bam_hdl);
+
+	if (res)
+		goto fail;
+
+#endif
+fail:
+	/* cleanup and tear down goes here */
+	return res;
+}
+
 /**
  * Read File.
  *
@@ -5619,6 +6100,48 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		}
 		break;
 
+	case 18:
+		index = 0;
+		ret = create_channel_device(index, "to_ipa",
+					&to_ipa_devs[index], TX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			return -ENODEV;
+		}
+		ipa_test->
+			tx_channels[ipa_test->num_tx_channels++] =
+						to_ipa_devs[index];
+
+		index++;
+		ret = create_channel_device_by_type(index, "to_ipa",
+					&to_ipa_devs[index], RX_SZ,
+					IPA_TEST_DATA_PATH_TEST_CHANNEL);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			return -ENODEV;
+		}
+		ipa_test->
+			tx_channels[ipa_test->num_tx_channels++] =
+					to_ipa_devs[index];
+
+		index = 0;
+		ret = create_channel_device(index, "from_ipa",
+						&from_ipa_devs[index], RX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			return -ENODEV;
+		}
+		ipa_test->
+			rx_channels[ipa_test->num_rx_channels++] =
+				from_ipa_devs[index];
+
+		ret = configure_system_18();
+		if (ret) {
+			pr_err(DRV_NAME ":System configuration failed.");
+			return -ENODEV;
+		}
+		break;
+
 	default:
 		pr_err("Unsupported configuration index.\n");
 		break;
@@ -5736,6 +6259,11 @@ static int __init ipa_test_init(void)
 	else
 		pr_debug(DRV_NAME ":IPA Test init FAIL.\n");
 
+	ret = datapath_ds_init();
+	if (ret != 0)
+		pr_debug("[%s:%d, %s()] datapath_ds_init() failed (%d)\n",
+				__FILE__, __LINE__
+				, __func__, ret);
 	return ret;
 }
 
@@ -5748,6 +6276,7 @@ static void __exit ipa_test_exit(void)
 
 	exception_hdl_exit(); /* Clear the Exception Device and KFIFO*/
 
+	datapath_exit();
 
 	destroy_channel_devices();
 

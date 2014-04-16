@@ -577,6 +577,38 @@ void Pipe::SetSpecificClientParameters(
 		   break;
 	   }
 	   break;
+	case IPA_TEST_CONFIGURATION_18:
+		switch (nClientType)
+		{
+		case (IPA_CLIENT_USB_PROD):
+			m_pInodePath          = CONFIG_18_TO_IPA;
+			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
+			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
+			m_pHeader             = m_pUsbHeader;
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD ");
+			break;
+		case (IPA_CLIENT_USB2_PROD):
+			m_pInodePath          = CONFIG_18_DUMMY_ENDPOINT;
+			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
+			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
+			m_pHeader             = m_pUsbHeader;
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD ");
+			break;
+		case (IPA_CLIENT_USB_CONS):
+			m_pInodePath          = CONFIG_18_FROM_IPA;
+			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
+			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
+			m_pHeader             = m_pUsbHeader;
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+			break;
+		default:
+			LOG_MSG_ERROR(
+				"IPA_TEST_CONFIFURATION_18 switch in default "
+				"nClientType = %d is not supported ",
+				nClientType);
+			break;
+		}
+		break;
 	default:
 		LOG_MSG_ERROR("Pipe::SetSpecificClientParameters "
 		"switch in default eConfiguration = %d ", eConfiguration);
