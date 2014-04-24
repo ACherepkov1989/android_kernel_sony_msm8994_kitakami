@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -23,6 +23,14 @@
 #define SEC_WDOG	0xFC4AA000
 #define WDT0_RST	0x04
 #define WDT0_EN		0x08
+#define SEC_WDOG_RESET_OFFSET	0x0
+#define SEC_WDOG_CTL_OFFSET	0x4
+#define SEC_WDOG_BARK_OFFSET	0xc
+#define SEC_WDOG_BITE_OFFSET	0x10
+#define SEC_WDOG_BARK_VAL	0x7ffff
+#define SEC_WDOG_BITE_VAL	0x20
+#define SEC_WDOG_RESET_DO_RESET	0x1
+#define SEC_WDOG_CTL_ENABLE	0x1
 
 struct clk_pair {
 	const char *dev;
@@ -43,6 +51,8 @@ module_param_call(bus_timeout_usb, bus_timeout_usb_set, param_get_int,
 
 static int pc_save_set(const char *val, struct kernel_param *kp);
 module_param_call(pc_save, pc_save_set, param_get_int, &pc_save, 0644);
+
+struct completion pcsave_complete;
 
 static struct clk_pair bus_timeout_camera_clocks_on[] = {
 	/*
@@ -205,6 +215,9 @@ static const struct of_device_id apps_wdog_of_match[] = {
 };
 
 static void __iomem *wdogbase;
+static void *sec_wdog_virt;
+static void *global_bus_timeout_disable;
+static void *hang_addr;
 
 static int msm_apps_wdog_probe(void)
 {
@@ -238,22 +251,67 @@ static void msm_apps_wdog_disable(void)
 	mb();
 }
 
+static void pc_save_work(struct work_struct *work)
+{
+	uint32_t dummy;
+	unsigned long flags;
+	uint32_t sec_status;
+
+	local_irq_save(flags);
+
+	/* Disable sec watchdog */
+	writel_relaxed(SEC_WDOG_RESET_DO_RESET, (sec_wdog_virt +
+		       SEC_WDOG_RESET_OFFSET));
+	sec_status = readl_relaxed(sec_wdog_virt + SEC_WDOG_CTL_OFFSET);
+	writel_relaxed(sec_status & ~SEC_WDOG_CTL_ENABLE, (sec_wdog_virt +
+		       SEC_WDOG_CTL_OFFSET));
+	/* Make sure sec watchdog is disabled before continuing */
+	mb();
+
+	/* Disable apps watchdog */
+	msm_apps_wdog_disable();
+
+	/* Set sec watchdog bite time < bark time */
+	writel_relaxed(SEC_WDOG_BARK_VAL, (sec_wdog_virt +
+		       SEC_WDOG_BARK_OFFSET));
+	/* 1ms bite time in sleep clock cycles */
+	writel_relaxed(SEC_WDOG_BITE_VAL, (sec_wdog_virt +
+		       SEC_WDOG_BITE_OFFSET));
+	writel_relaxed(sec_status | SEC_WDOG_CTL_ENABLE, (sec_wdog_virt +
+		       SEC_WDOG_CTL_OFFSET));
+	/* Make sure sec watchdog is enabled before continuing */
+	mb();
+
+	/* Disable Bus timeout */
+	writel_relaxed(0x0, global_bus_timeout_disable);
+	/* Make sure bus timeout is disabled before continuing */
+	mb();
+
+	dummy = readl_relaxed(hang_addr);
+	mb();
+
+	mdelay(15000);
+
+	local_irq_restore(flags);
+
+	complete(&pcsave_complete);
+}
+
+DECLARE_WORK(pc_save_work_struct, pc_save_work);
 static int pc_save_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
-	uint32_t dummy;
 	uint32_t address = 0xfda10000;
-	void *hang_addr;
-	void *global_bus_timeout_disable;
 	struct regulator *r;
-	void *sec_wdog_virt;
-	uint32_t sec_status;
 
 	ret = param_set_int(val, kp);
 	if (ret)
 		return ret;
 	if (pc_save != 1)
 		return -EPERM;
+
+	init_completion(&pcsave_complete);
+
 	ret = msm_apps_wdog_probe();
 	if (ret)
 		return ret;
@@ -297,32 +355,8 @@ static int pc_save_set(const char *val, struct kernel_param *kp)
 		return -ENOMEM;
 	}
 
-	/* Disable sec watchdog */
-	writel_relaxed(0x1, sec_wdog_virt);
-	sec_status = readl_relaxed(sec_wdog_virt + 0x04);
-	writel_relaxed(sec_status & ~0x1, (sec_wdog_virt + 0x04));
-	/* Make sure sec watchdog is disabled before continuing */
-	mb();
-
-	/* Disable apps watchdog */
-	msm_apps_wdog_disable();
-
-	/* Set sec watchdog bite time < bark time */
-	writel_relaxed(0x7FFFF, (sec_wdog_virt + 0x0C));
-	/* 1ms bite time in sleep clock cycles */
-	writel_relaxed(0x20, (sec_wdog_virt + 0x10));
-	writel_relaxed(sec_status | 0x1, (sec_wdog_virt + 0x04));
-	/* Make sure sec watchdog is enabled before continuing */
-	mb();
-
-	/* Disable Bus timeout */
-	writel_relaxed(0x0, global_bus_timeout_disable);
-	/* Make sure bus timeout is disabled before continuing */
-	mb();
-
-	dummy = readl_relaxed(hang_addr);
-
-	mdelay(15000);
+	schedule_work(&pc_save_work_struct);
+	wait_for_completion(&pcsave_complete);
 	pr_err("Bus timeout test failed\n");
 	iounmap(hang_addr);
 	iounmap(wdogbase);
