@@ -67,7 +67,8 @@ enum simple_alloc_op_line_idx {
 
 int simple_ion_fd;
 
-static int op_simple_alloc_global_setup(struct alloc_profile_entry entries[])
+static int op_simple_alloc_global_setup(
+	struct alloc_profile_entry entries[] __unused)
 {
 	LIST_INIT(&simple_alloc_head);
 

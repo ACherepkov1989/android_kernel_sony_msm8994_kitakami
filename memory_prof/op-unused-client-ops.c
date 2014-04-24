@@ -46,7 +46,8 @@ struct unused_client_node {
 	LIST_ENTRY(unused_client_node) nodes;
 };
 
-static int op_create_unused_client_run(struct alloc_profile_entry *entry)
+static int op_create_unused_client_run(
+	struct alloc_profile_entry *entry __unused)
 {
 	int fd;
 	struct unused_client_node *np;
@@ -70,7 +71,8 @@ static struct alloc_profile_ops simple_create_unused_client_ops = {
 
 ALLOC_PROFILE_OP(&simple_create_unused_client_ops, create_unused_client);
 
-static int op_free_all_unused_clients_run(struct alloc_profile_entry *entry)
+static int op_free_all_unused_clients_run(
+	struct alloc_profile_entry *entry __unused)
 {
 	struct unused_client_node *np;
 	for (np = unused_client_head.lh_first;

@@ -129,7 +129,7 @@ static void do_munmap(void *buf, size_t len)
 	munmap(buf, len);
 }
 
-static void do_free(void *buf, size_t len)
+static void do_free(void *buf, size_t len __unused)
 {
 	free(buf);
 }
@@ -140,7 +140,7 @@ static void do_memset_n(void *buf, size_t len)
 	memset(buf, memset_n_arg, len);
 }
 
-static void identity(void *buf, size_t len)
+static void identity(void *buf __unused, size_t len __unused)
 {
 }
 
