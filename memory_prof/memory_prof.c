@@ -267,14 +267,14 @@ static int basic_sanity_tests(unsigned long size)
 	struct ion_allocation_data system_alloc_data = {
 		.align	   = SZ_4K,
 		.len	   = size,
-		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
+		.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 
 	struct ion_allocation_data system_contig_alloc_data = {
 		.align	   = SZ_4K,
 		.len	   = size,
-		.heap_mask = ION_HEAP(ION_SYSTEM_CONTIG_HEAP_ID),
+		.heap_id_mask = ION_HEAP(ION_SYSTEM_CONTIG_HEAP_ID),
 		.flags	   = 0,
 	};
 
@@ -325,7 +325,7 @@ static int do_map_extra_test(void)
 	struct ion_allocation_data alloc_data = {
 		.align	   = SZ_1M,
 		.len	   = buffer_length,
-		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
+		.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 	struct ion_fd_data fd_data;
@@ -436,7 +436,7 @@ int alloc_mem_list(char **alloc_list, int sizemb)
 /**
  * Returns the total time taken for ION_IOC_ALLOC
  *
- * @heap_mask - passed to ION_IOC_ALLOC
+ * @heap_id_mask - passed to ION_IOC_ALLOC
  * @flags - passed to ION_IOC_ALLOC
  * @size - passed to ION_IOC_ALLOC
  * @alloc_ms - [output] time taken (in MS) to complete the ION_IOC_ALLOC
@@ -452,7 +452,7 @@ int alloc_mem_list(char **alloc_list, int sizemb)
  *
  * Returns 0 on success, 1 on failure.
  */
-int do_profile_alloc_for_heap(unsigned int heap_mask,
+int do_profile_alloc_for_heap(unsigned int heap_id_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
 			double *memset_ms, double *free_ms,
@@ -500,7 +500,7 @@ int do_profile_alloc_for_heap(unsigned int heap_mask,
 		struct ion_allocation_data alloc_data = {
 			.align	   = SZ_4K,
 			.len	   = size,
-			.heap_mask = heap_mask,
+			.heap_id_mask = heap_id_mask,
 			.flags	   = flags,
 		};
 
@@ -623,13 +623,13 @@ out:
  *
  * Returns 0 on success, 1 on failure.
  */
-int profile_alloc_for_heap(unsigned int heap_mask,
+int profile_alloc_for_heap(unsigned int heap_id_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
 			double *memset_ms, double *free_ms)
 {
 	return do_profile_alloc_for_heap(
-		heap_mask, flags, size, alloc_ms, map_ms, memset_ms, free_ms,
+		heap_id_mask, flags, size, alloc_ms, map_ms, memset_ms, free_ms,
 		true, 0, -1, true);
 }
 
@@ -926,7 +926,7 @@ static int oom_test(void)
 	int rc, ionfd, cnt = 0;
 	struct ion_allocation_data alloc_data = {
 		.len	   = SZ_8M,
-		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
+		.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 
@@ -977,7 +977,7 @@ static int leak_test(void)
 	struct ion_fd_data fd_data;
 	struct ion_allocation_data alloc_data = {
 		.len	   = SZ_4K,
-		.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
+		.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 		.flags	   = 0,
 	};
 
@@ -1117,9 +1117,9 @@ static int ion_memcpy_test(void)
 		time_elapsed_flush_ms = 0;
 
 	src_alloc_data.len = SZ_4M;
-	src_alloc_data.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
+	src_alloc_data.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
 	dst_alloc_data.len = SZ_4M;
-	dst_alloc_data.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
+	dst_alloc_data.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
 
 	src_alloc_data.flags = 0;
 	dst_alloc_data.flags = 0;

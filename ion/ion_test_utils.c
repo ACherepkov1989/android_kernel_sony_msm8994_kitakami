@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -108,13 +108,13 @@ static int get_heap_data(const char *msm_ion_dev, struct ion_test_data *data)
 		return -EIO;
 	}
 	heap_data.type = data->heap_type_req;
-	heap_data.heap_mask = data->heap_mask;
+	heap_data.heap_id_mask = data->heap_id_mask;
 
 	rc = ioctl(ion_kernel_fd, IOC_ION_FIND_PROPER_HEAP, &heap_data);
 
 	if (!rc) {
 		data->valid = heap_data.valid;
-		data->heap_mask =  heap_data.heap_mask;
+		data->heap_id_mask =  heap_data.heap_id_mask;
 	} else {
 		data->valid = 0;
 	}

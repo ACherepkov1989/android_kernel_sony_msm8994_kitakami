@@ -123,7 +123,7 @@ static int op_simple_alloc_run(struct alloc_profile_entry *entry)
 	struct ion_allocation_data alloc_data = {
 		.align	   = SZ_4K,
 		.len	   = op->size,
-		.heap_mask = op->heap_id,
+		.heap_id_mask = op->heap_id,
 		.flags	   = op->flags,
 	};
 
