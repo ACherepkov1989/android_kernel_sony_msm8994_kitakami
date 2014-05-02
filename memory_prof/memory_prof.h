@@ -92,6 +92,10 @@ struct size_suffix_size_type_mapping {
 	unsigned long multiplier;
 };
 
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
+
 /**
  * A set of callbacks to be used for reading allocation profiles from
  * various sources.
