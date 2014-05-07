@@ -53,4 +53,6 @@ ip_accelerator_SOURCES =\
 		IPv4Packet.cpp \
 		RNDISAggregationTestFixture.cpp \
 		RNDISAggregationTests.cpp \
+		DataPathTestFixture.cpp \
+		DataPathTests.cpp \
 		main.cpp
