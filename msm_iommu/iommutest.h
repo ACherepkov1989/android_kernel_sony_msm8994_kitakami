@@ -32,6 +32,7 @@ struct test_iommu {
 	int ret_code;
 	unsigned int flags;
 	int cats_tbu_id;
+	unsigned int is_mm_tbu;
 };
 
 struct target_struct {
