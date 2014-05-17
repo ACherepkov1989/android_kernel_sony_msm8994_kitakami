@@ -1,3 +1,0 @@
-# this domain might not be valid on all targets. adjust accordingly.
-iommu_map_range,lpass_secure,4,15,MP_IOMMU_WRITE|MP_IOMMU_READ
-iommu_map_range,lpass_secure,4,15,MP_IOMMU_WRITE|MP_IOMMU_READ|MP_IOMMU_CACHE

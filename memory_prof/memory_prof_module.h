@@ -50,6 +50,8 @@ struct memory_prof_map_extra_args {
 #define MP_IOMMU_WRITE	(1<<0)
 #define MP_IOMMU_READ	(1<<1)
 #define MP_IOMMU_CACHE	(1<<2)
+#define MP_IOMMU_SECURE (1<<3)
+#define MP_IOMMU_ATTACH (1<<4)
 
 struct mp_alloc_pages_args {
 	unsigned int order;
@@ -57,15 +59,29 @@ struct mp_alloc_pages_args {
 	unsigned long long time_elapsed_us;
 };
 
-#define MAX_IOMMU_DOMAIN_NAME 64
+#define MAX_IOMMU_CTX_NAME 64
 
-struct mp_iommu_map_range_test_args {
-	char domain_name[MAX_IOMMU_DOMAIN_NAME];
+struct mp_iommu_map_test_args {
+	char ctx_name[MAX_IOMMU_CTX_NAME];
 	size_t chunk_order;
 	int nchunks;
+	unsigned int iterations;
 	int prot;
+	unsigned int flags;
 	unsigned long long time_elapsed_us;
+	unsigned long long time_elapsed_min_us;
+	unsigned long long time_elapsed_max_us;
 };
+
+struct mp_iommu_attach_test_args {
+	char ctx_name[MAX_IOMMU_CTX_NAME];
+	unsigned int iterations;
+	unsigned int flags;
+	unsigned long long time_elapsed_us;
+	unsigned long long time_elapsed_min_us;
+	unsigned long long time_elapsed_max_us;
+};
+
 
 #define MEMORY_PROF_MAGIC     'H'
 
@@ -82,6 +98,20 @@ struct mp_iommu_map_range_test_args {
 #define MEMORY_PROF_IOC_CLEANUP_ALLOC_PAGES _IO(MEMORY_PROF_MAGIC, 5)
 
 #define MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST \
-	_IOWR(MEMORY_PROF_MAGIC, 6, struct mp_iommu_map_range_test_args)
+	_IOWR(MEMORY_PROF_MAGIC, 6, struct mp_iommu_map_test_args)
 
+#define MEMORY_PROF_IOC_IOMMU_UNMAP_RANGE_TEST \
+	_IOWR(MEMORY_PROF_MAGIC, 7, struct mp_iommu_map_test_args)
+
+#define MEMORY_PROF_IOC_IOMMU_MAP_TEST \
+	_IOWR(MEMORY_PROF_MAGIC, 8, struct mp_iommu_map_test_args)
+
+#define MEMORY_PROF_IOC_IOMMU_UNMAP_TEST \
+	_IOWR(MEMORY_PROF_MAGIC, 9, struct mp_iommu_map_test_args)
+
+#define MEMORY_PROF_IOC_IOMMU_ATTACH_TEST \
+	_IOWR(MEMORY_PROF_MAGIC, 10, struct mp_iommu_attach_test_args)
+
+#define MEMORY_PROF_IOC_IOMMU_DETACH_TEST \
+	_IOWR(MEMORY_PROF_MAGIC, 11, struct mp_iommu_attach_test_args)
 #endif /* #ifndef _MEMORY_PROF_MODULE_H */

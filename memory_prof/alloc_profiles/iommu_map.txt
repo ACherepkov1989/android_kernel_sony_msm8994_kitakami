@@ -1,0 +1,14 @@
+# this context bank might not be valid on all targets. adjust accordingly.
+iommu_map_range,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH
+iommu_map_range,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,0
+iommu_unmap_range,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH
+iommu_unmap_range,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,0
+iommu_map,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH
+iommu_map,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,0
+iommu_unmap,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH
+iommu_unmap,jpeg_enc0,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,0
+
+iommu_map_range,venus_sec_bitstream,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH|MP_IOMMU_SECURE
+iommu_unmap_range,venus_sec_bitstream,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH|MP_IOMMU_SECURE
+iommu_map,venus_sec_bitstream,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH|MP_IOMMU_SECURE
+iommu_unmap,venus_sec_bitstream,0,4096,100,MP_IOMMU_WRITE|MP_IOMMU_READ,MP_IOMMU_ATTACH|MP_IOMMU_SECURE

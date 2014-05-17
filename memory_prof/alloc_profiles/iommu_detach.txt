@@ -1,0 +1,8 @@
+# this context bank might not be valid on all targets. adjust accordingly.
+iommu_detach,jpeg_enc0,1000,0
+iommu_detach,jpeg_enc0,1000,0
+iommu_detach,jpeg_enc0,1000,0
+iommu_detach,jpeg_enc0,1000,0
+iommu_detach,jpeg_enc0,1000,0
+iommu_detach,venus_ns,500,0
+iommu_detach,venus_sec_pixel,500,MP_IOMMU_SECURE
