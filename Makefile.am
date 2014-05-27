@@ -42,6 +42,9 @@ endif
 if USEIP_ACCELERATOR
 BUILD_TEST += ip_accelerator
 endif
+if USEHRTIMER
+BUILD_TEST += hrtimer
+endif
 
 SUBDIRS = $(BUILD_TEST)
 
