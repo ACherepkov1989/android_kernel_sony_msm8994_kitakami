@@ -315,7 +315,7 @@ static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned lon
 	switch (cmd) {
 	case MEMORY_PROF_IOC_CLIENT_CREATE:
 	{
-		module_data->client = msm_ion_client_create(~0, "memory_prof_module");
+		module_data->client = msm_ion_client_create("memory_prof_module");
 		if (IS_ERR_OR_NULL(module_data->client))
 			return -EIO;
 		break;

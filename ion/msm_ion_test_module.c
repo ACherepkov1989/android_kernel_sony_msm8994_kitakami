@@ -51,7 +51,7 @@ static unsigned int heap_list_len;
 /*Utility apis*/
 static inline int create_ion_client(struct msm_ion_test *ion_test)
 {
-	ion_test->ion_client = msm_ion_client_create(UINT_MAX, CLIENT_NAME);
+	ion_test->ion_client = msm_ion_client_create(CLIENT_NAME);
 	if (IS_ERR_OR_NULL(ion_test->ion_client))
 		return -EIO;
 	return 0;
