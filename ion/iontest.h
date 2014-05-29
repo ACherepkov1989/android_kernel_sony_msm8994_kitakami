@@ -18,7 +18,7 @@ struct ion_test_data {
 	unsigned int align;
 	unsigned int size;
 	enum ion_test_heap_type heap_type_req;
-	unsigned long heap_mask; /* Auto-detected if possible */
+	unsigned long heap_id_mask; /* Auto-detected if possible */
 	unsigned long flags;
 	unsigned long vaddr;
 	unsigned long cache;
@@ -29,7 +29,7 @@ struct ion_test_data {
 struct ion_heap_data {
 	enum ion_test_heap_type type;
 	unsigned int size;
-	unsigned long heap_mask;
+	unsigned long heap_id_mask;
 	unsigned int valid;
 };
 

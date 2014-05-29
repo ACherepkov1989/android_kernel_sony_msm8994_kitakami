@@ -57,14 +57,14 @@ static struct ion_test_data mm_heap_test = {
 	.align = 0x1000,
 	.size = 0x1000,
 	.heap_type_req = SYSTEM_MEM,
-	.heap_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
+	.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
 };
 
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0x1000,
 	.size = 0xC0000000,
 	.heap_type_req = CARVEOUT,
-	.heap_mask = ION_HEAP(ION_QSECOM_HEAP_ID),
+	.heap_id_mask = ION_HEAP(ION_QSECOM_HEAP_ID),
 };
 
 static struct ion_test_data *mm_heap_data_settings[] = {
@@ -102,7 +102,7 @@ static int test_ualloc(const char *ion_dev, const char *msm_ion_dev __maybe_unus
 	}
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
-	alloc_data.heap_mask = test_data->heap_mask;
+	alloc_data.heap_id_mask = test_data->heap_id_mask;
 	alloc_data.flags = test_data->flags;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &alloc_data);
 	if (rc < 0 && test_type == NOMINAL_TEST) {
@@ -157,7 +157,7 @@ static int test_umap(const char *ion_dev, const char *msm_ion_dev __maybe_unused
 	}
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
-	alloc_data.heap_mask = test_data->heap_mask;
+	alloc_data.heap_id_mask = test_data->heap_id_mask;
 	alloc_data.flags = test_data->flags;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &alloc_data);
 	if (rc) {
@@ -374,7 +374,7 @@ static int test_uimp(const char *ion_dev, const char *msm_ion_dev __maybe_unused
 	}
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
-	alloc_data.heap_mask = test_data->heap_mask;
+	alloc_data.heap_id_mask = test_data->heap_id_mask;
 	alloc_data.flags = test_data->flags;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &alloc_data);
 	if (rc) {

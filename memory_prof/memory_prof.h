@@ -112,13 +112,13 @@ struct alloc_profile_reader {
 struct alloc_profile_entry *get_alloc_profile(
 	struct alloc_profile_reader *reader);
 extern int ion_pre_alloc_size;
-int do_profile_alloc_for_heap(unsigned int heap_mask,
+int do_profile_alloc_for_heap(unsigned int heap_id_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
 			double *memset_ms, double *free_ms,
 			bool do_pre_alloc, ion_user_handle_t handle,
 			int ionfd, bool do_free);
-int profile_alloc_for_heap(unsigned int heap_mask,
+int profile_alloc_for_heap(unsigned int heap_id_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
 			double *memset_ms, double *free_ms);

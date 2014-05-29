@@ -50,14 +50,14 @@
 static struct ion_test_data mm_heap_test = {
 	.align = 0x100000,
 	.size = 0x100000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
+	.heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
 	.flags = ION_FLAG_SECURE,
 	.heap_type_req = SECURE_DMA,
 };
 static struct ion_test_data adv_mm_heap_test = {
 	.align = 0x100000,
 	.size = 0x100000,
-	.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
+	.heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
 	.heap_type_req = SECURE_DMA,
 	.flags = 0,
 };
@@ -107,7 +107,7 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 	}
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
-	alloc_data.heap_mask = test_data->heap_mask;
+	alloc_data.heap_id_mask = test_data->heap_id_mask;
 	alloc_data.flags = ION_SECURE;
 
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &alloc_data);
@@ -116,7 +116,7 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 		goto cp_alloc_err;
 	}
 	sec_alloc_data.len = test_data->size;
-	sec_alloc_data.heap_mask = test_data->heap_mask;
+	sec_alloc_data.heap_id_mask = test_data->heap_id_mask;
 	sec_alloc_data.flags = test_data->flags;
 	sec_alloc_data.align = test_data->align;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &sec_alloc_data);
@@ -167,7 +167,7 @@ static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 		}
 		ktest_data.align = test_data->align;
 		ktest_data.size = test_data->size;
-		ktest_data.heap_mask = test_data->heap_mask;
+		ktest_data.heap_id_mask = test_data->heap_id_mask;
 		ktest_data.flags = test_data->flags;
 		ktest_data.shared_fd = fd_data.fd;
 		rc = ioctl(ion_kernel_fd, IOC_ION_UIMPORT, &ktest_data);
@@ -250,7 +250,7 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 	}
 	alloc_data.len = test_data->size;
 	alloc_data.align = test_data->align;
-	alloc_data.heap_mask = test_data->heap_mask;
+	alloc_data.heap_id_mask = test_data->heap_id_mask;
 	alloc_data.flags = test_data->flags;
 	rc = ioctl(ion_fd, ION_IOC_ALLOC, &alloc_data);
 	if (rc) {
@@ -284,7 +284,7 @@ static int test_sec_map(const char *ion_dev, const char *msm_ion_dev,
 	}
 	ktest_data.align = test_data->align;
 	ktest_data.size = test_data->size;
-	ktest_data.heap_mask = test_data->heap_mask;
+	ktest_data.heap_id_mask = test_data->heap_id_mask;
 	ktest_data.flags = test_data->flags;
 	ktest_data.shared_fd = fd_data.fd;
 	rc = ioctl(ion_kernel_fd, IOC_ION_UIMPORT, &ktest_data);

@@ -66,7 +66,8 @@ static int alloc_ion_buf(struct msm_ion_test *ion_test,
 					struct ion_test_data *test_data)
 {
 	ion_test->ion_handle = ion_alloc(ion_test->ion_client, test_data->size,
-					test_data->align, test_data->heap_mask,
+					test_data->align,
+					test_data->heap_id_mask,
 					test_data->flags);
 	if (IS_ERR_OR_NULL(ion_test->ion_handle))
 		return -EIO;
@@ -189,14 +190,14 @@ static int get_proper_heap(struct ion_heap_data *data)
 		data->valid = 1;
 		ret = 0;
 	} else {
-		data->heap_mask  = 0;
+		data->heap_id_mask  = 0;
 		data->size = 0;
 		data->valid = 0;
 
 		for (i = 0; i < heap_list_len; ++i) {
 			if (data->type == heap_list[i].type) {
 				data->size = heap_list[i].size;
-				data->heap_mask = ION_HEAP(heap_list[i].id);
+				data->heap_id_mask = ION_HEAP(heap_list[i].id);
 				data->valid = 1;
 				ret = 0;
 				break;

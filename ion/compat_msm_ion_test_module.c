@@ -18,7 +18,7 @@ struct compat_ion_test_data {
 	compat_uint_t	align;
 	compat_uint_t	size;
 	compat_uint_t	heap_type_req;
-	compat_ulong_t	heap_mask;
+	compat_ulong_t	heap_id_mask;
 	compat_ulong_t	flags;
 	compat_ulong_t	vaddr;
 	compat_ulong_t	cache;
@@ -29,7 +29,7 @@ struct compat_ion_test_data {
 struct compat_ion_heap_data {
 	compat_int_t	type;
 	compat_uint_t	size;
-	compat_ulong_t	heap_mask;
+	compat_ulong_t	heap_id_mask;
 	compat_uint_t	valid;
 };
 
@@ -61,8 +61,8 @@ static int compat_get_ion_test_data(
 	err |= put_user(u, &data->size);
 	err |= get_user(u, &data32->heap_type_req);
 	err |= put_user(u, &data->heap_type_req);
-	err |= get_user(l, &data32->heap_mask);
-	err |= put_user(l, &data->heap_mask);
+	err |= get_user(l, &data32->heap_id_mask);
+	err |= put_user(l, &data->heap_id_mask);
 	err |= get_user(l, &data32->flags);
 	err |= put_user(l, &data->flags);
 	err |= get_user(l, &data32->vaddr);
@@ -91,8 +91,8 @@ static int compat_get_ion_heap_data(
 	err |= put_user(i, &data->type);
 	err |= get_user(u, &data32->size);
 	err |= put_user(u, &data->size);
-	err |= get_user(l, &data32->heap_mask);
-	err |= put_user(l, &data->heap_mask);
+	err |= get_user(l, &data32->heap_id_mask);
+	err |= put_user(l, &data->heap_id_mask);
 	err |= get_user(u, &data32->valid);
 	err |= put_user(u, &data->valid);
 
@@ -113,8 +113,8 @@ static int compat_put_ion_heap_data(
 	err |= put_user(i, &data32->type);
 	err |= get_user(u, &data->size);
 	err |= put_user(u, &data32->size);
-	err |= get_user(l, &data->heap_mask);
-	err |= put_user(l, &data32->heap_mask);
+	err |= get_user(l, &data->heap_id_mask);
+	err |= put_user(l, &data32->heap_id_mask);
 	err |= get_user(u, &data->valid);
 	err |= put_user(u, &data32->valid);
 
