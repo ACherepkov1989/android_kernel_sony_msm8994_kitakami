@@ -1,0 +1,3 @@
+# Kernel module make instructions go here.
+#
+obj-m := tsensor_reset_mod.o
