@@ -1,6 +1,6 @@
 /* ipc_logging/ipc_logging_test.c
  *
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -233,7 +233,7 @@ static void ipc_logging_ut_basic(struct seq_file *s)
 	seq_printf(s, "Running %s\n", __func__);
 	do {
 		ipc_log_test_ctxt = ipc_log_context_create(ipc_log_test_pages,
-							"ipc_logging_test");
+							"ipc_logging_test", 0);
 		UT_ASSERT_PTR(ipc_log_test_ctxt, !=, NULL);
 
 		ipc_log_string(ipc_log_test_ctxt, "%s", test_data);
@@ -266,6 +266,122 @@ static void ipc_logging_ut_basic(struct seq_file *s)
 	}
 
 	ipc_log_context_destroy(ipc_log_test_ctxt);
+}
+
+/**
+ * ipc_logging_ut_wrap_test - Verify log wrapping.
+ *
+ * @s: pointer to output file
+ *
+ * This tests fills a log multiple times to verify that expected combinations
+ * of wrapping are handled correctly.  Specifically, this test case confirms:
+ *   * splitting messages across page boundaries works as expected
+ *   * all combinations of read/write indexes are working as expected
+ */
+static void ipc_logging_ut_wrap_test(struct seq_file *s)
+{
+	static void *ctx;
+	int failed = 0;
+	char *test_data = {"hello world\n"};
+	char read_data[50] = {"\0"};
+
+	char log1[30] = {"\0"};
+	unsigned long mtime1 = 0;
+	char log2[30] = {"\0"};
+	unsigned long mtime2 = 0;
+	int read_size;
+
+	seq_printf(s, "Running %s\n", __func__);
+	do {
+		ctx = ipc_log_context_create(3, "ipc_logging_test", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		ipc_log_string(ctx, "%s", test_data);
+
+		read_size = ipc_log_extract(ctx, read_data,
+							MAX_MSG_DECODED_SIZE);
+
+		scnprintf(log1, sizeof(log1), read_data + STRING_OFFSET);
+		DECODE_TIME(read_data, mtime1);
+		UT_ASSERT_STRING_COMPARE(log1, test_data);
+
+		msleep(50);
+
+		ipc_log_string(ctx, "%s", test_data);
+
+		read_size = ipc_log_extract(ctx, read_data,
+							MAX_MSG_DECODED_SIZE);
+
+		scnprintf(log2, sizeof(log2), read_data + STRING_OFFSET);
+		DECODE_TIME(read_data, mtime2);
+		UT_ASSERT_STRING_COMPARE(log2, test_data);
+
+		UT_ASSERT_INT_IN_RANGE((mtime2 - mtime1), 50, 65);
+		seq_printf(s, "\tOK\n");
+	} while (0);
+
+	if (failed) {
+		pr_err("%s: Failed\n", __func__);
+		seq_printf(s, "\tFailed\n");
+	}
+
+	ipc_log_context_destroy(ctx);
+}
+
+/**
+ * extraction_dump - Dump unit test logs used to verify log extraction tool.
+ *
+ * @s: pointer to output file
+ *
+ * Generates several different logs that are used as part of the log extraction
+ * tool unit test.
+ *
+ * Note:  This tool will crash the kernel to trigger the memory dump.
+ */
+static void extraction_dump(struct seq_file *s)
+{
+	int failed = 0;
+	int n;
+	void *ctx;
+
+	seq_printf(s, "Running %s\n", __func__);
+	do {
+		/* Create 1-page partially-full log */
+		ctx = ipc_log_context_create(1, "ut_partial_1", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 10; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		/* Create 1-page full log */
+		ctx = ipc_log_context_create(1, "ut_full_1", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < PAGE_SIZE / 10; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		/* Create multi-page partially-full log */
+		ctx = ipc_log_context_create(3, "ut_partial_3", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 3 * (PAGE_SIZE / 10) / 2; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		/* Create multi-page full log */
+		ctx = ipc_log_context_create(3, "ut_full_3", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 3 * PAGE_SIZE / 10; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		/* Crash system to start memory dump */
+		panic("Crashing system to collect memory dump\n");
+	} while (0);
+
+	if (failed) {
+		pr_err("%s: Failed\n", __func__);
+		seq_printf(s, "\tFailed\n");
+	}
 }
 
 static struct dentry *dent;
@@ -320,6 +436,10 @@ static int __init ipc_logging_debugfs_init(void)
 	 */
 	ipc_logging_debug_create("ut_basic",
 			ipc_logging_ut_basic);
+	ipc_logging_debug_create("ut_wrap_test",
+			ipc_logging_ut_wrap_test);
+	ipc_logging_debug_create("extraction_dump",
+			extraction_dump);
 
 	return 0;
 }
