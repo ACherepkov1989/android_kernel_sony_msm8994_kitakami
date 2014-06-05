@@ -25,7 +25,12 @@ LOCAL_SRC_FILES += memory_prof.c \
 	op-alloc-pages.c \
 	op-unused-client-ops.c \
 	op-user-alloc.c \
-	op-iommu-map-range.c
+	op-iommu-map-range.c \
+	op-iommu-unmap-range.c \
+	op-iommu-map.c \
+	op-iommu-unmap.c \
+	op-iommu-attach.c \
+	op-iommu-detach.c
 
 
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/

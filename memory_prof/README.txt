@@ -344,23 +344,30 @@ Appendix A: Allocation Profiles for memory_prof
                  memset-0 would result in memset(buf, 0, size)
 
     o `op' == iommu_map_range
+    o `op' == iommu_unmap_range
+    o `op' == iommu_map
+    o `op' == iommu_unmap
 
-      When `op' == iommu_map_range, profile the iommu_map_range kernel
-      function.
+      When `op' equals one of the four operations above, profile the
+      corresponding api in the kernel.
 
       The following remaining fields are defined:
 
-          domain_name
+          context_name
           chunk_order
           nchunks
+          iterations
           prot
+          flags
 
-      - domain_name :: the Iommu domain to use
+      - context_name :: the Iommu context to use
 
       - chunk_order :: the order of the pages to be used for each
         chunk
 
       - nchunks :: how many chunks to allocate
+
+      - iterations :: number of interations to run
 
       - prot :: protection flags to be used for the mapping. Similar
         to the gfp_flags field for the `alloc_pages' op, the real
@@ -371,6 +378,37 @@ Appendix A: Allocation Profiles for memory_prof
           MP_IOMMU_WRITE
           MP_IOMMU_READ
           MP_IOMMU_CACHE
+
+        The note on the gfp_kernel field about flag composition also
+        applies here.
+
+      - flags :: Addition flags used to control the test
+
+         MP_IOMMU_ATTACH - Attach to context bank
+         MP_IOMMU_SECURE - Test secure iommu functionality
+
+        The note on the gfp_kernel field about flag composition also
+        applies here.
+
+    o `op' == iommu_attach
+    o `op' == iommu_detach
+
+      When `op' equals one of the two operations above, profile the
+      corresponding api in the kernel.
+
+      The following remaining fields are defined:
+
+          context_name
+          iterations
+          flags
+
+      - context_name :: the Iommu context to use
+
+      - iterations :: number of interations to run
+
+      - flags :: Addition flags used to control the test
+
+         MP_IOMMU_SECURE - Test secure iommu functionality
 
         The note on the gfp_kernel field about flag composition also
         applies here.
