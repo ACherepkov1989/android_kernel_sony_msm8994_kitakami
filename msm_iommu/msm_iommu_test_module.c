@@ -636,6 +636,12 @@ static int do_various_mappings_test(struct iommu_domain *domain,
 		goto free_table;
 	}
 
+	/* Test corner case by mapping the last entry of the page table. */
+	iova = SZ_1G-SZ_4K;
+	pa = iova;
+	iommu_map(domain, iova, pa, SZ_4K, prot);
+	iommu_unmap(domain, iova, SZ_4K);
+
 	for (j = 0; j < iova_list_len; ++j) {
 		iova = IOVA_LIST[j];
 		pa = iova;
@@ -681,11 +687,59 @@ out:
 	return ret;
 }
 
-static int do_advanced_VA2PA(int domain_id, struct iommu_domain *domain,
-			    const char *ctx_name)
+static int create_dom_and_attach(char const *ctx_name, int *dom_id,
+				 struct iommu_domain **dom)
+{
+	struct device *dev;
+	int ret = 0;
+
+	*dom_id = create_domain(dom);
+
+	dev  = msm_iommu_get_ctx(ctx_name);
+	if (IS_ERR_OR_NULL(dev)) {
+		pr_err("context %s not found: %ld\n", ctx_name, PTR_ERR(dev));
+		ret = -EINVAL;
+		goto unreg_dom;
+	}
+
+	if (is_ctx_busy(dev)) {
+		ret = -EBUSY;
+		goto unreg_dom;
+	}
+
+	ret = iommu_attach_device(*dom, dev);
+	if (ret) {
+		pr_err("iommu attach failed: %x\n", ret);
+		goto unreg_dom;
+	}
+	goto end;
+
+unreg_dom:
+	msm_unregister_domain(*dom);
+end:
+	return ret;
+}
+
+static void detach_and_destroy_dom(char const *ctx_name,
+				   struct iommu_domain *dom)
+{
+	struct device *dev;
+
+	dev  = msm_iommu_get_ctx(ctx_name);
+	iommu_detach_device(dom, dev);
+	msm_unregister_domain(dom);
+}
+
+static int do_advanced_VA2PA(const char *ctx_name)
 {
 	unsigned int i,j,k;
 	int ret;
+	int domain_id;
+	struct iommu_domain *domain;
+
+	ret = create_dom_and_attach(ctx_name, &domain_id, &domain);
+	if (ret)
+		goto out;
 
 	pr_debug("Do mapping test\n");
 	for(i = 0; i < 2; ++i) {
@@ -693,18 +747,32 @@ static int do_advanced_VA2PA(int domain_id, struct iommu_domain *domain,
 			for(k = 0; k < 20; ++k) {
 				ret = do_mapping_test(i, j, k,
 						      domain, ctx_name);
-				if (ret)
+				if (ret) {
+					detach_and_destroy_dom(ctx_name,
+							       domain);
 					goto out;
+				}
 			}
 		}
 	}
+	detach_and_destroy_dom(ctx_name, domain);
 
 	pr_debug("Do map range test\n");
+	ret = create_dom_and_attach(ctx_name, &domain_id, &domain);
+	if (ret)
+		goto out;
+
 	ret = do_map_range_test(domain, ctx_name);
-	if (!ret) {
-		pr_debug("Do various mapping test\n");
-		ret = do_various_mappings_test(domain, ctx_name);
-	}
+	detach_and_destroy_dom(ctx_name, domain);
+
+	if (ret)
+		goto out;
+	pr_debug("Do various mapping test\n");
+	ret = create_dom_and_attach(ctx_name, &domain_id, &domain);
+	if (ret)
+		goto out;
+	ret = do_various_mappings_test(domain, ctx_name);
+	detach_and_destroy_dom(ctx_name, domain);
 
 out:
 	return ret;
@@ -791,27 +859,10 @@ static int test_VA2PA(const struct msm_iommu_test *iommu_test,
 	struct iommu_domain *domain;
 	struct iommu *smmu = &iommu_test->iommu_list[tst_iommu->iommu_no];
 	const char *ctx_name = smmu->cb_list[tst_iommu->cb_no].name;
-	struct device *dev;
 
-	domain_id = create_domain(&domain);
-
-	dev  = msm_iommu_get_ctx(ctx_name);
-	if (IS_ERR_OR_NULL(dev)) {
-		pr_err("context %s not found: %ld\n", ctx_name, PTR_ERR(dev));
-		ret = -EINVAL;
-		goto unreg_dom;
-	}
-
-	if (is_ctx_busy(dev)) {
-		ret = -EBUSY;
-		goto unreg_dom;
-	}
-
-	ret = iommu_attach_device(domain, dev);
-	if (ret) {
-		pr_err("iommu attach failed: %x\n", ret);
-		goto unreg_dom;
-	}
+	ret = create_dom_and_attach(ctx_name, &domain_id, &domain);
+	if (ret)
+		goto out;
 
 	pr_debug("Do basic test\n");
 	ret = do_basic_VA2PA(domain_id, domain, ctx_name);
@@ -819,20 +870,19 @@ static int test_VA2PA(const struct msm_iommu_test *iommu_test,
 		/* Remap -EBUSY. This is used when context bank is busy */
 		if (ret == -EBUSY)
 			ret = -EINVAL;
-		goto detach;
 	}
+
+	detach_and_destroy_dom(ctx_name, domain);
+	if (ret)
+		goto out;
 
 	if (!(tst_iommu->flags & TEST_FLAG_BASIC)) {
 		pr_debug("Do advanced test\n");
-		ret = do_advanced_VA2PA(domain_id, domain, ctx_name);
+		ret = do_advanced_VA2PA(ctx_name);
 		if (ret == -EBUSY)
 			ret = -EINVAL;
 	}
-detach:
-	iommu_detach_device(domain, dev);
-unreg_dom:
-	msm_unregister_domain(domain);
-	tst_iommu->ret_code = ret;
+out:
 	return ret;
 }
 

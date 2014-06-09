@@ -37,22 +37,18 @@
 #include "memory_prof_module.h"
 #include "alloc_profiles.h"
 
-struct iommu_map_range_op {
-	struct mp_iommu_map_test_args args;
-	char prot_string[MAX_FLAGS_STRING_LEN];
+struct iommu_detach_op {
+	struct mp_iommu_attach_test_args args;
 	char flags_string[MAX_FLAGS_STRING_LEN];
 };
 
 #define LINE_IDX_CTX_NAME 1
-#define LINE_IDX_CHUNK_ORDER 2
-#define LINE_IDX_NCHUNKS 3
-#define LINE_IDX_ITERATIONS 4
-#define LINE_IDX_PROT 5
-#define LINE_IDX_FLAGS 6
+#define LINE_IDX_ITERATIONS 2
+#define LINE_IDX_FLAGS 3
 
 static int memory_prof_fd;
 
-static int op_iommu_map_range_global_setup(
+static int op_iommu_detach_global_setup(
 	struct alloc_profile_entry entries[] __unused)
 {
 	memory_prof_fd = open(MEMORY_PROF_DEV, O_RDONLY);
@@ -61,58 +57,48 @@ static int op_iommu_map_range_global_setup(
 	return 0;
 }
 
-static void op_iommu_map_range_global_teardown(void)
+static void op_iommu_detach_global_teardown(void)
 {
 	close(memory_prof_fd);
 }
 
-static int op_iommu_map_range_parse(struct alloc_profile_entry *entry,
+static int op_iommu_detach_parse(struct alloc_profile_entry *entry,
 				struct line_info *li)
 {
-	struct iommu_map_range_op *op = entry->priv;
+	struct iommu_detach_op *op = entry->priv;
 	STRNCPY_SAFE(op->args.ctx_name, li->words[LINE_IDX_CTX_NAME],
 		MAX_IOMMU_CTX_NAME);
-	STRTOL(op->args.chunk_order, li->words[LINE_IDX_CHUNK_ORDER], 0);
-	STRTOL(op->args.nchunks, li->words[LINE_IDX_NCHUNKS], 0);
-	STRTOL(op->args.iterations, li->words[LINE_IDX_ITERATIONS], 0);
-	op->args.prot = parse_flags(li->words[LINE_IDX_PROT]);
-	STRNCPY_SAFE(op->prot_string, li->words[LINE_IDX_PROT],
-		MAX_FLAGS_STRING_LEN);
+	op->args.iterations = strtoul(li->words[LINE_IDX_ITERATIONS], NULL, 10);
 	op->args.flags = parse_flags(li->words[LINE_IDX_FLAGS]);
 	STRNCPY_SAFE(op->flags_string, li->words[LINE_IDX_FLAGS],
 		MAX_FLAGS_STRING_LEN);
 	return 0;
 }
 
-static int op_iommu_map_range_run(struct alloc_profile_entry *entry)
+static int op_iommu_detach_run(struct alloc_profile_entry *entry)
 {
-	struct iommu_map_range_op *op = entry->priv;
-	if (ioctl(memory_prof_fd, MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST,
+	struct iommu_detach_op *op = entry->priv;
+	if (ioctl(memory_prof_fd, MEMORY_PROF_IOC_IOMMU_DETACH_TEST,
 			&op->args)) {
-		warn("Couldn't do MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST");
+		warn("Couldn't do MEMORY_PROF_IOC_IOMMU_DETACH_TEST");
 		return 1;
 	}
 	printf(ST_PREFIX_DATA_ROW
-		" iommu_map_range time %llu us, ave: %llu us, min: %llu, max: %llu ctx: %s iterations: %u chunk_order: %zu nchunks: %d prot: %s flags: %s\n",
+		" iommu_detach_device time %llu us, ave: %llu us, min: %llu, max: %llu ctx: %s iterations: %u flags: %s\n",
 		op->args.time_elapsed_us,
 		op->args.time_elapsed_us / op->args.iterations,
 		op->args.time_elapsed_min_us,
 		op->args.time_elapsed_max_us,
-		op->args.ctx_name,
-		op->args.iterations,
-		op->args.chunk_order,
-		op->args.nchunks,
-		op->prot_string,
-		op->flags_string);
+		op->args.ctx_name, op->args.iterations, op->flags_string);
 	return 0;
 }
 
-static struct alloc_profile_ops iommu_map_range_ops = {
-	.parse = op_iommu_map_range_parse,
-	.run = op_iommu_map_range_run,
-	.global_setup = op_iommu_map_range_global_setup,
-	.global_teardown = op_iommu_map_range_global_teardown,
+static struct alloc_profile_ops iommu_detach_ops = {
+	.parse = op_iommu_detach_parse,
+	.run = op_iommu_detach_run,
+	.global_setup = op_iommu_detach_global_setup,
+	.global_teardown = op_iommu_detach_global_teardown,
 };
 
-ALLOC_PROFILE_OP_SIZED(&iommu_map_range_ops, iommu_map_range,
-		sizeof(struct iommu_map_range_op));
+ALLOC_PROFILE_OP_SIZED(&iommu_detach_ops, iommu_detach,
+		sizeof(struct iommu_detach_op));
