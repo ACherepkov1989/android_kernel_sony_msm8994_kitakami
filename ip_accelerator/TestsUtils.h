@@ -38,6 +38,7 @@
 #include "RoutingDriverWrapper.h"
 #include "InterfaceAbstraction.h"
 #include "Logger.h"
+#include "Constants.h"
 
 using namespace std;
 #define TEST_APP_VERSION "2.00"

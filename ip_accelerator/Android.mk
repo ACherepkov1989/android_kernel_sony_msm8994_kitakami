@@ -1,5 +1,5 @@
 ifeq ($(call is-vendor-board-platform,QCOM),true)
-ifneq (, $(filter aarch64 arm, $(TARGET_ARCH)))
+ifneq (, $(filter aarch64 arm arm64, $(TARGET_ARCH)))
 
 DLKM_DIR := device/qcom/common/dlkm
 LOCAL_PATH := $(call my-dir)
@@ -7,7 +7,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE      := ipa_test_module.ko
 LOCAL_MODULE_TAGS  := debug
-#LOCAL_CFLAGS += -DIPA_ON_R3PC=1
+LOCAL_CFLAGS += -DIPA_ON_R3PC
 include $(DLKM_DIR)/AndroidKernelModule.mk
 
 include $(CLEAR_VARS)
@@ -21,7 +21,7 @@ LOCAL_CFLAGS += -I$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 LOCAL_C_INCLUDES :=   external/stlport/stlport bionic/ bionic/libstdc++/include
 # For APQ8064
 LOCAL_CFLAGS += -I$(TOP)/kernel/include
-#LOCAL_CFLAGS += -DIPA_ON_R3PC=1
+LOCAL_CFLAGS += -DIPA_ON_R3PC
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_MODULE      := ip_accelerator

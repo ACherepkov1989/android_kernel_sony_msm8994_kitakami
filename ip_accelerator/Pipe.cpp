@@ -170,14 +170,14 @@ void Pipe::SetSpecificClientParameters(
 		break;
 	case IPA_TEST_CONFIFURATION_1:
 		switch (nClientType) {
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 			m_pInodePath = CONFIG_1_FROM_USB1_TO_IPA_DMA;
 			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD ");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 			break;
-		case (IPA_CLIENT_USB_CONS):
+		case (IPA_CLIENT_TEST_CONS):
 			m_pInodePath = CONFIG_1_FROM_IPA_TO_USB1_DMA;
 			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
@@ -192,19 +192,19 @@ void Pipe::SetSpecificClientParameters(
 		break;
 	case IPA_TEST_CONFIFURATION_2:
 		switch (nClientType) {
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 			m_pInodePath = CONFIG_2_FROM_USB_TO_IPA;
 			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD");
 			break;
-		case (IPA_CLIENT_USB2_CONS):
+		case (IPA_CLIENT_TEST2_CONS):
 			m_pInodePath = CONFIG_2_FROM_IPA_TO_A2_NDUN;
 			m_nHeaderLengthAdd = sizeof(m_pA2NDUNHeader);
 			m_nHeaderLengthRemove = sizeof(m_pA2NDUNHeader);
 			m_pHeader = m_pA2NDUNHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_CONS");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 			break;
 		default:
 			LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_2 switch in default "
@@ -214,34 +214,34 @@ void Pipe::SetSpecificClientParameters(
 		break;
 	case IPA_TEST_CONFIFURATION_3:
 		switch (nClientType) {
-		case IPA_CLIENT_USB2_PROD:
+		case IPA_CLIENT_TEST2_PROD:
 			m_pInodePath = CONFIG_3_FROM_A2_NDUN_TO_IPA;
 			m_nHeaderLengthAdd = sizeof(m_pA2NDUNHeader);
 			m_nHeaderLengthRemove = sizeof(m_pA2NDUNHeader);
 			m_pHeader = m_pA2NDUNHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD");
 			break;
-		case IPA_CLIENT_USB_CONS:
+		case IPA_CLIENT_TEST_CONS:
 			m_pInodePath = CONFIG_3_FROM_IPA_TO_USB1;
 			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader = m_pUsbHeader;
 			LOG_MSG_INFO("Setting parameters for USB_CONS");
 			break;
-		case IPA_CLIENT_USB2_CONS:
+		case IPA_CLIENT_TEST2_CONS:
 			m_pInodePath = CONFIG_3_FROM_IPA_TO_A2_NDUN;
 			m_nHeaderLengthAdd = sizeof(m_pA2NDUNHeader);
 			m_nHeaderLengthRemove = sizeof(m_pA2NDUNHeader);
 			m_pHeader = m_pA2NDUNHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_CONS");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 			break;
-		case IPA_CLIENT_USB4_CONS:
+		case IPA_CLIENT_TEST4_CONS:
 			//TODO add when applicable
 			m_pInodePath = CONFIG_3_FROM_IPA_TO_Q6_LAN;
 			m_nHeaderLengthAdd = 0;
 			m_nHeaderLengthRemove = 0;
 			m_pHeader = 0;
-			LOG_MSG_INFO("IPA_CLIENT_USB4_CONS is not supported yet");
+			LOG_MSG_INFO("IPA_CLIENT_TEST4_CONS is not supported yet");
 			break;
 		default:
 			LOG_MSG_INFO("IPA_TEST_CONFIFURATION_3 switch in default "
@@ -251,7 +251,7 @@ void Pipe::SetSpecificClientParameters(
 		break;
 	case IPA_TEST_CONFIFURATION_7:
 		switch (nClientType) {
-		case IPA_CLIENT_USB_PROD:
+		case IPA_CLIENT_TEST_PROD:
 			m_pInodePath = CONFIG_7_FROM_USB1_TO_IPA;
 			m_nHeaderLengthAdd = 0;
 			m_nHeaderLengthRemove = 0;
@@ -275,54 +275,54 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_8:
 	    switch(nClientType)
 	    {
-	    case (IPA_CLIENT_USB_PROD):
+	    case (IPA_CLIENT_TEST_PROD):
 	      m_pInodePath          = CONFIG_8_DEAGG_TO_IPA_NO_AGG;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD ");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 	      break;
-	    case (IPA_CLIENT_USB_CONS):
+	    case (IPA_CLIENT_TEST_CONS):
 	      m_pInodePath          = CONFIG_8_FROM_IPA_AGG;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 	      break;
-	    case (IPA_CLIENT_USB3_PROD):
+	    case (IPA_CLIENT_TEST3_PROD):
 	      m_pInodePath          = CONFIG_8_NO_AGG_TO_IPA_AGG;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB3_PROD ");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_PROD ");
 	      break;
-	    case (IPA_CLIENT_USB3_CONS):
+	    case (IPA_CLIENT_TEST3_CONS):
 	      m_pInodePath          = CONFIG_8_FROM_IPA_NO_AGG;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB3_CONS");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_CONS");
 	      break;
-	    case (IPA_CLIENT_USB2_PROD):
+	    case (IPA_CLIENT_TEST2_PROD):
 	      m_pInodePath          = CONFIG_8_DEAGG_TO_IPA_AGG;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD");
 	      break;
-	    case (IPA_CLIENT_USB2_CONS):
+	    case (IPA_CLIENT_TEST2_CONS):
 	      m_pInodePath          = CONFIG_8_DEAGG_FROM_IPA_AGG;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_CONS");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 	      break;
-	    case (IPA_CLIENT_USB4_PROD):
+	    case (IPA_CLIENT_TEST4_PROD):
 	      m_pInodePath          = CONFIG_8_NO_AGG_TO_IPA_AGG_TIME;
 	      m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	      m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	      m_pHeader             = m_pUsbHeader;
-	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB4_PROD");
+	      LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST4_PROD");
 	      break;
 	    default:
 	      LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_8 switch in default "
@@ -334,54 +334,54 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_9:
 		switch(nClientType)
 		{
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 		  m_pInodePath          = CONFIG_9_DEAGG_TO_IPA_NO_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD ");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 		  break;
-		case (IPA_CLIENT_USB_CONS):
+		case (IPA_CLIENT_TEST_CONS):
 		  m_pInodePath          = CONFIG_9_FROM_IPA_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 		  break;
-		case (IPA_CLIENT_USB3_PROD):
+		case (IPA_CLIENT_TEST3_PROD):
 		  m_pInodePath          = CONFIG_9_NO_AGG_TO_IPA_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB3_PROD ");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_PROD ");
 		  break;
-		case (IPA_CLIENT_USB3_CONS):
+		case (IPA_CLIENT_TEST3_CONS):
 		  m_pInodePath          = CONFIG_9_FROM_IPA_NO_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB3_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_CONS");
 		  break;
-		case (IPA_CLIENT_USB2_PROD):
+		case (IPA_CLIENT_TEST2_PROD):
 		  m_pInodePath          = CONFIG_9_DEAGG_TO_IPA_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD");
 		  break;
-		case (IPA_CLIENT_USB2_CONS):
+		case (IPA_CLIENT_TEST2_CONS):
 		  m_pInodePath          = CONFIG_9_DEAGG_FROM_IPA_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 		  break;
-		case (IPA_CLIENT_USB4_PROD):
+		case (IPA_CLIENT_TEST4_PROD):
 		  m_pInodePath          = CONFIG_9_NO_AGG_TO_IPA_AGG_TIME;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB4_PROD");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST4_PROD");
 		  break;
 		default:
 		  LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_9 switch in default "
@@ -393,19 +393,19 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_10:
 	  	switch(nClientType)
 	  	{
-	  	case (IPA_CLIENT_USB_PROD):
+	  	case (IPA_CLIENT_TEST_PROD):
 	  	  m_pInodePath          = CONFIG_10_TO_IPA_AGG_ZERO_LIMITS;
 	  	  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	  	  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	  	  m_pHeader             = m_pUsbHeader;
-	  	  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD");
+	  	  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD");
 	  	  break;
-	  	case (IPA_CLIENT_USB_CONS):
+	  	case (IPA_CLIENT_TEST_CONS):
 		  m_pInodePath          = CONFIG_10_FROM_IPA_AGG_ZERO_LIMITS;
 	  	  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 	  	  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 	  	  m_pHeader             = m_pUsbHeader;
-	  	  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+	  	  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 	  	  break;
 	  	default:
 	  	  LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_10 switch in default "
@@ -417,47 +417,47 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_11:
 		switch(nClientType)
 		{
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 		  m_pInodePath          = CONFIG_11_TO_IPA;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD");
 		  break;
-		case (IPA_CLIENT_USB2_CONS):
+		case (IPA_CLIENT_TEST2_CONS):
 		  m_pInodePath          = CONFIG_11_FROM_IPA_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 		  break;
-		case (IPA_CLIENT_USB2_PROD):
+		case (IPA_CLIENT_TEST2_PROD):
 		  m_pInodePath          = CONFIG_11_TO_IPA_DEAGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD");
 		  break;
-		case (IPA_CLIENT_USB3_CONS):
+		case (IPA_CLIENT_TEST3_CONS):
 		  m_pInodePath          = CONFIG_11_FROM_IPA;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB3_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_CONS");
 		  break;
-		case (IPA_CLIENT_USB_CONS):
+		case (IPA_CLIENT_TEST_CONS):
 		  m_pInodePath          = CONFIG_11_FROM_IPA_AGG_TIME;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 		  break;
-		case (IPA_CLIENT_USB4_CONS):
+		case (IPA_CLIENT_TEST4_CONS):
 		  m_pInodePath          = CONFIG_11_FROM_IPA_ZERO_LIMITS;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB4_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST4_CONS");
 		  break;
 		default:
 		  LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_11 switch in default "
@@ -469,47 +469,47 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_12:
 		switch(nClientType)
 		{
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 		  m_pInodePath          = CONFIG_12_TO_IPA;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD");
 		  break;
-		case (IPA_CLIENT_USB2_CONS):
+		case (IPA_CLIENT_TEST2_CONS):
 		  m_pInodePath          = CONFIG_12_FROM_IPA_AGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 		  break;
-		case (IPA_CLIENT_USB2_PROD):
+		case (IPA_CLIENT_TEST2_PROD):
 		  m_pInodePath          = CONFIG_12_TO_IPA_DEAGG;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD");
 		  break;
-		case (IPA_CLIENT_USB3_CONS):
+		case (IPA_CLIENT_TEST3_CONS):
 		  m_pInodePath          = CONFIG_12_FROM_IPA;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB3_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_CONS");
 		  break;
-		case (IPA_CLIENT_USB_CONS):
+		case (IPA_CLIENT_TEST_CONS):
 		  m_pInodePath          = CONFIG_12_FROM_IPA_AGG_TIME;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 		  break;
-		case (IPA_CLIENT_USB4_CONS):
+		case (IPA_CLIENT_TEST4_CONS):
 		  m_pInodePath          = CONFIG_12_FROM_IPA_ZERO_LIMITS;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB4_CONS");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST4_CONS");
 		  break;
 		default:
 		  LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_12 switch in default "
@@ -521,49 +521,49 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_17:
 		switch(nClientType)
 		{
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 		  m_pInodePath          = CONFIG_17_TO_IPA;
 		  m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		  m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		  m_pHeader             = m_pUsbHeader;
-		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD ");
+		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 		  break;
 	   case (IPA_CLIENT_Q6_LAN_PROD):
 		   m_pInodePath          = CONFIG_17_TO_IPA_NO_HDR;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_HSIC1_PROD ");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST1_PROD ");
 		   break;
-	   case (IPA_CLIENT_USB2_CONS):
+	   case (IPA_CLIENT_TEST2_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA_AGG;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 		   break;
-	   case (IPA_CLIENT_USB2_PROD):
+	   case (IPA_CLIENT_TEST2_PROD):
 		   m_pInodePath          = CONFIG_17_TO_IPA_DEAGG;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
 		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_A2_EMBEDDED_PROD ");
 		   break;
-	   case (IPA_CLIENT_USB3_CONS):
+	   case (IPA_CLIENT_TEST3_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
 		   LOG_MSG_INFO("Setting parameters for A2_EMBEDDED_CONS");
 		   break;
-	   case (IPA_CLIENT_USB_CONS):
+	   case (IPA_CLIENT_TEST_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA_AGG_TIME;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
 		   LOG_MSG_INFO("Setting parameters for USB_CONS");
 		   break;
-	   case (IPA_CLIENT_USB4_CONS):
+	   case (IPA_CLIENT_TEST4_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA_ZERO_LIMITS;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
@@ -580,26 +580,26 @@ void Pipe::SetSpecificClientParameters(
 	case IPA_TEST_CONFIGURATION_18:
 		switch (nClientType)
 		{
-		case (IPA_CLIENT_USB_PROD):
+		case (IPA_CLIENT_TEST_PROD):
 			m_pInodePath          = CONFIG_18_TO_IPA;
 			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader             = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_PROD ");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 			break;
 		case (IPA_CLIENT_USB2_PROD):
 			m_pInodePath          = CONFIG_18_DUMMY_ENDPOINT;
 			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader             = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB2_PROD ");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD ");
 			break;
-		case (IPA_CLIENT_USB_CONS):
+		case (IPA_CLIENT_TEST_CONS):
 			m_pInodePath          = CONFIG_18_FROM_IPA;
 			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader             = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_USB_CONS");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 			break;
 		default:
 			LOG_MSG_ERROR(

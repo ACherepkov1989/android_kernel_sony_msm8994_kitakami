@@ -212,7 +212,7 @@ public:
 			bRetVal = false;
 			goto bail;
 		}
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_USB2_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_TEST2_CONS,
 				sRetHeader.hdl,&nRTTableHdl)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -228,7 +228,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_USB_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -356,7 +356,7 @@ public:
 			bRetVal = false;
 			goto bail;
 		}
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_USB3_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_TEST3_CONS,
 				sRetHeader.hdl,&nRTTableHdl)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -372,7 +372,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_USB_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -541,19 +541,19 @@ public:
 			goto bail;
 		}
 		LOG_MSG_DEBUG("Received Header2 Handle = 0x%x",sGetHeader2.hdl);
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass1, IPA_CLIENT_USB2_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass1, IPA_CLIENT_TEST2_CONS,
 				sGetHeader1.hdl,&nTableHdl01)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
 			goto bail;
 		}
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass2, IPA_CLIENT_USB3_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass2, IPA_CLIENT_TEST3_CONS,
 				sGetHeader2.hdl,&nTableHdl02)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
 			goto bail;
 		}
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass3, IPA_CLIENT_USB4_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass3, IPA_CLIENT_TEST4_CONS,
 				sGetHeader2.hdl,&nTableHdl03)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -563,7 +563,7 @@ public:
 				nTableHdl01,nTableHdl02,nTableHdl03);
 
 		// Creating Filtering Rules
-		cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD,true,3);
+		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,3);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1

@@ -37,10 +37,10 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 //define the static Pipes which will be used by all derived tests.
-Pipe HeaderRemovalTestFixture::m_A2NDUNToIpaPipe(IPA_CLIENT_USB2_PROD, IPA_TEST_CONFIFURATION_3);
-Pipe HeaderRemovalTestFixture::m_IpaToUsbPipe(IPA_CLIENT_USB_CONS, IPA_TEST_CONFIFURATION_3);
-Pipe HeaderRemovalTestFixture::m_IpaToA2NDUNPipe(IPA_CLIENT_USB2_CONS, IPA_TEST_CONFIFURATION_3);
-Pipe HeaderRemovalTestFixture::m_IpaToQ6LANPipe(IPA_CLIENT_USB4_CONS, IPA_TEST_CONFIFURATION_3);
+Pipe HeaderRemovalTestFixture::m_A2NDUNToIpaPipe(IPA_CLIENT_TEST2_PROD, IPA_TEST_CONFIFURATION_3);
+Pipe HeaderRemovalTestFixture::m_IpaToUsbPipe(IPA_CLIENT_TEST_CONS, IPA_TEST_CONFIFURATION_3);
+Pipe HeaderRemovalTestFixture::m_IpaToA2NDUNPipe(IPA_CLIENT_TEST2_CONS, IPA_TEST_CONFIFURATION_3);
+Pipe HeaderRemovalTestFixture::m_IpaToQ6LANPipe(IPA_CLIENT_TEST4_CONS, IPA_TEST_CONFIFURATION_3);
 
 RoutingDriverWrapper   HeaderRemovalTestFixture::m_routing;
 Filtering HeaderRemovalTestFixture::m_filtering;

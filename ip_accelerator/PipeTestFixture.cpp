@@ -30,8 +30,8 @@
 #include "PipeTestFixture.h"
 
 /*define the static Pipes which will be used by all derived tests.*/
-Pipe PipeTestFixture::m_IpaToUsbPipe(IPA_CLIENT_USB_CONS, IPA_TEST_CONFIFURATION_1);
-Pipe PipeTestFixture::m_UsbToIpaPipe(IPA_CLIENT_USB_PROD, IPA_TEST_CONFIFURATION_1);
+Pipe PipeTestFixture::m_IpaToUsbPipe(IPA_CLIENT_TEST_CONS, IPA_TEST_CONFIFURATION_1);
+Pipe PipeTestFixture::m_UsbToIpaPipe(IPA_CLIENT_TEST_PROD, IPA_TEST_CONFIFURATION_1);
 
 PipeTestFixture::PipeTestFixture()
 {

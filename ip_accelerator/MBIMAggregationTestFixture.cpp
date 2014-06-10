@@ -32,19 +32,19 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 //define the static Pipes which will be used by all derived tests.
-Pipe MBIMAggregationTestFixture::m_IpaToUsbPipeNoAgg(IPA_CLIENT_USB3_CONS,
+Pipe MBIMAggregationTestFixture::m_IpaToUsbPipeNoAgg(IPA_CLIENT_TEST3_CONS,
 		IPA_TEST_CONFIGURATION_9);
-Pipe MBIMAggregationTestFixture::m_IpaToUsbPipeAggr(IPA_CLIENT_USB_CONS,
+Pipe MBIMAggregationTestFixture::m_IpaToUsbPipeAggr(IPA_CLIENT_TEST_CONS,
 		IPA_TEST_CONFIGURATION_9);
-Pipe MBIMAggregationTestFixture::m_UsbNoAggToIpaPipeAgg(IPA_CLIENT_USB3_CONS,
+Pipe MBIMAggregationTestFixture::m_UsbNoAggToIpaPipeAgg(IPA_CLIENT_TEST3_CONS,
 		IPA_TEST_CONFIGURATION_9);
-Pipe MBIMAggregationTestFixture::m_UsbDeaggToIpaPipeNoAgg(IPA_CLIENT_USB_PROD,
+Pipe MBIMAggregationTestFixture::m_UsbDeaggToIpaPipeNoAgg(IPA_CLIENT_TEST_PROD,
 		IPA_TEST_CONFIGURATION_9);
-Pipe MBIMAggregationTestFixture::m_UsbDeaggToIpaPipeAgg(IPA_CLIENT_USB2_CONS,
+Pipe MBIMAggregationTestFixture::m_UsbDeaggToIpaPipeAgg(IPA_CLIENT_TEST2_CONS,
 		IPA_TEST_CONFIGURATION_9);
-Pipe MBIMAggregationTestFixture::m_IpaToUsbPipeAggTime(IPA_CLIENT_USB2_CONS,
+Pipe MBIMAggregationTestFixture::m_IpaToUsbPipeAggTime(IPA_CLIENT_TEST2_CONS,
 		IPA_TEST_CONFIGURATION_9);
-Pipe MBIMAggregationTestFixture::m_UsbNoAggToIpaPipeAggTime(IPA_CLIENT_USB4_PROD,
+Pipe MBIMAggregationTestFixture::m_UsbNoAggToIpaPipeAggTime(IPA_CLIENT_TEST4_PROD,
 		IPA_TEST_CONFIGURATION_9);
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,7 @@
 
 #include "DataPathTestFixture.h"
 
-Pipe DataPathTestFixture::m_FromIPAPipe(IPA_CLIENT_USB_CONS,
+Pipe DataPathTestFixture::m_FromIPAPipe(IPA_CLIENT_TEST_CONS,
 					IPA_TEST_CONFIGURATION_18);
 Pipe DataPathTestFixture::m_ToIpaPipe(IPA_CLIENT_USB_PROD,
 					IPA_TEST_CONFIGURATION_18);
