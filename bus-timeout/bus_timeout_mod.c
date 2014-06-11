@@ -178,7 +178,8 @@ static struct bus_timeout_data *bus_timeout_get_data(void)
 	uint32_t index = DEFAULT;
 	int rc;
 
-	rc = of_machine_is_compatible("qcom,msm8916");
+	rc = of_machine_is_compatible("qcom,msm8916")
+				|| of_machine_is_compatible("qcom,msm8939");
 	if (rc)
 		index = MSM8916;
 

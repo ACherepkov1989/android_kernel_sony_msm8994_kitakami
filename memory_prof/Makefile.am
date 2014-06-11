@@ -2,7 +2,9 @@ memory_profdir = $(prefix)/memory_prof
 memory_prof_PROGRAMS = memory_prof memfeast
 memory_prof_SOURCES	= memory_prof.c alloc_profiles.c memory_prof_util.c \
 	op-alloc.c op-print.c op-simple-ops.c op-sleep.c op-alloc-pages.c \
-	op-user-alloc.c op-iommu-map-range.c
+	op-user-alloc.c op-iommu-map.c op-iommu-unmap.c \
+	op-iommu-map-range.c op-iommu-unmap-range.c op-iommu-attach.c \
+	op-iommu-detach.c
 memory_prof_CFLAGS = -lm -Werror -DALLOC_PROFILES_PATH=$(memory_profdir)
 memfeast_SOURCES = memfeast.c memory_prof_util.c
 dist_memory_prof_SCRIPTS  = memory_prof.sh run.sh

@@ -37,7 +37,7 @@
 #include "memory_prof_module.h"
 #include "alloc_profiles.h"
 
-struct iommu_map_range_op {
+struct iommu_unmap_range_op {
 	struct mp_iommu_map_test_args args;
 	char prot_string[MAX_FLAGS_STRING_LEN];
 	char flags_string[MAX_FLAGS_STRING_LEN];
@@ -52,7 +52,7 @@ struct iommu_map_range_op {
 
 static int memory_prof_fd;
 
-static int op_iommu_map_range_global_setup(
+static int op_iommu_unmap_range_global_setup(
 	struct alloc_profile_entry entries[] __unused)
 {
 	memory_prof_fd = open(MEMORY_PROF_DEV, O_RDONLY);
@@ -61,15 +61,15 @@ static int op_iommu_map_range_global_setup(
 	return 0;
 }
 
-static void op_iommu_map_range_global_teardown(void)
+static void op_iommu_unmap_range_global_teardown(void)
 {
 	close(memory_prof_fd);
 }
 
-static int op_iommu_map_range_parse(struct alloc_profile_entry *entry,
+static int op_iommu_unmap_range_parse(struct alloc_profile_entry *entry,
 				struct line_info *li)
 {
-	struct iommu_map_range_op *op = entry->priv;
+	struct iommu_unmap_range_op *op = entry->priv;
 	STRNCPY_SAFE(op->args.ctx_name, li->words[LINE_IDX_CTX_NAME],
 		MAX_IOMMU_CTX_NAME);
 	STRTOL(op->args.chunk_order, li->words[LINE_IDX_CHUNK_ORDER], 0);
@@ -84,16 +84,16 @@ static int op_iommu_map_range_parse(struct alloc_profile_entry *entry,
 	return 0;
 }
 
-static int op_iommu_map_range_run(struct alloc_profile_entry *entry)
+static int op_iommu_unmap_range_run(struct alloc_profile_entry *entry)
 {
-	struct iommu_map_range_op *op = entry->priv;
-	if (ioctl(memory_prof_fd, MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST,
+	struct iommu_unmap_range_op *op = entry->priv;
+	if (ioctl(memory_prof_fd, MEMORY_PROF_IOC_IOMMU_UNMAP_RANGE_TEST,
 			&op->args)) {
-		warn("Couldn't do MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST");
+		warn("Couldn't do MEMORY_PROF_IOC_IOMMU_UNMAP_RANGE_TEST");
 		return 1;
 	}
 	printf(ST_PREFIX_DATA_ROW
-		" iommu_map_range time %llu us, ave: %llu us, min: %llu, max: %llu ctx: %s iterations: %u chunk_order: %zu nchunks: %d prot: %s flags: %s\n",
+		" iommu_unmap_range time %llu us, ave: %llu us, min: %llu, max: %llu ctx: %s iterations: %u chunk_order: %zu nchunks: %d prot: %s flags: %s\n",
 		op->args.time_elapsed_us,
 		op->args.time_elapsed_us / op->args.iterations,
 		op->args.time_elapsed_min_us,
@@ -107,12 +107,12 @@ static int op_iommu_map_range_run(struct alloc_profile_entry *entry)
 	return 0;
 }
 
-static struct alloc_profile_ops iommu_map_range_ops = {
-	.parse = op_iommu_map_range_parse,
-	.run = op_iommu_map_range_run,
-	.global_setup = op_iommu_map_range_global_setup,
-	.global_teardown = op_iommu_map_range_global_teardown,
+static struct alloc_profile_ops iommu_unmap_range_ops = {
+	.parse = op_iommu_unmap_range_parse,
+	.run = op_iommu_unmap_range_run,
+	.global_setup = op_iommu_unmap_range_global_setup,
+	.global_teardown = op_iommu_unmap_range_global_teardown,
 };
 
-ALLOC_PROFILE_OP_SIZED(&iommu_map_range_ops, iommu_map_range,
-		sizeof(struct iommu_map_range_op));
+ALLOC_PROFILE_OP_SIZED(&iommu_unmap_range_ops, iommu_unmap_range,
+		sizeof(struct iommu_unmap_range_op));
