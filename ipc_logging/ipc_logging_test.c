@@ -384,6 +384,67 @@ static void extraction_dump(struct seq_file *s)
 	}
 }
 
+/**
+ * ipc_logging_ut_nd_read - Test non-destructive read support.
+ *
+ * @s: pointer to output file
+ *
+ * This test verifies non-destructive read support used by debugfs.
+ */
+static void ipc_logging_ut_nd_read(struct seq_file *s)
+{
+	const int msgs_per_page = 180;
+	const int num_pages = 3;
+	int failed = 0;
+	int n;
+	int i;
+	int read_size;
+	char *data;
+	char expected[128];
+	void *ctx;
+
+	seq_printf(s, "Running %s\n", __func__);
+	data = kzalloc(MAX_MSG_DECODED_SIZE, GFP_KERNEL);
+	do {
+		ctx = ipc_log_context_create(num_pages,
+			"ipc_logging_ut_nd_read", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		/* Fill log and do non-destructive read of all lines */
+		for (n = 0; n < msgs_per_page * num_pages; ++n)
+			ipc_log_string(ctx, "line %d", n);
+
+		do {
+			read_size = ipc_log_extract(ctx, data,
+				MAX_MSG_DECODED_SIZE);
+		} while (read_size > 0);
+
+		/* Write a single line and verify only single line read */
+		for (n = 1000; n < 1000 + msgs_per_page * num_pages; ++n) {
+			scnprintf(expected, sizeof(expected), "line %d\n", n);
+			ipc_log_string(ctx, "%s", expected);
+
+			i = ipc_log_extract(ctx, data, MAX_MSG_DECODED_SIZE);
+			UT_ASSERT_INT(0, <, i);
+			UT_ASSERT_INT(STRING_OFFSET, <, strlen(data));
+			UT_ASSERT_STRING_COMPARE(expected, data +
+				STRING_OFFSET);
+
+			i = ipc_log_extract(ctx, data, MAX_MSG_DECODED_SIZE);
+			UT_ASSERT_INT(0, ==, i);
+		}
+		seq_puts(s, "\tOK\n");
+	} while (0);
+	kfree(data);
+
+	if (failed) {
+		pr_err("%s: Failed\n", __func__);
+		seq_puts(s, "\tFailed\n");
+	}
+
+	ipc_log_context_destroy(ctx);
+}
+
 static struct dentry *dent;
 
 static int debugfs_show(struct seq_file *s, void *data)
@@ -440,6 +501,8 @@ static int __init ipc_logging_debugfs_init(void)
 			ipc_logging_ut_wrap_test);
 	ipc_logging_debug_create("extraction_dump",
 			extraction_dump);
+	ipc_logging_debug_create("ut_nd_read",
+			ipc_logging_ut_nd_read);
 
 	return 0;
 }

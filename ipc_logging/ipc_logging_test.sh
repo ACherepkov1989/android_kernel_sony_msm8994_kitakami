@@ -58,6 +58,7 @@ do
 	echo "$count"
 	cat ut_basic
 	cat ut_wrap_test
+	cat ut_nd_read
 	echo "Completed test $count"
 	(( count++ ))
 	done
@@ -70,6 +71,7 @@ do
 	do
 	cat ut_basic
 	cat ut_wrap_test
+	cat ut_nd_read
 	echo "Completed test $count"
 	(( count++ ))
 	done
@@ -79,6 +81,7 @@ do
 	do
 	cat ut_basic
 	cat ut_wrap_test
+	cat ut_nd_read
 	echo "Completed test $count"
 	(( count++ ))
 	done
