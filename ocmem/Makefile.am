@@ -8,7 +8,7 @@ KERNEL_FLAGS ?= ARCH=arm
 
 EXTRA_CFLAGS	= -DDEBUG
 
-module = msm_ocmem_test_module.ko
+module = msm_ocmem_test_mod.ko
 kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
 $(module):
