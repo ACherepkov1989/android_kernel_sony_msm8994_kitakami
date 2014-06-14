@@ -30,6 +30,7 @@
 etfsink="/sys/bus/coresight/devices/coresight-tmc-etf/curr_sink"
 etrsink="/sys/bus/coresight/devices/coresight-tmc-etr/curr_sink"
 tpiusink="/sys/bus/coresight/devices/coresight-tpiu/curr_sink"
+tpiumode="/sys/bus/coresight/devices/coresight-tpiu/out_mode"
 
 echo "-----Coresight Sink Switching Test-----"
 echo "---------------------------------------"
@@ -57,6 +58,7 @@ then
 else
         echo "FAIL: Sink Switching to ETR failed ****"
 fi
+echo "sdc" > $tpiumode
 echo 1 > $tpiusink
 read tpiustatus < $tpiusink
 if [ $tpiustatus = 1 ]
