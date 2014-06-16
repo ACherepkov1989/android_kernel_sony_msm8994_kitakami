@@ -346,6 +346,7 @@ static void extraction_dump(struct seq_file *s)
 	int failed = 0;
 	int n;
 	void *ctx;
+	char data[MAX_MSG_DECODED_SIZE];
 
 	/*
 	 * msgs_per_page - The number of TSV messages that can fit in one
@@ -383,6 +384,49 @@ static void extraction_dump(struct seq_file *s)
 
 		for (n = 0; n < 3 * msgs_per_page; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
+
+		/* Create multi-page full log and empty it */
+		ctx = ipc_log_context_create(2, "ut_read_extract_2", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 2 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		do {
+			n = ipc_log_extract(ctx, data, sizeof(data));
+			UT_ASSERT_INT(n, >=, 0)
+		} while (n > 0);
+
+		/*
+		 * Create multi-page full log that wraps to the last page.
+		 */
+		ctx = ipc_log_context_create(3, "ut_full_3_overwrite", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 8 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		/*
+		 * Create multi-page full log that wraps to the last page,
+		 * and then empty it
+		 */
+		ctx = ipc_log_context_create(3, "ut_full_3_ow_extrct", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 8 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "pre-extract %d\n", n);
+
+		do {
+			n = ipc_log_extract(ctx, data, sizeof(data));
+			UT_ASSERT_INT(n, >=, 0)
+		} while (n > 0);
+
+		for (n = 0; n < 2 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "post-extract %d\n", n);
+
+		if (failed)
+			break;
+
 
 		/* Crash system to start memory dump */
 		panic("Crashing system to collect memory dump\n");
