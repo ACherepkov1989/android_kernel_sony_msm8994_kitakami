@@ -1,0 +1,5 @@
+# Kernel module instructions go here.
+#
+obj-m := bam_dmux_loopback.o
+
+bam_dmux_loopback-y := loopback.o loopback_sps.o loopback_smsm.o loopback_a2.o

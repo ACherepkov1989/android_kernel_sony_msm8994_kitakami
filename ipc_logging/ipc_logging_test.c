@@ -334,7 +334,10 @@ static void ipc_logging_ut_wrap_test(struct seq_file *s)
  * @s: pointer to output file
  *
  * Generates several different logs that are used as part of the log extraction
- * tool unit test.
+ * tool unit test. Multipage tests with full pages will wrap around, so
+ * the logs they create shouldn't start with "line 0". Tests that create
+ * partially full pages will not wrap around, so the logs they create
+ * should start with "line 0".
  *
  * Note:  This tool will crash the kernel to trigger the memory dump.
  */
@@ -343,6 +346,13 @@ static void extraction_dump(struct seq_file *s)
 	int failed = 0;
 	int n;
 	void *ctx;
+	char data[MAX_MSG_DECODED_SIZE];
+
+	/*
+	 * msgs_per_page - The number of TSV messages that can fit in one
+	 * log page. 180 is an approximation used for this test case.
+	 */
+	const int msgs_per_page = 180;
 
 	seq_printf(s, "Running %s\n", __func__);
 	do {
@@ -350,29 +360,73 @@ static void extraction_dump(struct seq_file *s)
 		ctx = ipc_log_context_create(1, "ut_partial_1", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < 10; ++n)
+		for (n = 0; n < msgs_per_page / 2; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Create 1-page full log */
 		ctx = ipc_log_context_create(1, "ut_full_1", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < PAGE_SIZE / 10; ++n)
+		/* Add 20 to msgs_per_page to ensure the log wraps */
+		for (n = 0; n < msgs_per_page + 20; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Create multi-page partially-full log */
 		ctx = ipc_log_context_create(3, "ut_partial_3", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < 3 * (PAGE_SIZE / 10) / 2; ++n)
+		for (n = 0; n < (3 * msgs_per_page) / 2; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Create multi-page full log */
 		ctx = ipc_log_context_create(3, "ut_full_3", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < 3 * PAGE_SIZE / 10; ++n)
+		for (n = 0; n < 3 * msgs_per_page; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
+
+		/* Create multi-page full log and empty it */
+		ctx = ipc_log_context_create(2, "ut_read_extract_2", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 2 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		do {
+			n = ipc_log_extract(ctx, data, sizeof(data));
+			UT_ASSERT_INT(n, >=, 0)
+		} while (n > 0);
+
+		/*
+		 * Create multi-page full log that wraps to the last page.
+		 */
+		ctx = ipc_log_context_create(3, "ut_full_3_overwrite", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 8 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "line %d\n", n);
+
+		/*
+		 * Create multi-page full log that wraps to the last page,
+		 * and then empty it
+		 */
+		ctx = ipc_log_context_create(3, "ut_full_3_ow_extrct", 0);
+		UT_ASSERT_PTR(ctx, !=, NULL);
+
+		for (n = 0; n < 8 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "pre-extract %d\n", n);
+
+		do {
+			n = ipc_log_extract(ctx, data, sizeof(data));
+			UT_ASSERT_INT(n, >=, 0)
+		} while (n > 0);
+
+		for (n = 0; n < 2 * msgs_per_page; ++n)
+			ipc_log_string(ctx, "post-extract %d\n", n);
+
+		if (failed)
+			break;
+
 
 		/* Crash system to start memory dump */
 		panic("Crashing system to collect memory dump\n");
