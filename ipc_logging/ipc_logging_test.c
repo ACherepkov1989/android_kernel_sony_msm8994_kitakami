@@ -334,7 +334,10 @@ static void ipc_logging_ut_wrap_test(struct seq_file *s)
  * @s: pointer to output file
  *
  * Generates several different logs that are used as part of the log extraction
- * tool unit test.
+ * tool unit test. Multipage tests with full pages will wrap around, so
+ * the logs they create shouldn't start with "line 0". Tests that create
+ * partially full pages will not wrap around, so the logs they create
+ * should start with "line 0".
  *
  * Note:  This tool will crash the kernel to trigger the memory dump.
  */
@@ -344,34 +347,41 @@ static void extraction_dump(struct seq_file *s)
 	int n;
 	void *ctx;
 
+	/*
+	 * msgs_per_page - The number of TSV messages that can fit in one
+	 * log page. 180 is an approximation used for this test case.
+	 */
+	const int msgs_per_page = 180;
+
 	seq_printf(s, "Running %s\n", __func__);
 	do {
 		/* Create 1-page partially-full log */
 		ctx = ipc_log_context_create(1, "ut_partial_1", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < 10; ++n)
+		for (n = 0; n < msgs_per_page / 2; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Create 1-page full log */
 		ctx = ipc_log_context_create(1, "ut_full_1", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < PAGE_SIZE / 10; ++n)
+		/* Add 20 to msgs_per_page to ensure the log wraps */
+		for (n = 0; n < msgs_per_page + 20; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Create multi-page partially-full log */
 		ctx = ipc_log_context_create(3, "ut_partial_3", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < 3 * (PAGE_SIZE / 10) / 2; ++n)
+		for (n = 0; n < (3 * msgs_per_page) / 2; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Create multi-page full log */
 		ctx = ipc_log_context_create(3, "ut_full_3", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
 
-		for (n = 0; n < 3 * PAGE_SIZE / 10; ++n)
+		for (n = 0; n < 3 * msgs_per_page; ++n)
 			ipc_log_string(ctx, "line %d\n", n);
 
 		/* Crash system to start memory dump */
