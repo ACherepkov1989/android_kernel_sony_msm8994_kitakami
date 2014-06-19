@@ -29,6 +29,9 @@ endif
 if USEIOMMU
 BUILD_TEST += msm_iommu
 endif
+if USEBAM_DMUX_LOOPBACK
+BUILD_TEST += bam_dmux_loopback
+endif
 endif
 if USESPS
 BUILD_TEST += sps
