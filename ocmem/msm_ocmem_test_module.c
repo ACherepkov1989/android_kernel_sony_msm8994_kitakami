@@ -77,7 +77,7 @@ static int ocmem_verify_access(int id, struct ocmem_buf *buffer)
 
 	OCMEM_LOG("io-remapping addr %lx and len %lx\n", start, sz);
 
-	vstart = ioremap_nocache(start, sz);
+	vstart = ioremap_nocache((start & 0xFFFFFFFF), sz);
 
 	if (!vstart) {
 		pr_err("ocmem test: ioremap failed\n");
