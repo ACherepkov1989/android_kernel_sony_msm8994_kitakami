@@ -6,7 +6,8 @@ LOCAL_PATH := $(call my-dir)
 
 # the dlkm
 include $(CLEAR_VARS)
-LOCAL_MODULE      := msm_ocmem_test_module.ko
+LOCAL_SRC_FILES += msm_ocmem_test_module.c compat_msm_ocmem_test_module.c
+LOCAL_MODULE      := msm_ocmem_test_mod.ko
 LOCAL_MODULE_TAGS := debug
 include $(DLKM_DIR)/AndroidKernelModule.mk
 

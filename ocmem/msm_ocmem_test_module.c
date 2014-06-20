@@ -25,26 +25,8 @@
 #include <linux/uaccess.h>
 #include <soc/qcom/ocmem.h>
 
-
-#define OCMEM_KERNEL_TEST_MAGIC 0xc1
-
-#define OCMEM_TEST_TYPE_NOMINAL \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 1)
-#define OCMEM_TEST_TYPE_ADVERSARIAL \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 2)
-#define OCMEM_TEST_TYPE_STRESS \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 3)
-#define OCMEM_TEST_VERBOSE_MODE \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 4)
-#define OCMEM_TEST_DEBUG_MODE \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 5)
-
-#define TEST_OCMEM_CLIENT OCMEM_GRAPHICS
-
-/* "OCMM" */
-#define OCMEM_READ_WRITE_MAGIC 0xA110CA7E
-#define OCMEM_MAX_SIZE 0x180000
-#define OCMEM_BASE_ADDR 0xFEC00000
+#include "compat_msm_ocmem_test_module.h"
+#include "ocmem_test.h"
 
 static int debug_mode;
 static int verbose_mode;
@@ -371,7 +353,7 @@ static int msm_ocmem_stress_test(void)
 	return 0;
 }
 
-static long msm_ocmem_test_ioctl(struct file *file, unsigned cmd,
+long msm_ocmem_test_ioctl(struct file *file, unsigned cmd,
 					unsigned long arg)
 {
 	long retval = 0;
@@ -441,6 +423,7 @@ static long msm_ocmem_test_ioctl(struct file *file, unsigned cmd,
 static const struct file_operations msm_ocmem_test_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = msm_ocmem_test_ioctl,
+	.compat_ioctl = compat_msm_ocmem_test_ioctl,
 };
 
 static struct miscdevice msm_ocmem_test_dev = {
