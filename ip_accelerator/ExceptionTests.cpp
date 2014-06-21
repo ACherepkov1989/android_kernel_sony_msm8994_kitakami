@@ -173,7 +173,7 @@ public:
 		memset(&sRoutingTable, 0, sizeof(sRoutingTable));
 
 		LOG_MSG_STACK("Entering Function");
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_USB2_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_TEST2_CONS,
 				0,&nRTTableHdl)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -189,7 +189,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_USB_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -295,7 +295,7 @@ public:
 		memset(&sRoutingTable, 0, sizeof(sRoutingTable));
 
 		LOG_MSG_STACK("Entering Function");
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_USB2_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_TEST2_CONS,
 				0,&nRTTableHdl)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -311,7 +311,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_USB_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -394,7 +394,7 @@ public:
 		memset(&sRoutingTable, 0, sizeof(sRoutingTable));
 
 		LOG_MSG_STACK("Entering Function");
-		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_USB2_CONS,
+		if (!CreateBypassRoutingTable(&m_Routing, m_eIP, bypass0, IPA_CLIENT_TEST2_CONS,
 				0,&nRTTableHdl)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -410,7 +410,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_USB_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1

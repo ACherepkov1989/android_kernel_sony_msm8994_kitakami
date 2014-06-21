@@ -288,7 +288,7 @@ public:
 
 		rt_rule_entry = &rt_rule0->rules[0];
 		rt_rule_entry->at_rear = 0;
-		rt_rule_entry->rule.dst = IPA_CLIENT_USB2_CONS;//Setting
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;//Setting
 		//		rt_rule_entry->rule.hdr_hdl = hdr_entry->hdr_hdl; // TODO Header Inserion - gidons, there is no support for header insertion / removal yet.
 		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
 		rt_rule_entry->rule.attrib.u.v4.dst_addr = 0xaabbccdd;
@@ -309,7 +309,7 @@ public:
 		strcpy (rt_rule1->rt_tbl_name, bypass1);
 		rt_rule_entry = &rt_rule1->rules[0];
 		rt_rule_entry->at_rear = 0;
-		rt_rule_entry->rule.dst = IPA_CLIENT_USB3_CONS;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
 //		rt_rule_entry->rule.hdr_hdl = hdr_entry->hdr_hdl; // TODO Header Inserion - gidons, there is no support for header insertion / removal yet.
 		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
 		rt_rule_entry->rule.attrib.u.v4.dst_addr = 0xaabbccdd;
@@ -330,7 +330,7 @@ public:
 		strcpy (rt_rule2->rt_tbl_name, bypass2);
 		rt_rule_entry = &rt_rule2->rules[0];
 		rt_rule_entry->at_rear = 0;
-		rt_rule_entry->rule.dst = IPA_CLIENT_USB4_CONS;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
 		//		rt_rule_entry->rule.hdr_hdl = hdr_entry->hdr_hdl; // TODO Header Inserion - gidons, there is no support for header insertion / removal yet.
 		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
 		rt_rule_entry->rule.attrib.u.v4.dst_addr = 0xaabbccdd;
@@ -397,7 +397,7 @@ public:
 
 		rt_rule_entry = &rt_rule0->rules[0];
 		rt_rule_entry->at_rear = 0;
-		rt_rule_entry->rule.dst = IPA_CLIENT_USB2_CONS;//Setting
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;//Setting
 		//		rt_rule_entry->rule.hdr_hdl = hdr_entry->hdr_hdl; // TODO Header Inserion - gidons, there is no support for header insertion / removal yet.
 		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
 		rt_rule_entry->rule.attrib.u.v6.dst_addr[0] = 0xaabbccdd;
@@ -424,7 +424,7 @@ public:
 		strcpy (rt_rule1->rt_tbl_name, bypass1);
 		rt_rule_entry = &rt_rule1->rules[0];
 		rt_rule_entry->at_rear = 0;
-		rt_rule_entry->rule.dst = IPA_CLIENT_USB3_CONS;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
 //		rt_rule_entry->rule.hdr_hdl = hdr_entry->hdr_hdl; // TODO Header Inserion - gidons, there is no support for header insertion / removal yet.
 		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
 		rt_rule_entry->rule.attrib.u.v6.dst_addr[0] = 0xaabbccdd;
@@ -451,7 +451,7 @@ public:
 		strcpy (rt_rule2->rt_tbl_name, bypass2);
 		rt_rule_entry = &rt_rule2->rules[0];
 		rt_rule_entry->at_rear = 0;
-		rt_rule_entry->rule.dst = IPA_CLIENT_USB4_CONS;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
 		//		rt_rule_entry->rule.hdr_hdl = hdr_entry->hdr_hdl; // TODO Header Inserion - gidons, there is no support for header insertion / removal yet.
 		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
 		rt_rule_entry->rule.attrib.u.v6.dst_addr[0] = 0xaabbccdd;
@@ -637,7 +637,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,3);
 		printf("FilterTable*.Init Completed Successfully..\n");
 
 		// Configuring Filtering Rule No.0
@@ -787,7 +787,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -935,7 +935,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -1078,7 +1078,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -1245,7 +1245,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -1383,9 +1383,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
 		printf("FilterTable*.Init Completed Successfully..\n");
 
 		// Configuring Filtering Rule No.0
@@ -1542,9 +1542,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -1699,9 +1699,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -1851,9 +1851,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -2020,9 +2020,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,true,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -2161,7 +2161,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,3);
 		printf("FilterTable*.Init Completed Successfully..\n");
 
 		// Configuring Filtering Rule No.0
@@ -2311,7 +2311,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -2459,7 +2459,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -2603,7 +2603,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -2770,7 +2770,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -2908,9 +2908,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
 		printf("FilterTable*.Init Completed Successfully..\n");
 
 		// Configuring Filtering Rule No.0
@@ -3066,9 +3066,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -3223,9 +3223,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -3375,9 +3375,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -3544,9 +3544,9 @@ public:
 
 		IPAFilteringTable FilterTable0,FilterTable1,FilterTable2;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
-		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable1.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
+		FilterTable2.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -3685,7 +3685,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v6,IPA_CLIENT_USB_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v6,IPA_CLIENT_TEST_PROD,true,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -3835,7 +3835,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v6,IPA_CLIENT_USB_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v6,IPA_CLIENT_TEST_PROD,false,3);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);

@@ -37,7 +37,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-Pipe ExceptionsTestFixture::m_USB1ToIpaPipe(IPA_CLIENT_USB_PROD, IPA_TEST_CONFIFURATION_7);
+Pipe ExceptionsTestFixture::m_USB1ToIpaPipe(IPA_CLIENT_TEST_PROD, IPA_TEST_CONFIFURATION_7);
 Pipe ExceptionsTestFixture::m_IpaToA5ExceptionPipe(IPA_CLIENT_MAX, IPA_TEST_CONFIFURATION_7);//Exception pipe
 
 ///////////////////////////////////////////////////////////////////////////////
