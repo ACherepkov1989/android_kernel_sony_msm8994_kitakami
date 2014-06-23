@@ -31,9 +31,9 @@
 
 Pipe DataPathTestFixture::m_FromIPAPipe(IPA_CLIENT_TEST_CONS,
 					IPA_TEST_CONFIGURATION_18);
-Pipe DataPathTestFixture::m_ToIpaPipe(IPA_CLIENT_USB_PROD,
+Pipe DataPathTestFixture::m_ToIpaPipe(IPA_CLIENT_TEST_PROD,
 					IPA_TEST_CONFIGURATION_18);
-Pipe DataPathTestFixture::m_IpaDriverPipe(IPA_CLIENT_USB2_PROD,
+Pipe DataPathTestFixture::m_IpaDriverPipe(IPA_CLIENT_TEST2_PROD,
 					IPA_TEST_CONFIGURATION_18);
 
 
