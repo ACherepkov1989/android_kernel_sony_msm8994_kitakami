@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, 2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,19 +38,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#define OCMEM_KERNEL_TEST_MAGIC 0xc1
-
-#define OCMEM_TEST_TYPE_NOMINAL \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 1)
-#define OCMEM_TEST_TYPE_ADVERSARIAL \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 2)
-#define OCMEM_TEST_TYPE_STRESS \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 3)
-#define OCMEM_TEST_VERBOSE_MODE \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 4)
-#define OCMEM_TEST_DEBUG_MODE \
-	_IO(OCMEM_KERNEL_TEST_MAGIC, 5)
-
+#include "ocmem_test.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 #define NUM_ITERATIONS (10)

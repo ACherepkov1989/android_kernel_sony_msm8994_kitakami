@@ -32,17 +32,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 //define the static Pipes which will be used by all derived tests.
-Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipeAgg(IPA_CLIENT_USB2_CONS,
+Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipeAgg(IPA_CLIENT_TEST2_CONS,
 		IPA_TEST_CONFIGURATION_12);
-Pipe MBIMAggregationTestFixtureConf12::m_UsbToIpaPipe(IPA_CLIENT_USB_PROD,
+Pipe MBIMAggregationTestFixtureConf12::m_UsbToIpaPipe(IPA_CLIENT_TEST_PROD,
 		IPA_TEST_CONFIGURATION_12);
-Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipe(IPA_CLIENT_USB3_CONS,
+Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipe(IPA_CLIENT_TEST3_CONS,
 		IPA_TEST_CONFIGURATION_12);
-Pipe MBIMAggregationTestFixtureConf12::m_UsbToIpaPipeDeagg(IPA_CLIENT_USB2_PROD,
+Pipe MBIMAggregationTestFixtureConf12::m_UsbToIpaPipeDeagg(IPA_CLIENT_TEST2_PROD,
 		IPA_TEST_CONFIGURATION_12);
-Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipeAggTime(IPA_CLIENT_USB_CONS,
+Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipeAggTime(IPA_CLIENT_TEST_CONS,
 		IPA_TEST_CONFIGURATION_12);
-Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipeAgg0Limits(IPA_CLIENT_USB4_CONS,
+Pipe MBIMAggregationTestFixtureConf12::m_IpaToUsbPipeAgg0Limits(IPA_CLIENT_TEST4_CONS,
 		IPA_TEST_CONFIGURATION_12);
 
 RoutingDriverWrapper MBIMAggregationTestFixtureConf12::m_Routing;
@@ -189,7 +189,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB2_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST2_CONS,
 			sGetHeader.hdl,&nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -200,7 +200,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -293,7 +293,7 @@ bool MBIMAggregationTestFixtureConf12::AddRulesDeaggregation() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB3_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST3_CONS,
 			sGetHeader.hdl,&nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -304,7 +304,7 @@ bool MBIMAggregationTestFixtureConf12::AddRulesDeaggregation() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_USB2_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST2_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -397,7 +397,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregationTime() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST_CONS,
 			sGetHeader.hdl,&nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -408,7 +408,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregationTime() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -501,7 +501,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation0Limits() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB4_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST4_CONS,
 			sGetHeader.hdl,&nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -512,7 +512,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation0Limits() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1

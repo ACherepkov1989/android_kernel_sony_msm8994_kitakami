@@ -68,7 +68,7 @@ bool HeaderRemovalTOSCheck::Run()
 	}
 	LOG_MSG_INFO("A2 Packet was  successfully created (%d bytes)", nA2NDUNPacketByteSize);
 
-	if ( false == SetIPATablesToPassAllToSpecificClient(IPA_CLIENT_USB_CONS)) {
+	if ( false == SetIPATablesToPassAllToSpecificClient(IPA_CLIENT_TEST_CONS)) {
 		LOG_MSG_ERROR("SetIPATablesToPassAllToSpecificClient failed, exiting test case");
 		bTestResult = false;
 		goto bail;
@@ -154,14 +154,14 @@ bool HeaderRemovalMetaDataFiltering::Run()
 
 	LOG_MSG_INFO("A2 Packet was  successfully created (%d bytes)", nA2NDUNPacketByteSize);
 
-	SetRoutingTableToPassAllToSpecificClient(IPA_CLIENT_USB_CONS);
-	SetHeaderInsertionTableAddEmptyHeaderForTheClient(IPA_CLIENT_USB_CONS);
+	SetRoutingTableToPassAllToSpecificClient(IPA_CLIENT_TEST_CONS);
+	SetHeaderInsertionTableAddEmptyHeaderForTheClient(IPA_CLIENT_TEST_CONS);
 
 	LOG_MSG_INFO("Configuring Filtering module...");
 
 	if (false ==
 			ConfigureFilteringBlockWithMetaDataEq(
-					IPA_CLIENT_USB_CONS,
+					IPA_CLIENT_TEST_CONS,
 					nMetaData,
 					nMetaDataMask)) {
 		bTestResult = false;

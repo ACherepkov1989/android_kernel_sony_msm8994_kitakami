@@ -205,14 +205,14 @@ private:
 			rt_rule->rules[i].rule.attrib.u.v4.tos = i;
 		}
 
-		rt_rule->rules[0].rule.dst = IPA_CLIENT_HSIC1_CONS;
-		rt_rule->rules[1].rule.dst = IPA_CLIENT_HSIC2_CONS;
-		rt_rule->rules[2].rule.dst = IPA_CLIENT_HSIC2_CONS;
-		rt_rule->rules[3].rule.dst = IPA_CLIENT_HSIC1_CONS;
-		rt_rule->rules[4].rule.dst = IPA_CLIENT_HSIC3_CONS;
-		rt_rule->rules[5].rule.dst = IPA_CLIENT_HSIC3_CONS;
-		rt_rule->rules[6].rule.dst = IPA_CLIENT_HSIC4_CONS;
-		rt_rule->rules[7].rule.dst = IPA_CLIENT_HSIC4_CONS;
+		rt_rule->rules[0].rule.dst = IPA_CLIENT_TEST1_CONS;
+		rt_rule->rules[1].rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule->rules[2].rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule->rules[3].rule.dst = IPA_CLIENT_TEST1_CONS;
+		rt_rule->rules[4].rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule->rules[5].rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule->rules[6].rule.dst = IPA_CLIENT_TEST4_CONS;
+		rt_rule->rules[7].rule.dst = IPA_CLIENT_TEST4_CONS;
 
 		if (false == m_Routing.AddRoutingRule(rt_rule)) {
 			LOG_MSG_ERROR("Routing rule addition failed!\n");
@@ -311,7 +311,7 @@ private:
 		}
 
 		filtering_table->commit = 1;
-		filtering_table->ep = IPA_CLIENT_HSIC1_PROD;
+		filtering_table->ep = IPA_CLIENT_TEST1_PROD;
 		filtering_table->global = 0;
 		filtering_table->ip = IPA_IP_v4;
 		filtering_table->num_rules = NUM_RULES;

@@ -31,6 +31,11 @@
 #include <linux/delay.h> /* msleep() */
 #include "ipa_rm_ut.h"
 
+#ifndef IPA_ON_R3PC
+#define IPA_ON_R3PC
+#endif
+
+
 /** Module name string */
 #define DRV_NAME "ipa_test"
 #define DRV_VERSION "3.1"
@@ -76,8 +81,20 @@
 #define EXCEPTION_KFIFO_DEBUG_VERBOSE 1
 #define SAVE_HEADER 1
 
+#define IPA_CLIENT_TEST_PROD  IPA_CLIENT_WLAN1_PROD
+#define IPA_CLIENT_TEST1_PROD IPA_CLIENT_WLAN1_PROD
+#define IPA_CLIENT_TEST2_PROD IPA_CLIENT_USB2_PROD
+#define IPA_CLIENT_TEST3_PROD IPA_CLIENT_USB3_PROD
+#define IPA_CLIENT_TEST4_PROD IPA_CLIENT_USB4_PROD
+
+#define IPA_CLIENT_TEST_CONS  IPA_CLIENT_WLAN1_CONS
+#define IPA_CLIENT_TEST1_CONS IPA_CLIENT_WLAN1_CONS
+#define IPA_CLIENT_TEST2_CONS IPA_CLIENT_WLAN2_CONS
+#define IPA_CLIENT_TEST3_CONS IPA_CLIENT_WLAN3_CONS
+#define IPA_CLIENT_TEST4_CONS IPA_CLIENT_WLAN4_CONS
+
 #ifdef IPA_ON_R3PC
-int ipa_sys_setup(struct ipa_sys_connect_params *sys_in, u32 *ipa_bam_hdl,
+int ipa_sys_setup(struct ipa_sys_connect_params *sys_in, unsigned long *ipa_bam_hdl,
 		  u32 *ipa_pipe_num, u32 *clnt_hdl);
 int ipa_sys_teardown(u32 clnt_hdl);
 #endif
@@ -193,13 +210,8 @@ static void test_alloc_mem(struct sps_mem_buffer *mem)
 {
 	dma_addr_t dma_addr;
 
-#ifndef IPA_ON_R3PC
 	/* need to check return value in formal code */
-	mem->base = dma_alloc_coherent(ipa_test->dev, mem->size, &dma_addr, 0);
-#else
-	mem->base = ipa_mem_alloc(mem->size, &dma_addr);
-#endif
-
+	mem->base = dma_alloc_coherent(ipa_test->dev, mem->size, &dma_addr, GFP_KERNEL);
 	mem->phys_base = dma_addr;
 }
 
@@ -213,14 +225,7 @@ static void test_free_mem(struct sps_mem_buffer *mem)
 	dma_addr_t dma_addr = mem->phys_base;
 
 	if (dma_addr)
-#ifndef IPA_ON_R3PC
-		dma_free_coherent(
-				ipa_test->dev,
-				mem->size,
-				mem->base, dma_addr);
-#else
-		ipa_mem_free(mem->base);
-#endif
+		dma_free_coherent(ipa_test->dev, mem->size, mem->base, dma_addr);
 
 	mem->phys_base = 0;
 	mem->base = NULL;
@@ -957,7 +962,7 @@ int connect_ipa_to_apps(struct test_endpoint_sys *rx_ep,
 			   u32 pipe_index,
 			   struct sps_mem_buffer *desc_fifo,
 			   struct sps_register_event *rx_event,
-			   u32 ipa_bam_hdl)
+			   unsigned long ipa_bam_hdl)
 {
 	int res = 0;
 	u32 rx_connect_options = 0;
@@ -1030,7 +1035,7 @@ int connect_apps_to_bamdma(struct test_endpoint_sys *tx_ep,
 int connect_apps_to_ipa(struct test_endpoint_sys *tx_ep,
 			   u32 pipe_index,
 			   struct sps_mem_buffer *desc_fifo,
-			   u32 ipa_bam_hdl)
+			   unsigned long ipa_bam_hdl)
 {
 	u32 tx_connect_options = 0;
 	int res = 0;
@@ -1092,19 +1097,19 @@ int connect_ipa_to_bamdma(struct test_endpoint_dma *rx_dma_bam_ep,
 	dst_in.notify = notify_cb_func; /* Installing CB Function */
 	dst_in.priv = notify_cb_data;/* Installing CB Data */
 	switch (ipa_client) {
-	case IPA_CLIENT_USB4_CONS:
+	case IPA_CLIENT_TEST4_CONS:
 		strlcpy(pipe_name,
-				"IPA_CLIENT_USB4_CONS",
+				"IPA_CLIENT_TEST4_CONS",
 				30);
 		break;
-	case IPA_CLIENT_USB2_CONS:
+	case IPA_CLIENT_TEST2_CONS:
 		strlcpy(pipe_name,
-				"IPA_CLIENT_USB2_CONS",
+				"IPA_CLIENT_TEST2_CONS",
 				30);
 		break;
-	case IPA_CLIENT_USB3_CONS:
+	case IPA_CLIENT_TEST3_CONS:
 		strlcpy(pipe_name,
-				"IPA_CLIENT_USB3_CONS",
+				"IPA_CLIENT_TEST3_CONS",
 				30);
 		break;
 	default:
@@ -1229,7 +1234,7 @@ int configure_ipa_endpoint(struct ipa_ep_cfg *ipa_ep_cfg,
 			   enum ipa_mode_type mode)
 {
 	const char *DEFAULT_ROUTING_TABLE_NAME = "LAN";
-	const enum ipa_client_type DEFAULT_CLIENT = IPA_CLIENT_USB4_CONS;
+	const enum ipa_client_type DEFAULT_CLIENT = IPA_CLIENT_TEST4_CONS;
 	struct ipa_ioc_add_rt_rule *rt_rule;
 	struct ipa_rt_rule_add *rt_rule_entry;
 	struct ipa_ioc_get_rt_tbl rt_lookup;
@@ -1339,7 +1344,7 @@ int configure_system_1(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -1363,7 +1368,7 @@ int configure_system_1(void)
 	/* Connect IPA(USB1) -> to BAM-DMA */
 	pr_debug(DRV_NAME "Connecting IPA to BAM-DMA\n");
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-				IPA_CLIENT_USB_CONS,
+				IPA_CLIENT_TEST_CONS,
 				NULL,/*ipa_ep_cfg*/
 				from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 				NULL, NULL);
@@ -1372,7 +1377,7 @@ int configure_system_1(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
 		goto fail;
@@ -1388,12 +1393,12 @@ int configure_system_1(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 	/* Connect A5 MEM --> Tx BAM-DMA */
@@ -1404,7 +1409,7 @@ int configure_system_1(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -1436,7 +1441,7 @@ int configure_system_2(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -1464,7 +1469,7 @@ int configure_system_2(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
 		goto fail;
@@ -1487,7 +1492,7 @@ int configure_system_2(void)
 #else
 	/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl))
 		goto fail;
@@ -1510,7 +1515,7 @@ int configure_system_2(void)
 #else
 	/* Connect third (Default) Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl))
 		goto fail;
@@ -1527,7 +1532,7 @@ int configure_system_2(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> first Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -1536,7 +1541,7 @@ int configure_system_2(void)
 
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -1545,7 +1550,7 @@ int configure_system_2(void)
 
 	/* Connect IPA -> third (default) Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -1562,7 +1567,7 @@ int configure_system_2(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -1575,7 +1580,7 @@ int configure_system_2(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -1601,7 +1606,7 @@ int configure_system_3(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -1647,14 +1652,14 @@ int configure_system_3(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> first Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
 		goto fail;
@@ -1672,14 +1677,14 @@ int configure_system_3(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl))
 		goto fail;
@@ -1697,14 +1702,14 @@ int configure_system_3(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> third (default) Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl))
 		goto fail;
@@ -1738,7 +1743,7 @@ int configure_system_3(void)
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
 			&ipa_ep_cfg,
-			IPA_CLIENT_USB2_PROD, NULL, NULL);
+			IPA_CLIENT_TEST2_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -1750,7 +1755,7 @@ int configure_system_3(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -1778,7 +1783,7 @@ int configure_system_5(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -1884,7 +1889,7 @@ int configure_system_5(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			&ipa_ep_cfg,
 			/*Configure Header Insertion as RMnet QoS*/
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
@@ -1892,7 +1897,7 @@ int configure_system_5(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
@@ -1932,14 +1937,14 @@ int configure_system_5(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			&ipa_ep_cfg, /* Configure Header Insertion as */
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 		/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 				&ipa_pipe_num,
@@ -1981,14 +1986,14 @@ int configure_system_5(void)
 	 * and is 2Bytes */
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			&ipa_ep_cfg, /*Configure Header Insertion as*/
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect third (Default) Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl))
@@ -2013,7 +2018,7 @@ int configure_system_5(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2025,7 +2030,7 @@ int configure_system_5(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -2053,13 +2058,13 @@ int configure_system_6(void)
 #ifdef IPA_ON_R3PC
 	struct ipa_ep_cfg ipa_ep_cfg;
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
@@ -2075,7 +2080,7 @@ int configure_system_6(void)
 	/* Prepare an endpoint configuration structure */
 	ipa_ep_cfg.mode.mode = IPA_BASIC;
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -2116,7 +2121,7 @@ int configure_system_8(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -2156,7 +2161,7 @@ int configure_system_8(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2165,7 +2170,7 @@ int configure_system_8(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
@@ -2195,7 +2200,7 @@ int configure_system_8(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2204,7 +2209,7 @@ int configure_system_8(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl))
 		goto fail;
@@ -2235,7 +2240,7 @@ int configure_system_8(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2244,7 +2249,7 @@ int configure_system_8(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl))
@@ -2262,12 +2267,12 @@ int configure_system_8(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB3_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST3_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2280,7 +2285,7 @@ int configure_system_8(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_PROD;
+	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -2298,14 +2303,14 @@ int configure_system_8(void)
 	/* configure deaggregation on Rx */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB3_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST3_CONS;
 	ipa_ep_cfg.aggr.aggr_en = IPA_ENABLE_DEAGGR;
 	ipa_ep_cfg.aggr.aggr = IPA_TLP;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[1]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2318,7 +2323,7 @@ int configure_system_8(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl))
@@ -2336,14 +2341,14 @@ int configure_system_8(void)
 	/* configure deaggregation on Rx */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST_CONS;
 	ipa_ep_cfg.aggr.aggr_en = IPA_ENABLE_DEAGGR;
 	ipa_ep_cfg.aggr.aggr = IPA_TLP;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[2]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB2_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST2_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2356,7 +2361,7 @@ int configure_system_8(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[2]->ipa_client_hdl))
@@ -2374,12 +2379,12 @@ int configure_system_8(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB2_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST2_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[3]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB4_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST4_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2392,7 +2397,7 @@ int configure_system_8(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_PROD;
+	sys_in.client = IPA_CLIENT_TEST4_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[3]->ipa_client_hdl))
@@ -2435,7 +2440,7 @@ int configure_system_9(void)
 	enum ipa_aggr_mode mode;
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -2485,7 +2490,7 @@ int configure_system_9(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2494,7 +2499,7 @@ int configure_system_9(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
@@ -2524,7 +2529,7 @@ int configure_system_9(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2533,7 +2538,7 @@ int configure_system_9(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl))
 		goto fail;
@@ -2565,7 +2570,7 @@ int configure_system_9(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2574,7 +2579,7 @@ int configure_system_9(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl))
@@ -2592,12 +2597,12 @@ int configure_system_9(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB3_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST3_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2610,7 +2615,7 @@ int configure_system_9(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_PROD;
+	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl))
@@ -2628,14 +2633,14 @@ int configure_system_9(void)
 	/* configure deaggregation on Rx */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB3_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST3_CONS;
 	ipa_ep_cfg.aggr.aggr_en = IPA_ENABLE_DEAGGR;
 	ipa_ep_cfg.aggr.aggr = IPA_MBIM_16;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[1]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2648,7 +2653,7 @@ int configure_system_9(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl))
@@ -2666,14 +2671,14 @@ int configure_system_9(void)
 	/* configure deaggregation on Rx */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST_CONS;
 	ipa_ep_cfg.aggr.aggr_en = IPA_ENABLE_DEAGGR;
 	ipa_ep_cfg.aggr.aggr = IPA_MBIM_16;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[2]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB2_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST2_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2686,7 +2691,7 @@ int configure_system_9(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[2]->ipa_client_hdl))
@@ -2704,12 +2709,12 @@ int configure_system_9(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB2_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST2_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[3]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB4_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST4_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2722,7 +2727,7 @@ int configure_system_9(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_PROD;
+	sys_in.client = IPA_CLIENT_TEST4_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&to_ipa_devs[3]->ipa_client_hdl))
@@ -2757,7 +2762,7 @@ int configure_system_10(void)
 	enum ipa_aggr_mode mode;
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -2797,7 +2802,7 @@ int configure_system_10(void)
 
 	/* Connect IPA's USB -> Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -2806,7 +2811,7 @@ int configure_system_10(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
@@ -2824,12 +2829,12 @@ int configure_system_10(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -2842,7 +2847,7 @@ int configure_system_10(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
@@ -2869,7 +2874,7 @@ int configure_system_11(void)
 	enum ipa_aggr_mode mode;
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -2944,14 +2949,14 @@ int configure_system_11(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
@@ -2971,14 +2976,14 @@ int configure_system_11(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 		/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl))
@@ -3003,14 +3008,14 @@ int configure_system_11(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl))
@@ -3035,14 +3040,14 @@ int configure_system_11(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[3]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[3]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[3]->ipa_client_hdl))
@@ -3066,7 +3071,7 @@ int configure_system_11(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -3078,7 +3083,7 @@ int configure_system_11(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
@@ -3105,7 +3110,7 @@ int configure_system_11(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[1]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB2_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST2_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -3117,7 +3122,7 @@ int configure_system_11(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl))
@@ -3146,7 +3151,7 @@ int configure_system_12(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 	mode = IPA_QCNCM;
@@ -3225,14 +3230,14 @@ int configure_system_12(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &from_ipa_devs[0]->ipa_client_hdl))
@@ -3252,14 +3257,14 @@ int configure_system_12(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 		/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl))
@@ -3284,14 +3289,14 @@ int configure_system_12(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl))
@@ -3316,14 +3321,14 @@ int configure_system_12(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[3]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[3]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &from_ipa_devs[3]->ipa_client_hdl))
@@ -3347,7 +3352,7 @@ int configure_system_12(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -3359,7 +3364,7 @@ int configure_system_12(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
@@ -3386,7 +3391,7 @@ int configure_system_12(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[1]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB2_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST2_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -3398,7 +3403,7 @@ int configure_system_12(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl))
@@ -3425,7 +3430,7 @@ int configure_system_17(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -3501,7 +3506,7 @@ int configure_system_17(void)
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(
 			&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -3512,7 +3517,7 @@ int configure_system_17(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 				&ipa_bam_hdl,
@@ -3538,14 +3543,14 @@ int configure_system_17(void)
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(
 			&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
 #else
 		/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
@@ -3579,7 +3584,7 @@ int configure_system_17(void)
 
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -3589,7 +3594,7 @@ int configure_system_17(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
@@ -3630,7 +3635,7 @@ int configure_system_17(void)
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(
 			&from_ipa_devs[3]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[3]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -3641,7 +3646,7 @@ int configure_system_17(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
@@ -3676,7 +3681,7 @@ int configure_system_17(void)
 	res = connect_bamdma_to_ipa(
 			&to_ipa_devs[0]->dma_ep,
 			&ipa_ep_cfg,
-			IPA_CLIENT_USB_PROD,
+			IPA_CLIENT_TEST_PROD,
 			NULL, NULL);
 	if (res)
 		goto fail;
@@ -3689,7 +3694,7 @@ int configure_system_17(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
@@ -3769,7 +3774,7 @@ int configure_system_17(void)
 	res = connect_bamdma_to_ipa(
 			&to_ipa_devs[2]->dma_ep,
 			&ipa_ep_cfg,
-			IPA_CLIENT_USB2_PROD,
+			IPA_CLIENT_TEST2_PROD,
 			NULL, NULL);
 	if (res)
 		goto fail;
@@ -3783,7 +3788,7 @@ int configure_system_17(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_PROD;
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(
 			&sys_in,
@@ -3812,7 +3817,7 @@ int configure_system_18(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -3843,7 +3848,7 @@ int configure_system_18(void)
 #ifndef IPA_ON_R3PC
 	res = connect_ipa_to_bamdma(
 			&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB_CONS,
+			IPA_CLIENT_TEST_CONS,
 			&ipa_ep_cfg,
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			notify_ipa_write_done,
@@ -3852,7 +3857,7 @@ int configure_system_18(void)
 #else
 	/* Connect Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_CONS;
+	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	sys_in.notify = notify_ipa_write_done;
 	if (ipa_sys_setup(&sys_in,
@@ -3885,7 +3890,7 @@ int configure_system_18(void)
 	res = connect_bamdma_to_ipa(
 			&to_ipa_devs[0]->dma_ep,
 			&ipa_ep_cfg,
-			IPA_CLIENT_USB_PROD,
+			IPA_CLIENT_TEST_PROD,
 			notify_ipa_received,
 			NULL);
 	if (res)
@@ -3899,7 +3904,7 @@ int configure_system_18(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	sys_in.notify = notify_ipa_received;
 	if (ipa_sys_setup(&sys_in,
@@ -4172,7 +4177,7 @@ int configure_system_7(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -4208,7 +4213,7 @@ int configure_system_7(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
 		goto fail;
@@ -4231,7 +4236,7 @@ int configure_system_7(void)
 #else
 	/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl))
 		goto fail;
@@ -4254,7 +4259,7 @@ int configure_system_7(void)
 #else
 	/* Connect third (Default) Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl))
 		goto fail;
@@ -4271,7 +4276,7 @@ int configure_system_7(void)
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> first Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4280,7 +4285,7 @@ int configure_system_7(void)
 
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[1]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[1]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4289,7 +4294,7 @@ int configure_system_7(void)
 
 	/* Connect IPA -> third (default) Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[2]->dma_ep,
-			IPA_CLIENT_USB4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[2]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4306,7 +4311,7 @@ int configure_system_7(void)
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB_PROD,
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD,
 			&notify_upon_exception,
 			&(p_exception_hdl_data->notify_cb_data));
 	if (res)
@@ -4321,7 +4326,7 @@ int configure_system_7(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB_PROD;
+	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	sys_in.notify = &notify_upon_exception;
 	sys_in.priv = &(p_exception_hdl_data->notify_cb_data);
@@ -4457,11 +4462,11 @@ int register_lan_interface(void)
 	pr_debug(DRV_NAME ":new version\n");
 	memset(&tx_prop, 0, sizeof(tx_prop));
 	tx_prop.ip = IPA_IP_v6;
-	tx_prop.dst_pipe = IPA_CLIENT_USB_CONS;
+	tx_prop.dst_pipe = IPA_CLIENT_TEST_CONS;
 
 	memset(&rx_prop, 0, sizeof(rx_prop));
 	rx_prop.ip = IPA_IP_v6;
-	rx_prop.src_pipe = IPA_CLIENT_USB_PROD;
+	rx_prop.src_pipe = IPA_CLIENT_TEST_PROD;
 
 	memset(&rx_intf, 0, sizeof(rx_intf));
 	rx_intf.num_props = 1;
@@ -4598,31 +4603,31 @@ int register_wlan_interface(void)
 
 	index = 0;
 	tx_prop[index].ip = IPA_IP_v6;
-	tx_prop[index].dst_pipe = IPA_CLIENT_HSIC1_CONS;
+	tx_prop[index].dst_pipe = IPA_CLIENT_TEST1_CONS;
 	memcpy(tx_prop[index].hdr_name, IPA_TO_WLAN_HEADER_NAME,
 		  sizeof(IPA_TO_WLAN_HEADER_NAME));
 
 	index++;
 	tx_prop[index].ip = IPA_IP_v6;
-	tx_prop[index].dst_pipe = IPA_CLIENT_HSIC2_CONS;
+	tx_prop[index].dst_pipe = IPA_CLIENT_TEST2_CONS;
 	memcpy(tx_prop[index].hdr_name, IPA_TO_WLAN_HEADER_NAME,
 			sizeof(IPA_TO_WLAN_HEADER_NAME));
 
 	index++;
 	tx_prop[index].ip = IPA_IP_v6;
-	tx_prop[index].dst_pipe = IPA_CLIENT_HSIC3_CONS;
+	tx_prop[index].dst_pipe = IPA_CLIENT_TEST3_CONS;
 	memcpy(tx_prop[index].hdr_name, IPA_TO_WLAN_HEADER_NAME,
 			sizeof(IPA_TO_WLAN_HEADER_NAME));
 
 	index++;
 	tx_prop[index].ip = IPA_IP_v6;
-	tx_prop[index].dst_pipe = IPA_CLIENT_HSIC4_CONS;
+	tx_prop[index].dst_pipe = IPA_CLIENT_TEST4_CONS;
 	memcpy(tx_prop[index].hdr_name, IPA_TO_WLAN_HEADER_NAME,
 			sizeof(IPA_TO_WLAN_HEADER_NAME));
 
 	memset(&rx_prop, 0, sizeof(struct ipa_ioc_rx_intf_prop));
 	rx_prop.ip = IPA_IP_v6;
-	rx_prop.src_pipe = IPA_CLIENT_HSIC1_PROD;
+	rx_prop.src_pipe = IPA_CLIENT_TEST1_PROD;
 
 	memset(&rx_intf, 0, sizeof(rx_intf));
 	rx_intf.num_props = 1;
@@ -4655,13 +4660,15 @@ int register_wlan_interface(void)
 
 int configure_system_14(void)
 {
-	int res = 0, index = 0, pipe_cnt = 0;
+	int res = 0, index = 0;
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
+#else
+  int pipe_cnt = 0;
 #endif
 
 	pr_debug(DRV_NAME ":Update Version 4\n");
@@ -4699,7 +4706,7 @@ int configure_system_14(void)
 #else
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_HSIC1_CONS;
+	sys_in.client = IPA_CLIENT_TEST1_CONS;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
@@ -4725,7 +4732,7 @@ index++;
 #else
 	/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_HSIC2_CONS;
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
@@ -4751,7 +4758,7 @@ index++;
 #else
 	/* Connect third Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_HSIC3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
@@ -4777,7 +4784,7 @@ index++;
 #else
 	/* Connect fourth Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_HSIC4_CONS;
+	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
@@ -4797,7 +4804,7 @@ index = 0;
 #ifndef IPA_ON_R3PC
 	/* Connect IPA -> first Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[index]->dma_ep,
-			IPA_CLIENT_HSIC1_CONS,
+			IPA_CLIENT_TEST1_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[index]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4810,7 +4817,7 @@ index = 0;
 	index++;
 	/* Connect IPA -> second Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[index]->dma_ep,
-			IPA_CLIENT_HSIC2_CONS,
+			IPA_CLIENT_TEST2_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[index]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4823,7 +4830,7 @@ index = 0;
 	index++;
 	/* Connect IPA -> third Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[index]->dma_ep,
-			IPA_CLIENT_HSIC3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[index]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4835,7 +4842,7 @@ index = 0;
 	index++;
 	/* Connect IPA -> fourth Rx BAM-DMA */
 	res = connect_ipa_to_bamdma(&from_ipa_devs[index]->dma_ep,
-			IPA_CLIENT_HSIC4_CONS,
+			IPA_CLIENT_TEST4_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[index]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -4856,7 +4863,7 @@ index = 0;
 	/* Connect using the endpoint configuration created */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[index]->dma_ep,
 			&ipa_ep_cfg,
-			IPA_CLIENT_HSIC1_PROD,
+			IPA_CLIENT_TEST1_PROD,
 			NULL, NULL);
 	if (res)
 		goto fail;
@@ -4869,11 +4876,11 @@ index = 0;
 		goto fail;
 	else
 	  pr_debug(DRV_NAME
-			  "Connect IPA -> IPA_CLIENT_HSIC1_PROD success\n");
+			  "Connect IPA -> IPA_CLIENT_TEST1_PROD success\n");
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_HSIC1_PROD;
+	sys_in.client = IPA_CLIENT_TEST1_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 					&ipa_bam_hdl,
@@ -4891,7 +4898,7 @@ index = 0;
 		goto fail;
 	else
 	  pr_debug(DRV_NAME
-			  "Connect IPA -> IPA_CLIENT_HSIC1_PROD success\n");
+			  "Connect IPA -> IPA_CLIENT_TEST1_PROD success\n");
 #endif
 
 index++;
@@ -4955,11 +4962,11 @@ int register_wan_interface(void)
 
 	memset(&tx_prop, 0, sizeof(tx_prop));
 	tx_prop.ip = IPA_IP_v6;
-	tx_prop.dst_pipe = IPA_CLIENT_USB3_CONS;
+	tx_prop.dst_pipe = IPA_CLIENT_TEST3_CONS;
 
 	memset(&rx_prop, 0, sizeof(rx_prop));
 	rx_prop.ip = IPA_IP_v6;
-	rx_prop.src_pipe = IPA_CLIENT_USB3_PROD;
+	rx_prop.src_pipe = IPA_CLIENT_TEST3_PROD;
 
 	memset(&rx_intf, 0, sizeof(rx_intf));
 	rx_intf.num_props = 1;
@@ -4986,7 +4993,7 @@ int configure_system_15(void)
 
 #ifdef IPA_ON_R3PC
 	struct ipa_sys_connect_params sys_in;
-	u32 ipa_bam_hdl;
+	unsigned long ipa_bam_hdl;
 	u32 ipa_pipe_num;
 #endif
 
@@ -5015,7 +5022,7 @@ int configure_system_15(void)
 	/* Connect IPA(USB1) -> to BAM-DMA */
 	pr_debug(DRV_NAME "Connecting IPA to BAM-DMA\n");
 	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
-			IPA_CLIENT_USB3_CONS,
+			IPA_CLIENT_TEST3_CONS,
 			NULL,/*ipa_ep_cfg*/
 			from_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			NULL, NULL);
@@ -5024,7 +5031,7 @@ int configure_system_15(void)
 #else
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_CONS;
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl))
 		goto fail;
@@ -5041,12 +5048,12 @@ int configure_system_15(void)
 	/* Prepare EP configuration details */
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	ipa_ep_cfg.mode.mode = IPA_DMA;
-	ipa_ep_cfg.mode.dst = IPA_CLIENT_USB3_CONS;
+	ipa_ep_cfg.mode.dst = IPA_CLIENT_TEST3_CONS;
 
 #ifndef IPA_ON_R3PC
 	/* Connect Tx BAM-DMA-> IPA's USB */
 	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
-			&ipa_ep_cfg, IPA_CLIENT_USB3_PROD, NULL, NULL);
+			&ipa_ep_cfg, IPA_CLIENT_TEST3_PROD, NULL, NULL);
 	if (res)
 		goto fail;
 
@@ -5059,7 +5066,7 @@ int configure_system_15(void)
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_USB3_PROD;
+	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
@@ -6258,6 +6265,16 @@ static int __init ipa_test_init(void)
 				":IPA Test init OK, waiting for configuration index.\n");
 	else
 		pr_debug(DRV_NAME ":IPA Test init FAIL.\n");
+
+	ret = dma_set_mask(ipa_test->dev, DMA_BIT_MASK(32));
+        if (ret){
+                pr_err(DRV_NAME ":dma_set_mask failed: %d\n", ret);
+        }
+
+	ret = dma_set_coherent_mask(ipa_test->dev, DMA_BIT_MASK(32));
+	if (ret){
+		pr_err(DRV_NAME ":dma_set_coherent_mask failed: %d\n", ret);
+	}
 
 	ret = datapath_ds_init();
 	if (ret != 0)

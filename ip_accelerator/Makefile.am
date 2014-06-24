@@ -3,7 +3,7 @@ KERNEL_FLAGS ?= ARCH=arm
 EXTRA_CFLAGS	 = -DDEBUG
 AM_CXXFLAGS = -Wall -Wundef -Wno-trigraphs -Werror
 #AM_CXXFLAGS += -I./../../../../../../../../kernel/include
-#EXTRA_CFLAGS	+= -DIPA_ON_R3PC
+EXTRA_CFLAGS	+= -DIPA_ON_R3PC
 
 module = ipa_test_module.ko
 kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)

@@ -106,17 +106,17 @@ public:
 
 	/*The client type are set from the peripheral perspective*/
 	static Pipe m_IpaToUsbPipeAgg;
-	/*IPA_CLIENT_USB2_CONS (pipe_num = 7)*/
+	/*IPA_CLIENT_TEST2_CONS (pipe_num = 7)*/
 	static Pipe m_UsbToIpaPipe;
-	/* IPA_CLIENT_USB_PROD (pipe_num = 11)*/
+	/* IPA_CLIENT_TEST_PROD (pipe_num = 11)*/
 	static Pipe m_IpaToUsbPipe;
-	/* IPA_CLIENT_USB3_CONS (pipe_num = 9)*/
+	/* IPA_CLIENT_TEST3_CONS (pipe_num = 9)*/
 	static Pipe m_UsbToIpaPipeDeagg;
-	/* IPA_CLIENT_USB2_PROD (pipe_num = 6)*/
+	/* IPA_CLIENT_TEST2_PROD (pipe_num = 6)*/
 	static Pipe m_IpaToUsbPipeAggTime;
-	/* IPA_CLIENT_USB_CONS (pipe_num = 10)*/
+	/* IPA_CLIENT_TEST_CONS (pipe_num = 10)*/
 	static Pipe m_IpaToUsbPipeAggPktLimit;
-	/* IPA_CLIENT_USB4_CONS (pipe_num = 4)*/
+	/* IPA_CLIENT_TEST4_CONS (pipe_num = 4)*/
 	static Pipe m_HsicToIpaPipe;
 	/* IPA_CLIENT_Q6_LAN_PROD (pipe_num = 19)*/
 
