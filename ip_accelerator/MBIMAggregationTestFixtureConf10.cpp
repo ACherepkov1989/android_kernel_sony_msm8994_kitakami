@@ -32,9 +32,9 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 //define the static Pipes which will be used by all derived tests.
-Pipe MBIMAggregationTestFixtureConf10::m_IpaToUsbPipeAggZeroLimits(IPA_CLIENT_USB_CONS,
+Pipe MBIMAggregationTestFixtureConf10::m_IpaToUsbPipeAggZeroLimits(IPA_CLIENT_TEST_CONS,
 		IPA_TEST_CONFIGURATION_10);
-Pipe MBIMAggregationTestFixtureConf10::m_UsbToIpaPipeAggZeroLimits(IPA_CLIENT_USB_PROD,
+Pipe MBIMAggregationTestFixtureConf10::m_UsbToIpaPipeAggZeroLimits(IPA_CLIENT_TEST_PROD,
 		IPA_TEST_CONFIGURATION_10);
 
 /////////////////////////////////////////////////////////////////////////////////

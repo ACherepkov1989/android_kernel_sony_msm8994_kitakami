@@ -35,17 +35,17 @@ Byte const RNDISAggregationTestFixture::m_EtherHeader[14] = {0xA1, 0xA2, 0xA3, 0
 	0xA9, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4};
 
 //define the static Pipes which will be used by all derived tests.
-Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAgg(IPA_CLIENT_USB2_CONS,
+Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAgg(IPA_CLIENT_TEST2_CONS,
 							 IPA_TEST_CONFIGURATION_17);
-Pipe RNDISAggregationTestFixture::m_UsbToIpaPipe(IPA_CLIENT_USB_PROD,
+Pipe RNDISAggregationTestFixture::m_UsbToIpaPipe(IPA_CLIENT_TEST_PROD,
 						      IPA_TEST_CONFIGURATION_17);
-Pipe RNDISAggregationTestFixture::m_IpaToUsbPipe(IPA_CLIENT_USB3_CONS,
+Pipe RNDISAggregationTestFixture::m_IpaToUsbPipe(IPA_CLIENT_TEST3_CONS,
 						      IPA_TEST_CONFIGURATION_17);
-Pipe RNDISAggregationTestFixture::m_UsbToIpaPipeDeagg(IPA_CLIENT_USB2_PROD,
+Pipe RNDISAggregationTestFixture::m_UsbToIpaPipeDeagg(IPA_CLIENT_TEST2_PROD,
 							   IPA_TEST_CONFIGURATION_17);
-Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAggTime(IPA_CLIENT_USB_CONS,
+Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAggTime(IPA_CLIENT_TEST_CONS,
 							     IPA_TEST_CONFIGURATION_17);
-Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAggPktLimit(IPA_CLIENT_USB4_CONS,
+Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAggPktLimit(IPA_CLIENT_TEST4_CONS,
 								IPA_TEST_CONFIGURATION_17);
 Pipe RNDISAggregationTestFixture::m_HsicToIpaPipe(IPA_CLIENT_Q6_LAN_PROD,
 							   IPA_TEST_CONFIGURATION_17);
@@ -149,7 +149,7 @@ bool RNDISAggregationTestFixture::AddRulesNoAgg() {
 	LOG_MSG_STACK("Entering Function");
 	memset(&sFilterRuleEntry, 0, sizeof(sFilterRuleEntry));
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB3_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST3_CONS,
 			0, &nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -160,7 +160,7 @@ bool RNDISAggregationTestFixture::AddRulesNoAgg() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -205,7 +205,7 @@ bool RNDISAggregationTestFixture::AddRulesDeAggEther() {
 	LOG_MSG_STACK("Entering Function");
 	memset(&sFilterRuleEntry, 0, sizeof(sFilterRuleEntry));
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB3_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST3_CONS,
 			0, &nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -216,7 +216,7 @@ bool RNDISAggregationTestFixture::AddRulesDeAggEther() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_USB2_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST2_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -310,7 +310,7 @@ bool RNDISAggregationTestFixture::AddRulesAggTimeLimit() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST_CONS,
 			sGetHeader.hdl, &nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -416,7 +416,7 @@ bool RNDISAggregationTestFixture::AddRulesAggByteLimit() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB2_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST2_CONS,
 			sGetHeader.hdl, &nTableHdl)) {
 		LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 		bRetVal = false;
@@ -522,7 +522,7 @@ bool RNDISAggregationTestFixture::AddRulesAggPacketLimit() {
 	LOG_MSG_DEBUG("Received Header Handle = 0x%x", sGetHeader.hdl);
 
 
-	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_USB4_CONS,
+	if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass, IPA_CLIENT_TEST4_CONS,
 		sGetHeader.hdl, &nTableHdl)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;

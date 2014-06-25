@@ -140,7 +140,7 @@ public:
 		}
 		LOG_MSG_DEBUG("Received Header1 Handle = 0x%x",sGetIPv4Header.hdl);
 
-		if (!CreateBypassRoutingTable(&m_Routing, IPA_IP_v4, aBypass2IPv4, IPA_CLIENT_USB_CONS,//IPA->USB
+		if (!CreateBypassRoutingTable(&m_Routing, IPA_IP_v4, aBypass2IPv4, IPA_CLIENT_TEST_CONS,//IPA->USB
 				sGetIPv4Header.hdl,&nRTTableHdlIPv4ToUSB)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -160,7 +160,7 @@ public:
 		}
 		LOG_MSG_DEBUG("Received Header2 Handle = 0x%x",sGetIPv6Header.hdl);
 
-		if (!CreateBypassRoutingTable(&m_Routing, IPA_IP_v6, aBypass2IPv6, IPA_CLIENT_USB_CONS,//System->USB
+		if (!CreateBypassRoutingTable(&m_Routing, IPA_IP_v6, aBypass2IPv6, IPA_CLIENT_TEST_CONS,//System->USB
 				sGetIPv6Header.hdl,&nRTTableHdlIPv6ToUSB)) {
 			LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 			bRetVal = false;
@@ -207,7 +207,7 @@ public:
 		}
 #endif
 		// Configuring Filtering Table No.3
-		cFLTTableIPv4ToSys.Init(IPA_IP_v4,IPA_CLIENT_USB_PROD,false,1); // USB->System Pipe
+		cFLTTableIPv4ToSys.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,false,1); // USB->System Pipe
 		cFLTTableIPv4ToSys.GeneratePresetRule(0,sFilterRuleEntry);
 		sFilterRuleEntry.at_rear = true;
 		sFilterRuleEntry.flt_rule_hdl=-1; // return Value
@@ -224,7 +224,7 @@ public:
 
 #ifdef IPV6_ENABLED
 		// Configuring Filtering Table  No.4
-		cFLTTableIPv6ToSys.Init(IPA_IP_v6,IPA_CLIENT_USB_PROD,false,1); // USB->System Pipe
+		cFLTTableIPv6ToSys.Init(IPA_IP_v6,IPA_CLIENT_TEST_PROD,false,1); // USB->System Pipe
 		cFLTTableIPv6ToSys.GeneratePresetRule(0,sFilterRuleEntry);
 		sFilterRuleEntry.at_rear = true;
 		sFilterRuleEntry.flt_rule_hdl=-1; // return Value

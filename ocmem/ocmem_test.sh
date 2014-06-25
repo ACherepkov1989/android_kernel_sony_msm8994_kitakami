@@ -34,7 +34,7 @@ else
 	modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
 fi
 
-ocmem_test_mod=${modpath}/msm_ocmem_test_module.ko
+ocmem_test_mod=${modpath}/msm_ocmem_test_mod.ko
 ocmem_test_dev_misc=/sys/class/misc/ocmemtest/dev
 ocmem_test_dev=/dev/ocmemtest
 

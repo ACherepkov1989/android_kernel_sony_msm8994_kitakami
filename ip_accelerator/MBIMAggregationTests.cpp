@@ -3067,7 +3067,7 @@ public:
 		for (int i = 0; i < NUM_PACKETS; i++)
 		{
 			if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass[i],
-					IPA_CLIENT_USB2_CONS, sGetHeader[i].hdl,&nTableHdl[i]))
+					IPA_CLIENT_TEST2_CONS, sGetHeader[i].hdl,&nTableHdl[i]))
 			{
 				LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 				bRetVal = false;
@@ -3078,7 +3078,7 @@ public:
 		LOG_MSG_INFO("Creation of 5 bypass routing tables completed successfully");
 
 		// Creating Filtering Rules
-		cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD, true, NUM_PACKETS);
+		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, NUM_PACKETS);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -3307,7 +3307,7 @@ public:
 		for (int i = 0; i < 2; i++)
 		{
 			if (!CreateBypassRoutingTable(&m_Routing, m_eIP, aBypass[i],
-					IPA_CLIENT_USB2_CONS, sGetHeader[i].hdl,&nTableHdl[i]))
+					IPA_CLIENT_TEST2_CONS, sGetHeader[i].hdl,&nTableHdl[i]))
 			{
 				LOG_MSG_ERROR("CreateBypassRoutingTable Failed\n");
 				bRetVal = false;
@@ -3318,7 +3318,7 @@ public:
 		LOG_MSG_INFO("Creation of 2 bypass routing tables completed successfully");
 
 		// Creating Filtering Rules
-		cFilterTable0.Init(m_eIP,IPA_CLIENT_USB_PROD, true, 2);
+		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 2);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
