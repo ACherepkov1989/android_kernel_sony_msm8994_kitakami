@@ -118,7 +118,7 @@ public:
 	static Pipe m_IpaToUsbPipeAggPktLimit;
 	/* IPA_CLIENT_TEST4_CONS (pipe_num = 4)*/
 	static Pipe m_HsicToIpaPipe;
-	/* IPA_CLIENT_Q6_LAN_PROD (pipe_num = 19)*/
+	/* IPA_CLIENT_TEST3_PROD (pipe_num = 13)*/
 
 	static RoutingDriverWrapper m_Routing;
 	static Filtering m_Filtering;
