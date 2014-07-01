@@ -51,12 +51,12 @@
 #define DESC_FIFO_SZ 0x100
 #define DATA_FIFO_SZ 0x2000
 
-#define TX_NUM_BUFFS 4
-#define TX_SZ 8192
+#define TX_NUM_BUFFS 16
+#define TX_SZ 32768
 #define TX_BUFF_SIZE ((TX_SZ)/(TX_NUM_BUFFS))
 
-#define RX_NUM_BUFFS 4
-#define RX_SZ 8192
+#define RX_NUM_BUFFS 16
+#define RX_SZ 32768
 #define RX_BUFF_SIZE ((RX_SZ)/(RX_NUM_BUFFS))
 
 #define IPA_TEST_DMUX_HEADER_LENGTH           8
@@ -274,7 +274,6 @@ static int wait_xfer_completion(int use_irq,
 			u32 retry = 0;
 			while (!try_wait_for_completion(xfer_done)) {
 				sps_get_event(sps, &dummy_event);
-
 				if (retry++ >= max_retry)
 					return -EBUSY;
 
@@ -715,19 +714,21 @@ static int datapath_read_data(void *element, int size)
 			":%s() came back from wait_for_completion_timeout\n"
 			, __func__);
 		if (!res) {
-			pr_debug(DRV_NAME
+			pr_err(DRV_NAME
 			":%s() Error in wait_for_ipa_receive_completion\n"
 			, __func__);
 			return -EINVAL;
 		}
+		pr_debug(DRV_NAME ":%s() locking lock\n", __func__);
+		mutex_lock(&p_data_path_ctx->lock);
 	}
-	pr_debug(DRV_NAME ":%s() locking lock\n", __func__);
-	mutex_lock(&p_data_path_ctx->lock);
 	res = kfifo_out(&p_data_path_ctx->fifo, element, size);
 	if (res != size) {
 		pr_debug(DRV_NAME
 			":%s() Error in taking out an element\n",
 			__func__);
+		pr_debug(DRV_NAME ":%s() unlocking lock\n", __func__);
+		mutex_unlock(&p_data_path_ctx->lock);
 		return -EINVAL;
 	}
 	pr_debug(DRV_NAME
@@ -752,7 +753,7 @@ static int datapath_write_fifo(
 	pr_debug(DRV_NAME ":%s() finished kfifo in\n", __func__);
 	mutex_unlock(&p_data_path_ctx->lock);
 	if (res != size) {
-		pr_debug(DRV_NAME ":%s() Error in saving element\n", __func__);
+		pr_err(DRV_NAME ":%s() Error in saving element\n", __func__);
 		return -EINVAL;
 	}
 	pr_debug(DRV_NAME ":%s():Mutex unlocked\n", __func__);
@@ -790,7 +791,7 @@ static ssize_t get_skb_from_user(struct file *filp, const char __user *buf,
 	init_completion(&p_data_path_ctx->write_done_completion);
 	pr_debug(DRV_NAME
 		":%s() Starting transfer through ipa_tx_dp\n", __func__);
-	res = ipa_tx_dp(IPA_CLIENT_USB_CONS, skb,
+	res = ipa_tx_dp(IPA_CLIENT_TEST_CONS, skb,
 			       NULL);
 	pr_debug(DRV_NAME ":%s() ipa_tx_dp res = %d.\n"
 			, __func__, res);
@@ -824,7 +825,7 @@ static ssize_t set_skb_for_user(struct file *filp, char __user *buf,
 	if (datapath_read_data(
 			(void *)&p_skb,
 			sizeof(struct sk_buff *)) < 0) {
-		pr_debug(DRV_NAME
+		pr_err(DRV_NAME
 			":%s() error in datapath_read_data\n", __func__);
 		return -EINVAL;
 	}
@@ -902,7 +903,7 @@ static void notify_ipa_received(
 		print_buff(p_skb->data, p_skb->len);
 		datapath_write_fifo(p_skb, sizeof(struct sk_buff *));
 	} else {
-		pr_debug("Error in %s, wrong event %d", __func__, evt);
+		pr_err("Error in %s, wrong event %d", __func__, evt);
 	}
 }
 
@@ -3127,7 +3128,6 @@ int configure_system_11(void)
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl))
 		goto fail;
-
 	/* Connect A5 MEM --> Tx IPA */
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
@@ -6179,7 +6179,6 @@ static ssize_t ipa_test_read(
 {
 	int res, len;
 	char str[10];
-
 	if (0 != *f_pos) {
 		*f_pos = 0;
 		return 0;
@@ -6189,7 +6188,7 @@ static ssize_t ipa_test_read(
 	len = snprintf(str, 10, "%d",
 			ipa_test->current_configuration_idx);
 
-/*	pr_debug(DRV_NAME ":str = %s, len = %d\n", str, len); */
+	pr_debug(DRV_NAME ":str = %s, len = %d\n", str, len);
 
 	/* Copy the result to the user buffer */
 	res = copy_to_user(buf, str, len + 1);

@@ -1369,8 +1369,7 @@ bool MBIMAggregationScenarios::MBIMAggregationMultiplePacketsTest(
 	//minus the size of the header and the 2 NDPs)
 	int nTotalPacketsSize = MAX_PACKET_SIZE - (4 * (MAX_PACKETS_IN_NDP + 1)) - 36;
 	uint32_t nIPv4DSTAddr;
-	size_t pIpPacketsSizes[NUM_PACKETS];
-
+	size_t pIpPacketsSizes[MAX_PACKETS_IN_NDP + 1];
 	//initialize the packets
 	for (int i = 0; i < MAX_PACKETS_IN_NDP + 1; i++)
 	{
@@ -1415,6 +1414,7 @@ bool MBIMAggregationScenarios::MBIMAggregationMultiplePacketsTest(
 		LOG_MSG_DEBUG("Sending packet %d into the USB pipe(%d bytes)\n", i,
 					pPacketsSizes[i]);
 		int nBytesSent = input->Send(pPackets[i], pPacketsSizes[i]);
+
 		if (pPacketsSizes[i] != nBytesSent)
 		{
 			LOG_MSG_DEBUG("Sending packet %d into the USB pipe(%d bytes) "
