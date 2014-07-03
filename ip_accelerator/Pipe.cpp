@@ -182,7 +182,7 @@ void Pipe::SetSpecificClientParameters(
 			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for USB_CONS");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 			break;
 		default:
 			LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_1 switch in default "
@@ -587,7 +587,7 @@ void Pipe::SetSpecificClientParameters(
 			m_pHeader             = m_pUsbHeader;
 			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 			break;
-		case (IPA_CLIENT_USB2_PROD):
+		case (IPA_CLIENT_TEST2_PROD):
 			m_pInodePath          = CONFIG_18_DUMMY_ENDPOINT;
 			m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
