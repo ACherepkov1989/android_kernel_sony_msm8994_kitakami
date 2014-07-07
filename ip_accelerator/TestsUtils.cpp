@@ -269,17 +269,38 @@ bool file_exists(const char* filename)
 	return (access(filename, F_OK) == 0);
 }
 
-static int ConfigureSystem(int testConfiguration, int fd)
+int ConfigureSystem(int testConfiguration, int fd)
+{
+	return ConfigureSystem(testConfiguration, fd, NULL);
+}
+
+int ConfigureSystem(int testConfiguration, int fd, const char* params)
 {
 	char testConfigurationStr[10];
-	char str[10];
 	int ret;
-	char pSendBuffer[4] = {0};//4 is some arbitrary value - we won't have more than 9 configuration anyway...
-	sprintf(pSendBuffer, "%d", testConfiguration);
+	char *pSendBuffer;
+	char str[10];
+
+	if(params != NULL)
+		pSendBuffer = new char[strlen(params) + 10];
+	else
+		pSendBuffer = new char[10];
+
+	if (NULL == pSendBuffer)
+	{
+		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]",strlen(params) + 10);
+		return -1;
+	}
+
+	if(params != NULL)
+		sprintf(pSendBuffer, "%d %s", testConfiguration, params);
+	else
+		sprintf(pSendBuffer, "%d", testConfiguration);
+
 	ret = write(fd, pSendBuffer, sizeof(pSendBuffer) );
 	if (ret < 0) {
 		g_Logger.AddMessage(LOG_ERROR ,"%s Write operation failed.\n", __FUNCTION__);
-		return ret;
+		goto bail;
 	}
 
 	// Wait until the system is fully configured
@@ -291,7 +312,7 @@ static int ConfigureSystem(int testConfiguration, int fd)
 	ret = read(fd, str, sizeof(str));
 	if (ret < 0) {
 		g_Logger.AddMessage(LOG_ERROR ,"%s Read operation failed.\n", __FUNCTION__);
-		return ret;
+		goto bail;
 	}
 
 	while ( strcmp(str, testConfigurationStr) ) {
@@ -303,14 +324,20 @@ static int ConfigureSystem(int testConfiguration, int fd)
 		ret = read(fd, str, sizeof(str));
 		if (ret < 0) {
 			g_Logger.AddMessage(LOG_ERROR ,"%s Read operation failed.\n", __FUNCTION__);
-			return ret;
+			goto bail;
 		}
 	}
-
+bail:
+	delete(pSendBuffer);
 	return ret;
 }
 
 void ConfigureScenario(int testConfiguration)
+{
+	ConfigureScenario(testConfiguration, NULL);
+}
+
+void ConfigureScenario(int testConfiguration, const char* params)
 {
 	int fd, ret;
 	char str[10];
@@ -353,7 +380,7 @@ void ConfigureScenario(int testConfiguration)
 	// Start system configuration.
 	g_Logger.AddMessage(LOG_DEVELOPMENT,"%s Setting system to the required configuration (%d)\n", __FUNCTION__, testConfiguration);
 
-	ret = ConfigureSystem(testConfiguration, fd);
+	ret = ConfigureSystem(testConfiguration, fd, params);
 	if (ret < 0) {
 		g_Logger.AddMessage(LOG_ERROR ,"%s configure operation failed.\n",
 				__FUNCTION__);

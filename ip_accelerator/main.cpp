@@ -47,7 +47,7 @@ string sFormat = "ip_accelerator <control_flag> <suit/name>, ..., <suit/name>\n"
 							"ip_accelerator " SHOW_SUIT_FLAG  "\n"
 							"or ip_accelerator --chooser "
 							"for menu chooser interface";
-#define MAX_SUITES 13
+#define MAX_SUITES 15
 
 TestManager *testmanager = TestManager::GetInstance();
 

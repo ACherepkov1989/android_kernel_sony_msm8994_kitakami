@@ -34,6 +34,7 @@
 
 bool InterfaceAbstraction::Open(const char * toIPAPath, const char * fromIPAPath)
 {
+	int tries_cnt = 10;
 	if (NULL == toIPAPath && NULL == fromIPAPath)
 	{
 		printf("InterfaceAbstraction constructor got 2 null arguments.\n");
@@ -41,7 +42,15 @@ bool InterfaceAbstraction::Open(const char * toIPAPath, const char * fromIPAPath
 	}
 
 	if (NULL != toIPAPath) {
-		m_toIPADescriptor = open(toIPAPath, O_WRONLY);
+		while (tries_cnt > 0) {
+			// Sleep for 5 msec
+			usleep(5000);
+			m_toIPADescriptor = open(toIPAPath, O_WRONLY);
+			if (-1 != m_toIPADescriptor)
+				break;
+			tries_cnt--;
+		}
+		printf("open retries_cnt=%d\n", 10-tries_cnt);
 		if (-1 == m_toIPADescriptor) {
 			printf("InterfaceAbstraction failed while opening %s.\n", toIPAPath);
 			exit(0);
@@ -49,9 +58,17 @@ bool InterfaceAbstraction::Open(const char * toIPAPath, const char * fromIPAPath
 		m_toChannelName = toIPAPath;
 		printf("%s device node opened, fd = %d.\n", toIPAPath, m_toIPADescriptor);
 	}
-
+	tries_cnt = 10;
 	if (NULL != fromIPAPath) {
-		m_fromIPADescriptor = open(fromIPAPath, O_RDONLY);
+		while (tries_cnt > 0) {
+			// Sleep for 5 msec
+			usleep(5000);
+			m_fromIPADescriptor = open(fromIPAPath, O_RDONLY);
+			if (-1 != m_fromIPADescriptor)
+				break;
+			tries_cnt--;
+		}
+		printf("open retries_cnt=%d\n", 10-tries_cnt);
 		if (-1 == m_fromIPADescriptor)
 		{
 			printf("InterfaceAbstraction failed on opening %s.\n", fromIPAPath);

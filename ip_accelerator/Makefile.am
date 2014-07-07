@@ -55,4 +55,6 @@ ip_accelerator_SOURCES =\
 		RNDISAggregationTests.cpp \
 		DataPathTestFixture.cpp \
 		DataPathTests.cpp \
+		IPAInterruptsTestFixture.cpp \
+		IPAInterruptsTests.cpp \
 		main.cpp
