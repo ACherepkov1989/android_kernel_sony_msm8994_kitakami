@@ -528,7 +528,7 @@ void Pipe::SetSpecificClientParameters(
 		  m_pHeader             = m_pUsbHeader;
 		  LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
 		  break;
-	   case (IPA_CLIENT_Q6_LAN_PROD):
+	   case (IPA_CLIENT_TEST3_PROD):
 		   m_pInodePath          = CONFIG_17_TO_IPA_NO_HDR;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);

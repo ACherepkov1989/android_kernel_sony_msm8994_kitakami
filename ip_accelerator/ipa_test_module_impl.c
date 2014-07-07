@@ -3719,7 +3719,7 @@ int configure_system_17(void)
 	res = connect_bamdma_to_ipa(
 			&to_ipa_devs[1]->dma_ep,
 			&ipa_ep_cfg,
-			IPA_CLIENT_Q6_LAN_PROD,
+			IPA_CLIENT_TEST3_PROD,
 			NULL, NULL);
 	if (res)
 		goto fail;
@@ -3732,7 +3732,7 @@ int configure_system_17(void)
 		goto fail;
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = IPA_CLIENT_Q6_LAN_PROD;
+	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
