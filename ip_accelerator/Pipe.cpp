@@ -62,10 +62,18 @@ Pipe::~Pipe() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Pipe::Init() {
+	int tries_cnt = 10;
 	SetSpecificClientParameters(m_nClientType, m_eConfiguration);
 	//By examining the Client type we will map the inode device name
-	m_Fd = open(m_pInodePath, O_RDWR);
-
+	while (tries_cnt > 0) {
+		// Sleep for 5 msec
+		usleep(5000);
+		m_Fd = open(m_pInodePath, O_RDWR);
+		if (-1 != m_Fd)
+			break;
+		tries_cnt--;
+	}
+	LOG_MSG_DEBUG("open retries_cnt=%d\n", 10-tries_cnt);
 	if (-1 == m_Fd) {
 		LOG_MSG_ERROR("Failed to open %s", m_pInodePath);
 		return false;
@@ -609,10 +617,33 @@ void Pipe::SetSpecificClientParameters(
 			break;
 		}
 		break;
-	default:
-		LOG_MSG_ERROR("Pipe::SetSpecificClientParameters "
-		"switch in default eConfiguration = %d ", eConfiguration);
+	case IPA_TEST_CONFIGURATION_19:
+		switch (nClientType)
+		{
+		case (IPA_CLIENT_TEST_PROD):
+			m_pInodePath = CONFIG_19_FROM_USB_TO_IPA_DMA;
+			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
+			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
+			m_pHeader = m_pUsbHeader;
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_PROD ");
+			break;
+		case (IPA_CLIENT_TEST_CONS):
+			m_pInodePath = CONFIG_19_FROM_IPA_TO_USB_DMA;
+			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
+			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
+			m_pHeader = m_pUsbHeader;
+			LOG_MSG_INFO("Setting parameters for TEST_CONS");
+			break;
+		default:
+			LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_19 switch in default "
+			"nClientType = %d is not supported ", nClientType);
+			break;
+		}
 		break;
+	default:
+	LOG_MSG_ERROR("Pipe::SetSpecificClientParameters "
+	"switch in default eConfiguration = %d ", eConfiguration);
+	break;
 	}
 }/* Pipe::SetSpecificClientParameters() */
 

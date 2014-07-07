@@ -29,6 +29,7 @@
 #include <linux/skbuff.h>	/* sk_buff */
 #include <linux/kfifo.h>  /* Kernel FIFO Implementation */
 #include <linux/delay.h> /* msleep() */
+#include <linux/string.h>
 #include "ipa_rm_ut.h"
 
 #ifndef IPA_ON_R3PC
@@ -197,6 +198,14 @@ struct test_context {
 	s32 current_configuration_idx;
 
 	u32 signature;/*Legacy*/
+};
+
+/**
+ * struct ipa_tx_suspend_private_data - private data for IPA_TX_SUSPEND_IRQ use
+ * @clnt_hdl: client handle assigned by IPA
+ */
+struct ipa_tx_suspend_private_data {
+	u32 clnt_hdl;
 };
 
 static struct test_context *ipa_test;
@@ -3811,6 +3820,102 @@ fail:
 	return res;
 }
 
+
+void suspend_handler(enum ipa_irq_type interrupt,
+				void *private_data,
+				void *interrupt_data)
+{
+	u32 suspend_data;
+	u32 clnt_hdl;
+	struct ipa_ep_cfg_ctrl ipa_to_usb_ep_cfg_ctrl;
+	int res;
+
+	suspend_data =
+		((struct ipa_tx_suspend_irq_data *)interrupt_data)->endpoints;
+	clnt_hdl =
+		((struct ipa_tx_suspend_private_data *)private_data)->clnt_hdl;
+
+	pr_debug("in suspend handler: interrupt=%d, private_data=%d, interrupt_data=%d\n",
+			 interrupt, clnt_hdl, suspend_data);
+
+	pr_debug("Enabling back data path for IPA_CLIENT_USB_CONS\n");
+	memset(&ipa_to_usb_ep_cfg_ctrl, 0 , sizeof(struct ipa_ep_cfg_ctrl));
+	ipa_to_usb_ep_cfg_ctrl.ipa_ep_suspend = false;
+
+	res = ipa_cfg_ep_ctrl(clnt_hdl, &ipa_to_usb_ep_cfg_ctrl);
+	if (res)
+		pr_err("failed enabling back data path for IPA_CLIENT_USB_CONS\n");
+
+	pr_debug("remove suspend interrupt handler:\n");
+	res = ipa_remove_interrupt_handler(IPA_TX_SUSPEND_IRQ);
+
+	if (res)
+		pr_err("remove handler for suspend interrupt failed\n");
+
+	kfree(private_data);
+}
+/*
+ * Configures the system as follows:
+ * This configuration is for one input pipe and one output pipe
+ * where both are USB1
+ * /dev/to_ipa_0 -> MEM -> BAM-DMA -> IPA -> BAM-DMA-> MEM -> /dev/from_ipa_0
+ * Those clients will be configured in DMA mode thus no Header removal/insertion
+ * will be made on their data.
+ * Then disable USB_CONS EP for creating the suspend interrupt and register
+ * a handler for it.
+*/
+int configure_system_19(char **params)
+{
+	struct ipa_ep_cfg_ctrl ipa_to_usb_ep_cfg_ctrl;
+	struct ipa_tx_suspend_private_data *suspend_priv_data = NULL;
+	int res;
+	s32 defer_work;
+
+	res = configure_system_1();
+	if (res) {
+		pr_err("configure system (19) failed\n");
+		goto fail;
+	}
+
+	memset(&ipa_to_usb_ep_cfg_ctrl, 0 , sizeof(struct ipa_ep_cfg_ctrl));
+	ipa_to_usb_ep_cfg_ctrl.ipa_ep_suspend = true;
+
+	res = ipa_cfg_ep_ctrl(from_ipa_devs[0]->dma_ep.clnt_hdl,
+			&ipa_to_usb_ep_cfg_ctrl);
+	if (res) {
+		pr_err("end-point ctrl register configuration failed\n");
+		goto fail;
+	}
+	pr_debug("end-point ctrl register configured successfully (ipa_ep_suspend = true)\n");
+
+	res = kstrtos32(params[1], 10, (s32 *)&defer_work);
+	if (res) {
+		pr_err(DRV_NAME ":kstrtos32() failed. can't convert defer param\n");
+		res = -EFAULT;
+		goto fail;
+	}
+	suspend_priv_data =
+			kzalloc(sizeof(*suspend_priv_data), GFP_ATOMIC);
+	if (!suspend_priv_data) {
+		pr_err("failed allocating suspend_priv_data\n");
+		res = -ENOMEM;
+		goto fail;
+	}
+	suspend_priv_data->clnt_hdl = from_ipa_devs[0]->dma_ep.clnt_hdl;
+	res = ipa_add_interrupt_handler(IPA_TX_SUSPEND_IRQ, suspend_handler,
+			(bool)defer_work, (void *)suspend_priv_data);
+	if (res) {
+		pr_err("register handler for suspend interrupt failed\n");
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+
+	return res;
+}
+
 int configure_system_18(void)
 {
 	int res = 0;
@@ -3927,6 +4032,7 @@ fail:
 	/* cleanup and tear down goes here */
 	return res;
 }
+
 
 /**
  * Read File.
@@ -5087,6 +5193,40 @@ fail:
 }
 
 
+static char **str_split(char *str, const char *delim)
+{
+	char **res = NULL;
+	char **tmp = NULL;
+	char *p = strsep(&str, delim);
+	int n_spaces = 0;
+
+	/* split string and append tokens to 'res' */
+	while (p) {
+		tmp = krealloc(res, sizeof(char *) * ++n_spaces, GFP_KERNEL);
+
+		if (tmp == NULL) {
+			pr_err("krealloc failed\n");
+			goto fail; /* memory allocation failed */
+		}
+
+		res = tmp;
+		res[n_spaces-1] = p;
+		p = strsep(&str, delim);
+	}
+	/* realloc one extra element for the last NULL */
+	tmp = krealloc(res, sizeof(char *) * (n_spaces+1), GFP_KERNEL);
+	if (tmp == NULL) {
+		pr_err("krealloc failed\n");
+		goto fail; /* memory allocation failed */
+	}
+	res = tmp;
+	res[n_spaces] = 0;
+	return res;
+fail:
+	kfree(res);
+	return res;
+}
+
 /**
  * Write File.
  *
@@ -5100,24 +5240,34 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 	int index;
 
 	unsigned long missing;
-	static char str[10];
+	char *str;
+	char **params;
 
-	pr_debug(DRV_NAME ":Entering %s\n", __func__);
-	if (sizeof(str) < size-1) {
-		pr_err(DRV_NAME ":Input string too long.\n");
+	str = kzalloc(size+1, GFP_KERNEL);
+	if (str == NULL) {
+		pr_err(DRV_NAME ":kzalloc err.\n");
+		return -ENOMEM;
+	}
+
+	missing = copy_from_user(str, buf, size);
+	if (missing) {
+		kfree(str);
+		return -EFAULT;
+	}
+	pr_debug("ipa_test_write: input string= %s\n", str);
+	str[size] = '\0';
+
+	params = str_split(str, " ");
+	if (params == NULL) {
+		kfree(str);
 		return -EFAULT;
 	}
 
-	memset(str, 0, sizeof(str));
-	missing = copy_from_user(str, buf, size);
-	if (missing)
-		return -EFAULT;
-
-	str[size] = '\0';
-	ret = kstrtos32(str, 10, (s32 *)&ipa_test->configuration_idx);
+	ret = kstrtos32(params[0], 10, (s32 *)&ipa_test->configuration_idx);
 	if (ret) {
 		pr_err(DRV_NAME ":kstrtoul() failed.\n");
-		return -EFAULT;
+		ret = -EFAULT;
+		goto bail;
 	}
 
 	pr_debug(DRV_NAME ":Invoking configuration %d.\n",
@@ -5128,7 +5278,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 	dma_bam_hdl = sps_dma_get_bam_handle();
 	if (dma_bam_hdl == 0) {
 		pr_err(DRV_NAME ":fail to get DMA BAM handle\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto bail;
 	}
 	pr_debug(DRV_NAME ":DMA BAM hdl 0x%lx -----\n", dma_bam_hdl);
 #endif
@@ -5145,7 +5296,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				&to_ipa_devs[index], TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->tx_channels[ipa_test->num_tx_channels++] =
 					to_ipa_devs[index];
@@ -5155,7 +5307,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 			rx_channels[ipa_test->num_rx_channels++] =
@@ -5164,7 +5317,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_0();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5176,7 +5330,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				&to_ipa_devs[index], TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 			tx_channels[ipa_test->num_tx_channels++] =
@@ -5189,7 +5344,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->rx_channels[ipa_test->num_rx_channels++] =
 				from_ipa_devs[index];
@@ -5199,7 +5355,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_1();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5210,7 +5367,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5221,7 +5379,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5234,7 +5393,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5246,7 +5406,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5255,7 +5416,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_2();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5268,7 +5430,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 						TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->tx_channels[ipa_test->num_tx_channels++] =
 				to_ipa_devs[index];
@@ -5279,7 +5442,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 						RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5292,7 +5456,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 						RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5305,7 +5470,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 						RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5314,7 +5480,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_3();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5325,7 +5492,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5336,7 +5504,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5348,7 +5517,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5360,7 +5530,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5369,7 +5540,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_5();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5380,7 +5552,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5391,7 +5564,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5400,7 +5574,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_6();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5411,7 +5586,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5422,7 +5598,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5434,7 +5611,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5446,7 +5624,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5455,7 +5634,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_7();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5466,7 +5646,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5478,7 +5659,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5490,7 +5672,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5502,7 +5685,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5514,7 +5698,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5526,7 +5711,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5538,7 +5724,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5547,7 +5734,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_8();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5558,7 +5746,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5570,7 +5759,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5582,7 +5772,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5594,7 +5785,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5606,7 +5798,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5618,7 +5811,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5630,7 +5824,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5639,7 +5834,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_9();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5650,7 +5846,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5662,7 +5859,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5671,7 +5869,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_10();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5682,7 +5881,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5694,7 +5894,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5706,7 +5907,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5718,7 +5920,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5730,7 +5933,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5742,7 +5946,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5751,7 +5956,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_11();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5762,7 +5968,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5774,7 +5981,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5786,7 +5994,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5798,7 +6007,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5810,7 +6020,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5822,7 +6033,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5831,7 +6043,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_12();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5844,20 +6057,20 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				&ipa_rm_notify_completion);
 		if (ret) {
 			pr_err("build_rmnet_bridge_use_case_graph FAILED\n");
-			return ret;
+			goto bail;
 		}
 		ret = build_rmnet_bridge_use_case_dependencies
 				(&ipa_rm_add_dependency);
 		if (ret) {
 			pr_err("build_rmnet_bridge_use_case_dependencies FAILED\n");
-			return ret;
+			goto bail;
 		}
 		ret = request_release_resource_sequence(
 				&ipa_rm_request_resource,
 					&ipa_rm_release_resource);
 		if (ret) {
 			pr_err("request_release_resource_sequence FAILED\n");
-			return ret;
+			goto bail;
 		}
 		clean_ut();
 		pr_err("IPA RM ::EXIT UT\n");
@@ -5869,7 +6082,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					&to_ipa_devs[index], TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5880,7 +6094,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				&to_ipa_devs[index], TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5892,7 +6107,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				&from_ipa_devs[index], RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5903,7 +6119,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					&from_ipa_devs[index], RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5914,7 +6131,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					&from_ipa_devs[index], RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5925,7 +6143,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 						&from_ipa_devs[index], RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5933,7 +6152,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		configure_system_14();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5943,7 +6163,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					&to_ipa_devs[index], TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 			tx_channels[ipa_test->num_tx_channels++] =
@@ -5952,7 +6173,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					&from_ipa_devs[index], RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5961,7 +6183,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_15();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -5971,7 +6194,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 					&to_ipa_devs[index], TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				tx_channels[ipa_test->num_tx_channels++] =
@@ -5981,7 +6205,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				&from_ipa_devs[index], RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 				rx_channels[ipa_test->num_rx_channels++] =
@@ -5990,7 +6215,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		ret = configure_system_16();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
 
@@ -6003,7 +6229,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 				TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 			tx_channels[ipa_test->num_tx_channels++] =
@@ -6018,7 +6245,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 			tx_channels[ipa_test->num_tx_channels++] =
@@ -6033,7 +6261,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test
 		->tx_channels[ipa_test->num_tx_channels++] =
@@ -6048,7 +6277,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 		rx_channels[ipa_test->num_rx_channels++] =
@@ -6063,7 +6293,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 		rx_channels[ipa_test->num_rx_channels++] =
@@ -6078,7 +6309,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 		rx_channels[ipa_test->num_rx_channels++] =
@@ -6093,7 +6325,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":Channel device creation error.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		ipa_test->
 		rx_channels[ipa_test->num_rx_channels++] =
@@ -6103,10 +6336,10 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		if (ret) {
 			pr_err(DRV_NAME
 					":System configuration failed.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto bail;
 		}
 		break;
-
 	case 18:
 		index = 0;
 		ret = create_channel_device(index, "to_ipa",
@@ -6149,6 +6382,45 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		}
 		break;
 
+	case 19:
+		index = 0;
+		/*Create the device on user space and allocate
+		 * buffers for its BAM connection*/
+		ret = create_channel_device(index, "to_ipa",
+				&to_ipa_devs[index], TX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->
+			tx_channels[ipa_test->num_tx_channels++] =
+					to_ipa_devs[index];
+
+		/*Create the device on user space and allocate
+		 *  buffers for its BAM connection*/
+		ret = create_channel_device(index, "from_ipa",
+						&from_ipa_devs[index],
+					    RX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->rx_channels[ipa_test->num_rx_channels++] =
+				from_ipa_devs[index];
+
+		/*Make all the configurations required
+		 * (SPS connects and IPA connect)*/
+		ret = configure_system_19(params);
+		if (ret) {
+			pr_err(DRV_NAME ":System configuration failed.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		break;
+
+
 	default:
 		pr_err("Unsupported configuration index.\n");
 		break;
@@ -6160,7 +6432,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		pr_debug(DRV_NAME
 				":%s() Descriptor insertion into rx "
 				"endpoints failed.\n", __func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto bail;
 	}
 
 	pr_debug(DRV_NAME ":System configured !\n");
@@ -6169,7 +6442,12 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 	ipa_test->current_configuration_idx
 			= ipa_test->configuration_idx;
 
-	return size;
+	ret = size;
+
+bail:
+	kfree(params);
+	kfree(str);
+	return ret;
 }
 
 static ssize_t ipa_test_read(
