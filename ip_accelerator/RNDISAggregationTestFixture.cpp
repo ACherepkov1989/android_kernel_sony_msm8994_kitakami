@@ -47,7 +47,7 @@ Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAggTime(IPA_CLIENT_TEST_CONS,
 							     IPA_TEST_CONFIGURATION_17);
 Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAggPktLimit(IPA_CLIENT_TEST4_CONS,
 								IPA_TEST_CONFIGURATION_17);
-Pipe RNDISAggregationTestFixture::m_HsicToIpaPipe(IPA_CLIENT_Q6_LAN_PROD,
+Pipe RNDISAggregationTestFixture::m_HsicToIpaPipe(IPA_CLIENT_TEST3_PROD,
 							   IPA_TEST_CONFIGURATION_17);
 
 RoutingDriverWrapper RNDISAggregationTestFixture::m_Routing;
@@ -321,7 +321,7 @@ bool RNDISAggregationTestFixture::AddRulesAggTimeLimit() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_Q6_LAN_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -427,7 +427,7 @@ bool RNDISAggregationTestFixture::AddRulesAggByteLimit() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_Q6_LAN_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -533,7 +533,7 @@ bool RNDISAggregationTestFixture::AddRulesAggPacketLimit() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_Q6_LAN_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, true, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1

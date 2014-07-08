@@ -133,13 +133,20 @@
  *-----USB4--->[IPA DMA]----USB2_CONS (RNDIS aggregation time limit)--->
  *----------------------------------------------------------------------
  */
-
 #define PHASE_SEVENTEEN_TEST_CONFIGURATION    17
 
 /*
  * Data path test
  */
 #define PHASE_EIGHTEEN_TEST_CONFIGURATION 18
+
+/*----------------------------------------------------------------------
+ *Configuration 19 (see configure_system_19 )
+ *-----USB_PROD--->[IPA DMA]----USB_CONS--->
+ *-----suspend [IPA DMA]----USB_CONS (for testing suspend interrupt)--->
+ *----------------------------------------------------------------------
+ */
+#define PHASE_NINETEEN_TEST_CONFIGURATION 19
 
 enum IPATestConfiguration {
 	IPA_TEST_CONFIFURATION_0 = PRE_PHASE_ZERO_TEST_CONFIGURATION,
@@ -156,6 +163,7 @@ enum IPATestConfiguration {
 	IPA_TEST_CONFIGURATION_12 = PHASE_TWELVE_TEST_CONFIGURATION,
 	IPA_TEST_CONFIGURATION_17 = PHASE_SEVENTEEN_TEST_CONFIGURATION,
 	IPA_TEST_CONFIGURATION_18 = PHASE_EIGHTEEN_TEST_CONFIGURATION,
+	IPA_TEST_CONFIGURATION_19 = PHASE_NINETEEN_TEST_CONFIGURATION,
 };
 #define CONFIGURATION_NODE_PATH "/dev/ipa_test"
 
@@ -328,7 +336,6 @@ enum IPATestConfiguration {
 #define CONFIG_17_FROM_IPA_AGG_TIME		"/dev/from_ipa_2"
 #define CONFIG_17_FROM_IPA_ZERO_LIMITS	"/dev/from_ipa_3"
 
-
 /*----------------------------------------------------------------------
  *Configuration 18 (see configure_system_18 )---------------------------
  *-----USB_PROD----->[IPA]--------------->USB_CONS--------->A5----------
@@ -336,11 +343,17 @@ enum IPATestConfiguration {
  *-----user space and kernel space in the IPA driver--------------------
  *----------------------------------------------------------------------
  */
-
-#define CONFIG_18_TO_IPA			"/dev/to_ipa_0"
+#define CONFIG_18_TO_IPA				"/dev/to_ipa_0"
 #define CONFIG_18_DUMMY_ENDPOINT		"/dev/to_ipa_1"
 #define CONFIG_18_FROM_IPA			"/dev/from_ipa_0"
 
+/*----------------------------------------------------------------------
+ *Configuration 19 (see configure_system_19 )
+ *-----USB_PROD--->[IPA DMA]----USB_CONS--->
+ *----------------------------------------------------------------------
+ */
+#define CONFIG_19_FROM_USB_TO_IPA_DMA		"/dev/to_ipa_0"
+#define CONFIG_19_FROM_IPA_TO_USB_DMA		"/dev/from_ipa_0"
 
 /*File that are being used by the test applicaiton:*/
 

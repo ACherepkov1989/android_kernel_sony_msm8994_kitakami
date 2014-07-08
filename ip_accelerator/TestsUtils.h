@@ -45,7 +45,7 @@ using namespace std;
 
 #define Free(x) do { if (x) {free(x); x = NULL; } } while (0)
 
-enum msgType {ERROR = 0, DEBUG, INFO, STACK} ;
+enum msgType {ERROR = 0, DEBUG, INFO, STACK};
 
 /**
 	@brief
@@ -162,6 +162,7 @@ bool CreateBypassRoutingTable(
 		configurations.
 
 		@param [in] testConfiguration - Configuration number
+		@param [in] params - additional parameters
 	@return void
 
 	@details
@@ -169,6 +170,11 @@ bool CreateBypassRoutingTable(
 		the system has already been configured, returns.
 */
 void ConfigureScenario(int testConfiguration);
+void ConfigureScenario(int testConfiguration, const char *params);
+
+
+int ConfigureSystem(int testConfiguration, int fd);
+int ConfigureSystem(int testConfiguration, int fd, const char *params);
 
 /**
 	@brief

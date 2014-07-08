@@ -29,9 +29,14 @@
 
 echo "Greetings IP accelerator user!"
 
-ipa_test_module_path=(/system/lib/modules /kernel-tests/modules/lib/modules/`uname -r`/extra/)
+ipa_test_module_path=\
+"
+	/system/lib/modules \
+	/kernel-tests/modules/lib/modules/`uname -r`/extra/ \
+	/usr/kernel-tests/modules/lib/modules/`uname -r`/extra/ \
+"
 
-for p in ${ipa_test_module_path[@]}; do
+for p in ${ipa_test_module_path}; do
 	if [ -d $p ]; then
 		modpath=$p
 		break
