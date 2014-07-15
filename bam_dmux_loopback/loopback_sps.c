@@ -55,8 +55,7 @@ struct reg_event_work_struct {
 };
 static void reg_event_cb_handler(struct work_struct *work);
 
-static struct tasklet_struct *fill_bam_rx_tasklet;
-static int fill_bam_rx_tasklet_init(void);
+static struct tasklet_struct fill_bam_rx_tasklet;
 static void fill_bam_rx_handler(unsigned long data);
 
 /**
@@ -749,7 +748,7 @@ int mock_sps_transfer_one(struct sps_pipe *h, phys_addr_t addr, u32 size,
 	spin_unlock_irqrestore(&(ctx->list_lock), lock_flags);
 	a2_to_bam_pipe = ctx;
 
-	tasklet_schedule(fill_bam_rx_tasklet);
+	tasklet_schedule(&fill_bam_rx_tasklet);
 	return 0;
 }
 
@@ -824,7 +823,7 @@ int mock_sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num)
  */
 void mock_sps_rewrite_notify(void)
 {
-	tasklet_schedule(fill_bam_rx_tasklet);
+	tasklet_schedule(&fill_bam_rx_tasklet);
 }
 
 /**
@@ -841,25 +840,6 @@ static int reg_event_cb_wq_init(void)
 		MOCK_SPS_LOG("%s: workqueue creation failed\n", __func__);
 		ret = -EFAULT;
 	}
-
-	return ret;
-}
-
-/**
- * fill_bam_rx_tasklet_init() - initializes the tasklet which places packets
- * from the mock a2 to the queued receive buffers of bam dmux
- */
-static int fill_bam_rx_tasklet_init(void)
-{
-	int ret = 0;
-
-	fill_bam_rx_tasklet = kmalloc(sizeof(struct tasklet_struct),
-			GFP_KERNEL);
-	if (!fill_bam_rx_tasklet) {
-		MOCK_SPS_LOG("%s: workqueue creation failed\n", __func__);
-		ret = -ENOMEM;
-	}
-	tasklet_init(fill_bam_rx_tasklet, &fill_bam_rx_handler, 0);
 
 	return ret;
 }
@@ -885,12 +865,7 @@ int mock_sps_init(void)
 		return ret;
 	}
 
-	ret = fill_bam_rx_tasklet_init();
-	if (ret) {
-		pr_err("%s: fill_bam_rx_tasklet_init failed:%d\n", __func__,
-				ret);
-		return ret;
-	}
+	tasklet_init(&fill_bam_rx_tasklet, fill_bam_rx_handler, 0);
 
 	tx_cmd_done_wq = create_workqueue(
 			"tx_cmd_done_wq");
