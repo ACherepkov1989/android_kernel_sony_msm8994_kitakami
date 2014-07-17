@@ -296,10 +296,6 @@ static void mock_a2_rx_tasklet_handler(unsigned long data)
 
 		entry = list_entry(pos, struct rx_list_entry,
 				list_entry);
-		if (entry == NULL) {
-			MOCK_A2_LOG("%s: entry null\n", __func__);
-			continue;
-		}
 		list_del(pos);
 		info = entry->info;
 		if (info == NULL) {
