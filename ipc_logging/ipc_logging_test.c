@@ -455,11 +455,12 @@ static void ipc_logging_ut_nd_read(struct seq_file *s)
 	int read_size;
 	char *data;
 	char expected[128];
-	void *ctx;
+	void *ctx = NULL;
 
 	seq_printf(s, "Running %s\n", __func__);
 	data = kzalloc(MAX_MSG_DECODED_SIZE, GFP_KERNEL);
 	do {
+		UT_ASSERT_PTR(data, !=, NULL);
 		ctx = ipc_log_context_create(num_pages,
 			"ipc_logging_ut_nd_read", 0);
 		UT_ASSERT_PTR(ctx, !=, NULL);
