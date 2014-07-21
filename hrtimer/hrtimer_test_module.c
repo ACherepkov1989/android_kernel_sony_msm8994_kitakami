@@ -223,9 +223,11 @@ static int hrtimer_test_start(void)
 	}
 
 	for_each_present_cpu(cpu) {
+#ifdef CONFIG_HOTPLUG_CPU
 		/*Initial to bring all cpu cores online. It is to create thread for each CPU core and wait up afterwards.*/
 		if (!cpu_online(cpu))
 			cpu_up(cpu);
+#endif
 
 		snprintf(thread_str, sizeof(thread_str), "hrtimer_thread%d", cpu);
 		k[cpu] = kthread_create(&hrtimer_test_handler, (void *)init_delay_ms,thread_str);

@@ -1,13 +1,12 @@
 hrtimerdir			= $(prefix)/hrtimer
-hrtimer_PROGRAMS		= hrtimer_test_module
-hrtimer_test_SOURCES	= hrtimer_test_module.c
-msm_iontest_CFLAGS	= -Werror
+hrtimer_CFLAGS	= -Werror
 dist_hrtimer_SCRIPTS	= hrtimer_test.sh run.sh
 
 
 KERNEL_FLAGS ?= ARCH=arm
 
 module = hrtimer_test_module.ko
+hrtimer_test_module.ko: hrtimer_test_module.c
 kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
 $(module):
@@ -18,7 +17,7 @@ all-local: $(module)
 install-exec-local: $(module)
 	$(kmake) INSTALL_MOD_PATH=$(DESTDIR)$(prefix)/modules modules_install
 
-dist_ion_DATA		= README.txt $(module)
+dist_hrtimer_DATA		= README.txt $(module)
 
 # "make distclean" will always run clean-local in this directory,
 # regardless of the KERNELMODULES conditional. Therefore, ensure

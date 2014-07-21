@@ -103,6 +103,9 @@ ENABLE_KERNEL_TEST([ip_accelerator],[include the ip_accelerator test (default=ye
 # bam_dmux_loopback
 ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (default=yes)])
 
+# hrtimer
+ENABLE_KERNEL_TEST([hrtimer],[include the hrtimer test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -119,5 +122,6 @@ AC_CONFIG_FILES([
 	v4l2apps/Makefile
 	watchdog/Makefile
 	ip_accelerator/Makefile
+	hrtimer/Makefile
 	])
 AC_OUTPUT
