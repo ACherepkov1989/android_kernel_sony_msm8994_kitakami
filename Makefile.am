@@ -45,6 +45,9 @@ endif
 if USEHRTIMER
 BUILD_TEST += hrtimer
 endif
+if USESWP
+BUILD_TEST += swp
+endif
 
 SUBDIRS = $(BUILD_TEST)
 
