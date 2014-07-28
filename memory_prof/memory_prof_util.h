@@ -104,9 +104,16 @@ bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
 			errx(1, "Couldn't convert %s to a number. %s:%d", word, file, line); \
 	} while(0)
 
+#define _STRDUP(dst, src, file, line) do {			\
+	dst = strdup(src);				\
+	if (!dst)								\
+		err(1, "Couldn't duplicate string %s. %s:%d", src, file, line);	\
+	} while(0)
+
 #define MALLOC(ptr_type, ptr, size) _MALLOC(ptr_type, ptr, size, __FILE__, __LINE__)
 #define REALLOC(ptr_type, ptr, size) _REALLOC(ptr_type, ptr, size, __FILE__, __LINE__)
 #define STRTOL(var, word, base) _STRTOL(var, word, base, __FILE__, __LINE__)
+#define STRDUP(dst, src) _STRDUP(dst, src, __FILE__, __LINE__)
 /*
  * strncpy is considered "unsafe" and strlcpy doesn't exist on all
  * systems (notably glibc-based ones). Here's a strncpy that
