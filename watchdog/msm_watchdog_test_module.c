@@ -186,7 +186,8 @@ static void sec_wdog_bite_work(struct work_struct *work)
 	bring_other_cpus_down();
 
 	rc = of_machine_is_compatible("qcom,msm8916") ||
-				of_machine_is_compatible("qcom,msm8939");
+				of_machine_is_compatible("qcom,msm8939") ||
+				of_machine_is_compatible("qcom,msm8909");
 	if (rc)
 		sec_wdog_virt = ioremap(REG_MPM2_8916_WDOG_BASE, SZ_4K);
 	else
