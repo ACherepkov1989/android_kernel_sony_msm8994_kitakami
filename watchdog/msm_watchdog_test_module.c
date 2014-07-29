@@ -101,7 +101,7 @@ static void cpu_cntx_work(struct work_struct *work)
 
 static void apps_wdog_bark_cntxt_work(struct work_struct *work)
 {
-	int cpu = 0;
+	int cpu = 0, i;
 	struct work_struct **workq;
 	int online_cpus = num_online_cpus();
 	if (online_cpus != num_present_cpus()) {
@@ -110,11 +110,21 @@ static void apps_wdog_bark_cntxt_work(struct work_struct *work)
 	}
 	workq = kmalloc(sizeof(struct work_struct *) * (online_cpus - 1),
 			GFP_KERNEL);
+
+	if (!workq)
+		goto out;
+
 	for_each_online_cpu(cpu) {
 		if (cpu == 0)
 			continue;
 		workq[cpu - 1] = kmalloc(sizeof(struct work_struct),
 					 GFP_KERNEL);
+		if (!workq[cpu - 1]) {
+			for(i = 1; i < cpu; i++)
+				kfree(workq[i - 1]);
+			kfree(workq);
+			goto out;
+		}
 		if (cpu == 1)
 			INIT_WORK(workq[cpu - 1], keep_looping_2);
 		else
