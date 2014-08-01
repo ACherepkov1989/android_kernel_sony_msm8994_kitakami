@@ -106,6 +106,9 @@ ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (defa
 # hrtimer
 ENABLE_KERNEL_TEST([hrtimer],[include the hrtimer test (default=yes)])
 
+#swp
+ENABLE_KERNEL_TEST([swp],[include the swp test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -123,5 +126,6 @@ AC_CONFIG_FILES([
 	watchdog/Makefile
 	ip_accelerator/Makefile
 	hrtimer/Makefile
+	swp/Makefile
 	])
 AC_OUTPUT
