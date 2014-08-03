@@ -355,6 +355,18 @@ enum IPATestConfiguration {
 #define CONFIG_19_FROM_USB_TO_IPA_DMA		"/dev/to_ipa_0"
 #define CONFIG_19_FROM_IPA_TO_USB_DMA		"/dev/from_ipa_0"
 
+enum ipv6_ext_hdr_type {
+	HOP_BY_HOP_OPT	= 0,
+	DEST_OPT	= 60,
+	ROUTING         = 43,
+	FRAGMENT	= 44,
+	AH		= 51,
+	ESP		= 50,
+	DEST_OPT_UL	= 60,
+	Mobility	= 135,
+	NONE		= 59
+};
+
 /*File that are being used by the test applicaiton:*/
 
 #define IPV4_FILE_PATH				"Input/IPV4_3"
