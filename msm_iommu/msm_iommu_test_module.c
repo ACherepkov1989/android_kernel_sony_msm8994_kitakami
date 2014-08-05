@@ -27,6 +27,7 @@
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <asm/cacheflush.h>
+#include <linux/delay.h>
 
 #include "iommutest.h"
 
@@ -1167,6 +1168,12 @@ static int test_iommu_INT(const struct msm_iommu_test *iommu_test,
 
 	ret = wait_for_completion_timeout(&int_data.comp,
 					  msecs_to_jiffies(5000));
+	/*
+	 * Sleep in case the interrupt still needs to handled by other
+	 * context bank fault handlers.
+	 */
+	msleep_interruptible(50);
+
 	if (ret)
 		ret = 0;
 	else
