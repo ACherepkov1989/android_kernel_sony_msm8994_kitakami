@@ -10,6 +10,10 @@ if USEION
 BUILD_TEST += ion
 endif
 
+if USEIPI
+BUILD_TEST += ipi
+endif
+
 if USEIPC_LOGGING
 BUILD_TEST += ipc_logging
 endif
