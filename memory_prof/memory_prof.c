@@ -1353,7 +1353,7 @@ int main(int argc, char *argv[])
 			do_heap_profiling = true;
 			break;
 		case 'i':
-			alloc_profile_path = strdup(optarg);
+			STRDUP(alloc_profile_path, optarg);
 			if (strcmp(alloc_profile_path, "-") &&
 				!file_exists(alloc_profile_path))
 				err(1, "Can't read alloc profile file: %s",

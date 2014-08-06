@@ -103,7 +103,7 @@ int parse_size_string_smap(const char * const size_string,
 		STRTOL(*bytes, size_string, 0);
 		return 0;
 	}
-	scopy = strdup(size_string);
+	STRDUP(scopy, size_string);
 	/* chop off the suffix */
 	scopy[strlen(scopy) - strlen(smap->suffix)] = '\0';
 	*size_map = *smap;
@@ -292,7 +292,7 @@ struct alloc_profile_entry *get_alloc_profile(
 		if (!tmp)
 			break;
 
-		buf = strdup(tmp);
+		STRDUP(buf, tmp);
 
 		nwords = split_string(buf, ',', words,
 				MAX_ALLOC_PROFILE_WORD_LEN);
