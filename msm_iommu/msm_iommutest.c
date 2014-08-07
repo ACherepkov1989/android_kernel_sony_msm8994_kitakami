@@ -193,6 +193,7 @@ int do_bfb_test(int iommu_test_fd, struct get_next_cb *gnc,
 		} else {
 			debug(INFO, PRINT_FORMAT ": Testing BFB: SKIPPED! (Setting Missing)\n",
 			     gnc->iommu_name, gnc->cb_name);
+			*skipped = 1;
 			ret = 0;
 		}
 		goto out;
