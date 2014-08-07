@@ -604,7 +604,8 @@ free:
 				perror("couldn't get time of day");
 				goto close_ion;
 			}
-			*free_ms = timeval_ms_diff(tv_after, tv_before);
+			if (free_ms)
+				*free_ms = timeval_ms_diff(tv_after, tv_before);
 		}
 	}
 close_ion:
