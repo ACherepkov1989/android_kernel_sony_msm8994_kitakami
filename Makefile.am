@@ -10,6 +10,10 @@ if USEION
 BUILD_TEST += ion
 endif
 
+if USEIPI
+BUILD_TEST += ipi
+endif
+
 if USEIPC_LOGGING
 BUILD_TEST += ipc_logging
 endif
@@ -31,6 +35,9 @@ BUILD_TEST += msm_iommu
 endif
 if USEBAM_DMUX_LOOPBACK
 BUILD_TEST += bam_dmux_loopback
+endif
+if USEPAGE_NOM
+BUILD_TEST += page-nom
 endif
 endif
 if USESPS

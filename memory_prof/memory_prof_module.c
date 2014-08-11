@@ -76,6 +76,8 @@ static void test_kernel_alloc(const char *tag, gfp_t thegfp,
 
 	pages = kmalloc(npages * sizeof(struct page *),
 				GFP_KERNEL);
+	if(!pages)
+		return;
 
 	snprintf(st1, 200, "before %s%s", tag,
 		transform_page ? " (flush each)" : "");

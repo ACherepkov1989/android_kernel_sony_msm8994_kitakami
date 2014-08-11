@@ -1,12 +1,10 @@
-iommudir		= $(prefix)/msm_iommu
-iommu_PROGRAMS		= msm_iommutest
-msm_iommutest_SOURCES	= msm_iommutest.c
-dist_iommu_SCRIPTS	= iommutest.sh run.sh
-module			= msm_iommu_test_module.ko
-dist_iommu_DATA		= README.txt msm8939_cats.txt msm8916_cats.txt apq8084_lpae_bfb.txt apq8084_bfb.txt msm8974_bfb.txt msm8226_bfb.txt mpq8092_bfb.txt msmsama_bfb.txt msm8994_bfb.txt msm8992_bfb.txt $(module)
+page_nomdir		    = $(prefix)/page-nom
 
 KERNEL_FLAGS ?= ARCH=arm
 
+EXTRA_CFLAGS	= -DDEBUG
+
+module = page-nom.ko
 kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
 $(module):
@@ -23,5 +21,4 @@ install-exec-local: $(module)
 # if there is a problem.
 clean-local:
 	-test ! -d "$(KERNEL_DIR)" || $(kmake) clean
-
 

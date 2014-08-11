@@ -1,12 +1,11 @@
-iommudir		= $(prefix)/msm_iommu
-iommu_PROGRAMS		= msm_iommutest
-msm_iommutest_SOURCES	= msm_iommutest.c
-dist_iommu_SCRIPTS	= iommutest.sh run.sh
-module			= msm_iommu_test_module.ko
-dist_iommu_DATA		= README.txt msm8939_cats.txt msm8916_cats.txt apq8084_lpae_bfb.txt apq8084_bfb.txt msm8974_bfb.txt msm8226_bfb.txt mpq8092_bfb.txt msmsama_bfb.txt msm8994_bfb.txt msm8992_bfb.txt $(module)
+ipidir			= $(prefix)/ipi
+ipi_test_module_CFLAGS	= -Werror
+dist_ipi_SCRIPTS	= ipi_test.sh run.sh
+
 
 KERNEL_FLAGS ?= ARCH=arm
 
+module = ipi_test_module.ko
 kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
 $(module):
@@ -16,6 +15,8 @@ all-local: $(module)
 
 install-exec-local: $(module)
 	$(kmake) INSTALL_MOD_PATH=$(DESTDIR)$(prefix)/modules modules_install
+
+dist_ipi_DATA		= README.txt $(module)
 
 # "make distclean" will always run clean-local in this directory,
 # regardless of the KERNELMODULES conditional. Therefore, ensure

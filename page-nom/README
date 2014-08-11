@@ -1,0 +1,64 @@
+Tool Name
+===========================================================
+page-nom
+
+
+Description
+===========================================================
+page-nom is a memory eater. It can be used to finely allocate large amounts of
+system or vmalloc memory in order to better test applications in low memory
+situations. Memory is allocated in individual blocks of a given size which can
+be tuned. By allocating in chunks it makes it more likely that we can allocate
+as close to the full request as possible and also makes it easy to dynamically
+add and remove blocks without having to free and re-initalize (with all the
+panic that might entail on a system wide basis). New memory is allocated by
+specifying how many chunks one wants allocated. This all happens via debugfs.
+
+Input
+===========================================================
+- /sys/kernel/debug/page-nom/vmalloc_block_size
+size in bytes of the individual blocks of memory allocated from vmalloc. The
+input size is page aligned. The block size can only be changed when page-nom
+hasn't eaten any vmalloc pages yet.
+
+- /sys/kernel/debug/page-nom/vmalloc_blocks
+number of 'vmalloc_block_size' blocks to eat from vmalloc. Inputing a number
+higher than the current value will allocate new memory and inputing a number
+lower than the current value will free memory. 0 will free all eaten vmalloc
+memory. The returned value will be the number of allocated blocks regardless
+if this method or the following method was used to allocate the blocks.
+
+- /sys/kernel/debug/page-nom/vmalloc_percent
+percentage of the vmalloc memory to eat. This is an alternate method to
+'vmalloc_blocks'. Where vmalloc_blocks is more precise, this is easier for
+automation. Just echo a number between 0 and 100 for page-nom to try to consume
+that percentage of total vmalloc memory. The returned value from this file
+is the current percentage of allocated vmalloc memory from either method. This
+number will be appropriately massaged so it ends up being a multiple of
+vmalloc_block_size, so the number written won't always be the precise
+percentage eaten.
+
+- /sys/kernel/debug/page-nom/mem_block_size
+size in bytes of the individual blocks of memory allocated from memory.
+The input size is order aligned. The block size can only be changed when
+page-nom hasn't eaten any pages yet.
+
+- /sys/kernel/debug/page-nom/mem_blocks
+number of 'mem_block_size' blocks to eat from memory. Inputing a number higher
+than the current value will allocate new memory and inputing a number lower than
+the current value will free memory. 0 will free all eaten vmalloc memory. The
+returned value will be the number of allocated blocks regardless if this method
+or the following method was used to allocate the blocks.
+
+- /sys/kernel/debug/page-nom/mem_percent - percentage of the system memory to
+ eat. This is an alternate method to 'mem_blocks'. Where mem_blocks is more
+precise, this is easier for automation. Just echo a number between 0 and 100
+for page-nom to try to consume that percentage of system memory. The returned
+value from this file is the current percentage of allocated system memory from
+either method. This number will be appropriately massaged so it ends up being
+a multiple of mem_block_size, so the number written won't always be the precise
+percentage eaten.
+
+Targets
+===========================================================
+General
