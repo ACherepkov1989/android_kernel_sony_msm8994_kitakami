@@ -494,7 +494,7 @@ int create_channel_device_by_type(
 
 	/* Allocate memory for the device */
 	*channel_dev_ptr = kzalloc(sizeof(struct channel_dev), GFP_KERNEL);
-	if (NULL == channel_dev_ptr) {
+	if (NULL == *channel_dev_ptr) {
 		pr_err(DRV_NAME ":kzalloc err.\n");
 		ret = -ENOMEM;
 		goto create_channel_device_failure;

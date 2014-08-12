@@ -280,22 +280,24 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	int ret;
 	char *pSendBuffer;
 	char str[10];
+	int bufferLen;
 
-	if(params != NULL)
-		pSendBuffer = new char[strlen(params) + 10];
+	if (params)
+		bufferLen = strlen(params) + 10;
 	else
-		pSendBuffer = new char[10];
+		bufferLen = 10;
 
+	pSendBuffer = new char[bufferLen];
 	if (NULL == pSendBuffer)
 	{
-		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]",strlen(params) + 10);
+		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]", bufferLen);
 		return -1;
 	}
 
-	if(params != NULL)
-		sprintf(pSendBuffer, "%d %s", testConfiguration, params);
+	if (params)
+		snprintf(pSendBuffer, bufferLen, "%d %s", testConfiguration, params);
 	else
-		sprintf(pSendBuffer, "%d", testConfiguration);
+		snprintf(pSendBuffer, bufferLen, "%d", testConfiguration);
 
 	ret = write(fd, pSendBuffer, sizeof(pSendBuffer) );
 	if (ret < 0) {
@@ -306,7 +308,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	// Wait until the system is fully configured
 
 	// Convert testConfiguration to string
-	sprintf(testConfigurationStr, "%d", testConfiguration);
+	snprintf(testConfigurationStr, 10, "%d", testConfiguration);
 
 	// Read the configuration index from the device node
 	ret = read(fd, str, sizeof(str));
