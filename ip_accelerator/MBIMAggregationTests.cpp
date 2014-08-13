@@ -3435,7 +3435,7 @@ public:
 
 	 QcncmMBIMDeaggregationTest()
 	 {
-		m_name = " QcncmMBIMDeaggregationTest";
+		m_name = "QcncmMBIMDeaggregationTest";
 		m_description = "MBIM Deaggregation test - sends an aggregated packet made from"
 				"5 packets and receives 5 packets";
 	}
