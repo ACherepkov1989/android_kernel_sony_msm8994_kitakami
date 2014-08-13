@@ -1740,8 +1740,8 @@ bool MBIMAggregationScenarios::DeaggragateAndComparePackets(
 			pDatagramIndex[1] = pAggregatedPacket[i+1];  //most significant byte
 			i += 2;
 			if (0x00 == pDatagramIndex[0] && 0x00 == pDatagramIndex[1])
-				break;  //zero padding after all datagramsNUM_PACKETS
-			if (nPacketNum > nNumPackets)
+				break;  //zero padding after all datagrams
+			if (nPacketNum >= nNumPackets)
 			{
 				LOG_MSG_DEBUG("Error: wrong number of packets: %d(should be %d)\n",
 						nPacketNum, nNumPackets);
@@ -2204,8 +2204,8 @@ bool MBIMAggregationScenarios::DeaggragateAndComparePacketsWithStreamId(
 			pDatagramIndex[1] = pAggregatedPacket[i+1];  //most significant byte
 			i += 2;
 			if (0x00 == pDatagramIndex[0] && 0x00 == pDatagramIndex[1])
-				break;  //zero padding after all datagramsNUM_PACKETS
-			if (nPacketNum > nNumPackets)
+				break;  //zero padding after all datagrams
+			if (nPacketNum >= nNumPackets)
 			{
 				LOG_MSG_DEBUG("Error: wrong number of packets: %d(should be %d)\n",
 						nPacketNum, nNumPackets);

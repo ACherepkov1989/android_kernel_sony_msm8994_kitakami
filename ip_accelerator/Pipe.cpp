@@ -107,6 +107,8 @@ int Pipe::Send(unsigned char * pBuffer, size_t nBytesToSend) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int Pipe::AddHeaderAndSend(unsigned char * pIpPacket, size_t nIpPacketSize) {
+	int retval;
+
 	if (false == m_bInitialized) {
 		LOG_MSG_ERROR("Pipe is being used without being initialized!");
 		return 0;
@@ -114,13 +116,21 @@ int Pipe::AddHeaderAndSend(unsigned char * pIpPacket, size_t nIpPacketSize) {
 	size_t nBytesToWrite = nIpPacketSize + m_nHeaderLengthAdd;
 	//Allocate new buffer for the Header and IP packet:
 	unsigned char *pLinkLayerAndIpPacket = new unsigned char[nBytesToWrite];
+	if (!pLinkLayerAndIpPacket) {
+		LOG_MSG_ERROR("Memory allocation failure.");
+		return 0;
+	}
+
 	//put the header first:
 	memcpy(pLinkLayerAndIpPacket, m_pHeader, m_nHeaderLengthAdd);
 	//Then add the IP packet:
 	memcpy(pLinkLayerAndIpPacket + m_nHeaderLengthAdd, pIpPacket,
 			nIpPacketSize);
 	//Call the Send method which will send the new created buffer(which contains the IP packet with the Header):
-	return Send(pLinkLayerAndIpPacket, nBytesToWrite);
+	retval = Send(pLinkLayerAndIpPacket, nBytesToWrite);
+	delete[] pLinkLayerAndIpPacket;
+
+	return retval;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,16 +154,24 @@ int Pipe::ReceiveAndRemoveHeader(unsigned char *pIpPacket, size_t nIpPacketSize)
 	}
 	size_t nBytesToRead = nIpPacketSize + m_nHeaderLengthRemove;
 	unsigned char *pPacket = new unsigned char[nBytesToRead];
+	if (!pPacket) {
+		LOG_MSG_ERROR("Memory allocation failure.");
+		return 0;
+	}
 	size_t nReceivedBytes = Receive(pPacket, nBytesToRead);
 	if (nReceivedBytes != nBytesToRead) {
-		LOG_MSG_ERROR(
-				"Pipe was asked to receive an IP packet "
-				"of size %d, however only %d bytes were read "
-				"while the header size is %d", nIpPacketSize, nReceivedBytes, m_nHeaderLengthRemove);
+		LOG_MSG_ERROR("Pipe was asked to receive an IP packet "
+			      "of size %d, however only %d bytes were read "
+			      "while the header size is %d",
+			      nIpPacketSize,
+			      nReceivedBytes,
+			      m_nHeaderLengthRemove);
+		delete[] pPacket;
 		return nReceivedBytes - m_nHeaderLengthRemove;
 	}
 
 	memcpy(pIpPacket, pPacket + m_nHeaderLengthRemove, nIpPacketSize);
+	delete[] pPacket;
 
 	return (nReceivedBytes - m_nHeaderLengthRemove);
 }
