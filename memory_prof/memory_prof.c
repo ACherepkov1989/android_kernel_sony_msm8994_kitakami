@@ -604,7 +604,8 @@ free:
 				perror("couldn't get time of day");
 				goto close_ion;
 			}
-			*free_ms = timeval_ms_diff(tv_after, tv_before);
+			if (free_ms)
+				*free_ms = timeval_ms_diff(tv_after, tv_before);
 		}
 	}
 close_ion:
@@ -1353,7 +1354,7 @@ int main(int argc, char *argv[])
 			do_heap_profiling = true;
 			break;
 		case 'i':
-			alloc_profile_path = strdup(optarg);
+			STRDUP(alloc_profile_path, optarg);
 			if (strcmp(alloc_profile_path, "-") &&
 				!file_exists(alloc_profile_path))
 				err(1, "Can't read alloc profile file: %s",
