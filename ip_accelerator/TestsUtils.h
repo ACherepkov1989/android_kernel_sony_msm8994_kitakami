@@ -100,6 +100,27 @@ bool LoadDefaultPacket(
 
 /**
 	@brief
+	Function loads a default IPv4 / IPv6 Packet
+
+	@param [in] eIP - Type of Packet to load (IPA_IP_v4 / IPA_IP_v6)
+	@param [in] extHdrType - Type of IPV6 extension header(FRAGMENT / NONE)
+	@param [in] pBuffer - pointer to the destination buffer
+	@param [in,out] nMaxSize - The size of the buffer.
+	Upon function return,
+	the total number of bytes copied will be stored in this parameter.
+	@return boolean indicating whether the
+	operation completed successfully or not.
+
+	@details
+	Function loads a default IPv4 / IPv6 packet into pBuffer.
+	*/
+bool LoadDefaultPacket(
+		enum ipa_ip_type eIP,
+		enum ipv6_ext_hdr_type extHdrType,
+		uint8_t *pBuffer,
+		size_t & nMaxSize);
+/**
+	@brief
 	Function Sends a Packet, Receive a packet
 	and compares the received result with an expected buffer
 

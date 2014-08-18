@@ -60,7 +60,7 @@ static uint8_t IPv4Packet[] = {
 
 static uint8_t IPv6Packet[] = {
 		0x60, 0x00, 0x00, 0x00,
-		0x02, 0x12, 0x11, 0x01,
+		0x00, 0x1c, 0x06, 0x01, // Protocol = 6 (TCP)
 		0xfe, 0x80, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00,
 		0xd9, 0xf9, 0xce, 0x5e,
@@ -68,12 +68,41 @@ static uint8_t IPv6Packet[] = {
 		0xff, 0x02, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x0c
+		0x00, 0x00, 0x00, 0x0c,
+		0x12, 0x34, 0x12, 0x34, // port src = 0x1234 dest = 0x1234
+		0x00, 0x14, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0xda, 0x7a, 0xda, 0x7a // payload
 };
 
-///////////////////////////////////////////////////////////////////////////////
+static uint8_t IPv6PacketFragExtHdr[] = {
+		0x60, 0x00, 0x00, 0x00,
+		0x00, 0x0c, 0x2C, 0x01, // Next header = FRAGMENT HEADER(44)
+		0xfe, 0x80, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0xd9, 0xf9, 0xce, 0x5e,
+		0x02, 0xec, 0x32, 0x99,
+		0xff, 0x02, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x0c,
+		0x06, 0x00, 0x00, 0x00, // fragment header, Protocol = 6 (TCP)
+		0x00, 0x00, 0x00, 0x00,
+		0x12, 0x34, 0x12, 0x34, // port src = 0x1234 dest = 0x1234
+		0x00, 0x14, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0xda, 0x7a, 0xda, 0x7a  // payload
+};
 
-bool LoadDefaultPacket(enum ipa_ip_type eIP, uint8_t *pBuffer, size_t &nMaxSize)
+
+
+bool LoadDefaultPacket(enum ipa_ip_type eIP, enum ipv6_ext_hdr_type extHdrType, uint8_t *pBuffer, size_t &nMaxSize)
 {
 	if (IPA_IP_v4 == eIP) {
 		if (nMaxSize < sizeof(IPv4Packet))
@@ -85,15 +114,34 @@ bool LoadDefaultPacket(enum ipa_ip_type eIP, uint8_t *pBuffer, size_t &nMaxSize)
 		nMaxSize = sizeof(IPv4Packet);
 		return true;
 	} else {
-		if (nMaxSize < sizeof(IPv6Packet))
+		if (extHdrType == FRAGMENT)
 		{
-			LOG_MSG_ERROR("Buffer is smaller than %d, no Data was copied.",sizeof(IPv6Packet));
-			return false;
+			if (nMaxSize < sizeof(IPv6PacketFragExtHdr))
+			{
+				LOG_MSG_ERROR("Buffer is smaller than %d, no Data was copied.",sizeof(IPv6PacketFragExtHdr));
+				return false;
+			}
+			memcpy(pBuffer,IPv6PacketFragExtHdr, sizeof(IPv6PacketFragExtHdr));
+			nMaxSize = sizeof(IPv6PacketFragExtHdr);
+
 		}
-		memcpy(pBuffer,IPv6Packet, sizeof(IPv6Packet));
-		nMaxSize = sizeof(IPv6Packet);
+		else
+		{
+			if (nMaxSize < sizeof(IPv6Packet))
+			{
+				LOG_MSG_ERROR("Buffer is smaller than %d, no Data was copied.",sizeof(IPv6Packet));
+				return false;
+			}
+			memcpy(pBuffer,IPv6Packet, sizeof(IPv6Packet));
+			nMaxSize = sizeof(IPv6Packet);
+		}
 		return true;
 	}
+}
+
+bool LoadDefaultPacket(enum ipa_ip_type eIP, uint8_t *pBuffer, size_t &nMaxSize)
+{
+	return LoadDefaultPacket(eIP, NONE, pBuffer, nMaxSize);
 }
 
 bool SendReceiveAndCompare(InterfaceAbstraction *pSink, uint8_t* pSendBuffer, size_t nSendBuffSize,
@@ -280,22 +328,24 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	int ret;
 	char *pSendBuffer;
 	char str[10];
+	int bufferLen;
 
-	if(params != NULL)
-		pSendBuffer = new char[strlen(params) + 10];
+	if (params)
+		bufferLen = strlen(params) + 10;
 	else
-		pSendBuffer = new char[10];
+		bufferLen = 10;
 
+	pSendBuffer = new char[bufferLen];
 	if (NULL == pSendBuffer)
 	{
-		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]",strlen(params) + 10);
+		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]", bufferLen);
 		return -1;
 	}
 
-	if(params != NULL)
-		sprintf(pSendBuffer, "%d %s", testConfiguration, params);
+	if (params)
+		snprintf(pSendBuffer, bufferLen, "%d %s", testConfiguration, params);
 	else
-		sprintf(pSendBuffer, "%d", testConfiguration);
+		snprintf(pSendBuffer, bufferLen, "%d", testConfiguration);
 
 	ret = write(fd, pSendBuffer, sizeof(pSendBuffer) );
 	if (ret < 0) {
@@ -306,7 +356,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	// Wait until the system is fully configured
 
 	// Convert testConfiguration to string
-	sprintf(testConfigurationStr, "%d", testConfiguration);
+	snprintf(testConfigurationStr, 10, "%d", testConfiguration);
 
 	// Read the configuration index from the device node
 	ret = read(fd, str, sizeof(str));

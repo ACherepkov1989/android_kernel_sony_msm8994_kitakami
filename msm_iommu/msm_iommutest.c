@@ -254,7 +254,7 @@ int read_cats_tbu_id(struct target_struct *target)
 	while (fgets(line, 100, fp) != NULL) {
 		sscanf(line, "%x %x %s", &tbu_id, &is_mm_tbu, cb_name);
 
-		if (tbu_id > NUM_TBUS)
+		if (tbu_id >= NUM_TBUS)
 			continue;
 
 		memcpy(&tbu_id_cb_name[tbu_id * TBU_NAME_LENGTH], cb_name,

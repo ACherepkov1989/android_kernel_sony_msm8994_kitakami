@@ -166,7 +166,7 @@ int chooserMode() {
 		showTests();
 		printf("Choose which test you wish to run: \n");
 		fflush(stdin);
-		scanf("%d",&test_num);
+		scanf("%u",&test_num);
 		if ( test_num > testmanager->m_testList.size()) {
 			printf("Invalid test number. Try again\n");
 			result = -1;

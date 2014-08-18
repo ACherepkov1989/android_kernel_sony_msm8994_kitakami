@@ -39,6 +39,7 @@
 #include "linux/msm_ipa.h"
 
 #define NUM_PACKETS 5
+#define TIME_LIMIT_NUM_PACKETS 1
 #define MAX_PACKET_SIZE 1024
 #define AGGREGATION_LOOP 4
 
@@ -497,7 +498,7 @@ public:
 	TLPAggregationTimeLimitTest()
 	{
 		m_name = "TLPAggregationTimeLimitTest";
-		m_description = "TLP Aggregation time limit test - sends 2 small packets "
+		m_description = "TLP Aggregation time limit test - sends 1 packet "
 				"smaller than the byte limit and receives 1 aggregated packet";
 	}
 
@@ -507,9 +508,9 @@ public:
 	{
 		bool bTestResult = true;
 		//The packets that will be sent
-		Byte pPackets[2][MAX_PACKET_SIZE];
+		Byte pPackets[TIME_LIMIT_NUM_PACKETS][MAX_PACKET_SIZE];
 		//The real sizes of the packets that will be sent
-		int pPacketsSizes[2];
+		int pPacketsSizes[TIME_LIMIT_NUM_PACKETS];
 		//Buffer for the packet that will be received
 		Byte pReceivedPacket[MAX_PACKET_SIZE] = {0};
 		//The expected aggregated packet
@@ -518,7 +519,7 @@ public:
 		int nTotalPacketsSize = 0;
 
 		//initialize the packets
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < TIME_LIMIT_NUM_PACKETS; i++)
 		{
 			pPacketsSizes[i] = i + 1;
 			nTotalPacketsSize += pPacketsSizes[i] + 2; //size of the packet + 2 bytes for length
@@ -528,7 +529,7 @@ public:
 		test_num++;
 
 		//send the packets
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < TIME_LIMIT_NUM_PACKETS; i++)
 		{
 			LOG_MSG_DEBUG("Sending packet %d into the USB pipe(%d bytes)\n", i,
 					pPacketsSizes[i]);
@@ -557,7 +558,7 @@ public:
 
 		//initializing the aggregated packet
 		int k = 0;
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < TIME_LIMIT_NUM_PACKETS; i++)
 		{
 			//the first 2 bytes are the packet length in little endian
 			pExpectedAggregatedPacket[k] = pPacketsSizes[i] & 0x00FF;
@@ -834,9 +835,8 @@ public:
 	TLPAggregationTimeLimitLoopTest()
 	{
 		m_name = "TLPAggregationTimeLimitLoopTest";
-		m_description = "TLP Aggregation time limit loop test - sends 5 small packets "
-				"smaller than the byte limit and receives 5 aggregated packets made "
-				"of 2 packets";
+		m_description = "TLP Aggregation time limit loop test - sends 1 packet "
+				"smaller than the byte limit and receives 1 aggregated packets";
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -844,9 +844,9 @@ public:
 	bool Run()
 	{
 		//The packets that will be sent
-		Byte pPackets[1][MAX_PACKET_SIZE];
+		Byte pPackets[TIME_LIMIT_NUM_PACKETS][MAX_PACKET_SIZE];
 		//The real sizes of the packets that will be sent
-		int pPacketsSizes[1];
+		int pPacketsSizes[TIME_LIMIT_NUM_PACKETS];
 		//Buffer for the packet that will be received
 		Byte pReceivedPacket[MAX_PACKET_SIZE] = {0};
 		//The expected aggregated packet
@@ -855,7 +855,7 @@ public:
 		int nTotalPacketsSize = 0;
 
 		//initialize the packets
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < TIME_LIMIT_NUM_PACKETS; i++)
 		{
 			pPacketsSizes[i] = i + 1;
 			nTotalPacketsSize += pPacketsSizes[i] + 2; //size of the packet + 2 bytes for length
@@ -867,7 +867,7 @@ public:
 		for (int n = 0; n < NUM_PACKETS; n++)
 		{
 			//send the packets
-			for (int i = 0; i < 1; i++)
+			for (int i = 0; i < TIME_LIMIT_NUM_PACKETS; i++)
 			{
 				LOG_MSG_DEBUG("Sending packet %d into the USB pipe(%d bytes)\n",
 						i, pPacketsSizes[i]);
@@ -896,7 +896,7 @@ public:
 
 			//initializing the aggregated packet
 			int k = 0;
-			for (int i = 0; i < 1; i++)
+			for (int i = 0; i < TIME_LIMIT_NUM_PACKETS; i++)
 			{
 				//the first 2 bytes are the packet length in little endian
 				pExpectedAggregatedPacket[k] = pPacketsSizes[i] & 0x00FF;
