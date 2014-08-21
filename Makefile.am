@@ -58,6 +58,8 @@ endif
 if USEMODSIGN
 BUILD_TEST += modsign
 endif
-
+if USECORESIGHT
+BUILD_TEST += coresight
+endif
 SUBDIRS = $(BUILD_TEST)
 

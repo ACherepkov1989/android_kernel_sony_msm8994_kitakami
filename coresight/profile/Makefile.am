@@ -1,12 +1,22 @@
-cs_profiledir           = $(prefix)
+cs_profiledir           = $(prefix)/coresight/core/profile
+KERNEL_FLAGS ?= ARCH=arm
 
-cs_profile_PROGRAMS     = cs_profile_mod
+dist_cs_profile_SCRIPTS  = cs_profile.sh
 
-PWD := $(shell pwd)
+module = cs_profile_mod.ko
+kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
-all-local:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+$(module):
+	$(kmake) modules
 
-install-exec-local:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) INSTALL_MOD_PATH=$(DESTDIR)$(prefix) modules_install
-	depmod $(shell cat $(KERNELDIR)/include/config/kernel.release 2> /dev/null) -b $(DESTDIR)$(prefix)
+all-local: $(module)
+
+install-exec-local: $(module)
+	$(kmake) INSTALL_MOD_PATH=$(DESTDIR)$(prefix)/modules modules_install
+
+# "make distclean" will always run clean-local in this directory,
+# regardless of the KERNELMODULES conditional. Therefore, ensure
+# KERNEL_DIR exists before running clean. Further, don't fail even
+# if there is a problem.
+clean-local:
+	-test ! -d "$(KERNEL_DIR)" || $(kmake) clean
