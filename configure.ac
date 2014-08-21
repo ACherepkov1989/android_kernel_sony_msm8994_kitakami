@@ -118,6 +118,9 @@ ENABLE_KERNEL_TEST([page-nom],[include the page-nom test (default=yes)])
 # modsign
 ENABLE_KERNEL_TEST([modsign],[include the modsign test (default=yes)])
 
+# coresight
+ENABLE_KERNEL_TEST([coresight],[include the coresight test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -131,6 +134,16 @@ AC_CONFIG_FILES([
 	ocmem/Makefile
 	msm_iommu/Makefile
 	sps/Makefile
+	coresight/Makefile
+	coresight/byte-cntr/Makefile
+	coresight/stm-trace-marker/Makefile
+	coresight/stm/Makefile
+	coresight/etm/Makefile
+	coresight/cti/Makefile
+	coresight/mult_trace/Makefile
+	coresight/platform/Makefile
+	coresight/profile/Makefile
+	coresight/sink_switch/Makefile
 	v4l2apps/Makefile
 	watchdog/Makefile
 	ip_accelerator/Makefile
