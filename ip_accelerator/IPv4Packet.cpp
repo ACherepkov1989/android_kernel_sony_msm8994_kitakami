@@ -358,6 +358,7 @@ TCPPacket::TCPPacket(void) :
 	m_Packet = new unsigned char[length];
 	if (0 == m_Packet) {
 		LOG_MSG_ERROR("TCPPacket : packet allocation failed");
+		return;
 	}
 
 	memcpy(m_Packet, TCP_IP_PACKET_DUMP, length);
@@ -370,6 +371,7 @@ UDPPacket::UDPPacket(void) :
 	m_Packet = new unsigned char[length];
 	if (0 == m_Packet) {
 		LOG_MSG_ERROR("UDPPacket : packet allocation failed");
+		return;
 	}
 
 	memcpy(m_Packet, UDP_IP_PACKET_DUMP, length);
@@ -382,6 +384,7 @@ ICMPPacket::ICMPPacket(void) :
 	m_Packet = new unsigned char[length];
 	if (0 == m_Packet) {
 		LOG_MSG_ERROR("ICMPPacket : packet allocation failed");
+		return;
 	}
 
 	memcpy(m_Packet, ICMP_IP_PACKET_DUMP, length);

@@ -311,6 +311,10 @@ static int do_iommu_map_test(void __user *arg,
 	args->time_elapsed_max_us = 0;
 
 	domain_id = create_domain(&domain, args->flags & MP_IOMMU_SECURE);
+	if (domain_id < 0) {
+		pr_err("Cannot create domain, rc = %d\n", domain_id);
+		return domain_id;
+	}
 
 	dev  = msm_iommu_get_ctx(ctx_name);
 	if (IS_ERR_OR_NULL(dev)) {
@@ -444,6 +448,10 @@ static int do_iommu_attach_test(void __user *arg,
 	args->time_elapsed_max_us = 0;
 
 	domain_id = create_domain(&domain, args->flags & MP_IOMMU_SECURE);
+	if (domain_id < 0) {
+		pr_err("Cannot create domain, rc = %d\n", domain_id);
+		return domain_id;
+	}
 
 	dev  = msm_iommu_get_ctx(ctx_name);
 	if (IS_ERR_OR_NULL(dev)) {

@@ -577,7 +577,6 @@ bool RNDISAggregationHelper::LoadEtherPacket(enum ipa_ip_type eIP,
 
 	memcpy(pEtherHeader, RNDISAggregationTestFixture::m_EtherHeader, sizeof(struct ethhdr));
 
-	LOG_MSG_DEBUG("ADYA ****** \n");
 	print_buff(pBuffer, nMaxSize);
 	return true;
 
@@ -609,7 +608,6 @@ bool RNDISAggregationHelper::LoadRNDISPacket(enum ipa_ip_type eIP,
 	pRndisHeader->DataOffset = 0x24;
 	pRndisHeader->DataLength = nMaxSizeForDefaultPacket;
 
-	LOG_MSG_DEBUG("ADYA ****** \n");
 	print_buff(pBuffer, nMaxSize);
 	return true;
 
@@ -636,6 +634,10 @@ bool RNDISAggregationHelper::CompareIPvsRNDISPacket(Byte *pIPPacket,
 	// Create Ethernet packet from the IP packet and compare it to thr RNDIS payload
 	size_t EtherPacketSize = ipPacketSize + sizeof(struct ethhdr);
 	Byte* pEtherPacket = (Byte *) malloc(EtherPacketSize);
+	if (pEtherPacket == NULL) {
+		LOG_MSG_ERROR("Memory allocation failure");
+		return false;
+	}
 	memcpy(pEtherPacket, RNDISAggregationTestFixture::m_EtherHeader, sizeof(struct ethhdr));
 	memcpy(pEtherPacket + sizeof(struct ethhdr), pIPPacket, ipPacketSize);
 

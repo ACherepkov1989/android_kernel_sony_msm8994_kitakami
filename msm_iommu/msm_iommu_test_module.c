@@ -695,6 +695,11 @@ static int create_dom_and_attach(char const *ctx_name, int *dom_id,
 	int ret = 0;
 
 	*dom_id = create_domain(dom);
+	if (*dom_id < 0) {
+		pr_err("Cannot create domain, rc = %d\n", *dom_id);
+		ret = *dom_id;
+		goto end;
+	}
 
 	dev  = msm_iommu_get_ctx(ctx_name);
 	if (IS_ERR_OR_NULL(dev)) {
@@ -930,6 +935,11 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 		goto out;
 
 	domain_id = create_domain(&domain);
+        if (domain_id < 0) {
+                pr_err("Cannot create domain, rc = %d\n", domain_id);
+                ret = domain_id;
+                goto out;
+        }
 
 	magic_virt = kmalloc(SZ_4K, GFP_KERNEL);
 	if (!magic_virt) {
@@ -1138,6 +1148,11 @@ static int test_iommu_INT(const struct msm_iommu_test *iommu_test,
 	int_data.iommu_test = iommu_test;
 
 	domain_id = create_domain(&domain);
+        if (domain_id < 0) {
+                pr_err("Cannot create domain, rc = %d\n", domain_id);
+                ret = domain_id;
+                goto end;
+        }
 
 	dev = msm_iommu_get_ctx(ctx_name);
 	if (IS_ERR_OR_NULL(dev)) {
@@ -1184,7 +1199,7 @@ detach:
 	iommu_detach_device(domain, dev);
 unreg_dom:
 	msm_unregister_domain(domain);
-
+end:
 	tst_iommu->ret_code = ret;
 	return ret;
 }
@@ -1205,6 +1220,11 @@ static int test_iommu_bfb(const struct msm_iommu_test *iommu_test,
 		goto out;
 
 	domain_id = create_domain(&domain);
+        if (domain_id < 0) {
+                pr_err("Cannot create domain, rc = %d\n", domain_id);
+                ret = domain_id;
+                goto out;
+        }
 
 	dev  = msm_iommu_get_ctx(ctx_name);
 	if (IS_ERR_OR_NULL(dev)) {
