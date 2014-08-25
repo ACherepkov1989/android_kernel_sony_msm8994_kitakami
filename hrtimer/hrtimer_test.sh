@@ -59,16 +59,21 @@ hrtimer_test_init(){
 		return 1
 	fi
 
+	if [ ! -d  /lib/modules/$(uname -r) ]; then
+		mount -o remount rw, /
+		mkdir -p /lib/modules/$(uname -r)
+		return $?
+	fi
+
 	# remove hrtimer_test_module before test
 	lsmod | grep "$hrtimer_module_name"
 	if [ $? -eq 0 ]; then
-		rmmod $hrtimer_module_name
+		rmmod $hrtimer_module_name > /dev/null 2>&1
 		if [ $? -ne 0 ]; then
 			echo "ERROR: failed to remove module $hrtimer_test_mod"
 			return 1
 		fi
 	fi
-
 	return 0
 }
 
@@ -273,7 +278,7 @@ fi
 # remove hrtimer_test_module after test
 lsmod | grep "$hrtimer_module_name"
 if [ $? -eq 0 ]; then
-	rmmod $hrtimer_module_name
+	rmmod $hrtimer_module_name > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
 		echo "ERROR: failed to remove module $hrtimer_test_mod"
 		exit 1
