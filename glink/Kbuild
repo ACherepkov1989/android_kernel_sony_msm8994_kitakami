@@ -1,0 +1,3 @@
+obj-m := glink_test.o
+glink_test-y := glink_mock_xprt.o glink_unit_test.o glink_loopback_xprt.o glink_loopback_client.o
+ccflags-y := -Idrivers/soc/qcom

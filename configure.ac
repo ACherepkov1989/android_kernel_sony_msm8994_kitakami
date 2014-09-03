@@ -61,6 +61,15 @@ if test -f ${autoconf}; then
 	fi
 fi
 
+# Build G-Link Tests only if kernel module enabled
+msm_glink_configured=no
+autoconf="${with_kernel}/include/generated/autoconf.h"
+if test -f ${autoconf}; then
+	if grep -q "^#define CONFIG_MSM_GLINK 1" ${autoconf}; then
+		msm_glink_configured=yes
+	fi
+fi
+
 #
 # Build all kernel tests by default
 #
@@ -127,6 +136,9 @@ ENABLE_KERNEL_TEST([bus-timeout],[include the bus-timeout test (default=yes)])
 # abnormal_reset
 ENABLE_KERNEL_TEST([abnormal_reset],[include the abnormal_reset test (default=yes)])
 
+#glink
+ENABLE_KERNEL_TEST([glink],[include the glink test (default=yes)], [$msm_glink_configured])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -160,5 +172,6 @@ AC_CONFIG_FILES([
 	ipi/Makefile
 	page-nom/Makefile
 	modsign/Makefile
+	glink/Makefile
 	])
 AC_OUTPUT
