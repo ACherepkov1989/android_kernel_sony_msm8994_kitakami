@@ -81,7 +81,7 @@ public:
 		}
 
 		memcpy(input, pkt, PACKET_SIZE);
-		LOG_MSG_DEBUG("Sending packet through tx_dp_ipa in func %s\n", __func__);
+		LOG_MSG_DEBUG("Sending packet through ipa_tx_dp() in func %s\n", __func__);
 		ret = m_IpaDriverPipe.Send(input, PACKET_SIZE);
 
 		if (ret != PACKET_SIZE) {

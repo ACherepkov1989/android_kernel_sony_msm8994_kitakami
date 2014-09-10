@@ -2255,6 +2255,8 @@ public:
 		m_name = "DmaModeMBIMAggregationTest";
 		m_description = "MBIM Aggregation test - sends 5 packets and receives 1 "
 				"aggregated packet";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2282,6 +2284,8 @@ public:
 		m_name = "DmaModeMBIMDeaggregationOnePacketTest";
 		m_description = "MBIM Deaggregation one packet test - sends an aggregated packet "
 				"made of 1 packet and receives 1 packet";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2311,6 +2315,8 @@ public:
 		m_description = "MBIM Multiple Deaggregation and Aggregation test - sends 5 aggregated "
 				"packets each one made of 1 packet and receives an aggregated packet made of the"
 				"5 packets";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2338,6 +2344,8 @@ public:
 		m_name = "DmaModeMBIMggregationLoopTest";
 		m_description = "MBIM Aggregation Loop test - sends 5 packets and expects to"
 				"receives 1 aggregated packet a few times";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2365,6 +2373,8 @@ public:
 		m_name = "DmaModeMBIMAggregationTimeLimitTest";
 		m_description = "MBIM Aggregation time limit test - sends 1 small packet "
 				"smaller than the byte limit and receives 1 aggregated packet";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2393,6 +2403,8 @@ public:
 		m_name = "DmaModeMBIMAggregationByteLimitTest";
 		m_description = "MBIM Aggregation byte limit test - sends 2 packets that together "
 				"are larger than the byte limit ";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2421,6 +2433,8 @@ public:
 		m_description = "MBIM Aggregation 2 pipes test - sends 3 packets from one pipe"
 				"and 2 aggregated packets made of 1 packet from another pipe and "
 				"receives 1 aggregated packet made of all 5 packets";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2449,6 +2463,8 @@ public:
 		m_name = "DmaModeMBIMAggregationTimeLimitLoopTest";
 		m_description = "MBIM Aggregation time limit loop test - sends 5 small packet "
 				"smaller than the byte limit and receives 5 aggregated packet";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -2481,6 +2497,8 @@ public:
 		m_name = "DmaModeMBIMAggregation0LimitsTest";
 		m_description = "MBIM Aggregation 0 limits test - sends 5 packets and expects"
 				"to get each packet back aggregated (both size and time limits are 0)";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3438,6 +3456,8 @@ public:
 		m_name = "QcncmMBIMDeaggregationTest";
 		m_description = "MBIM Deaggregation test - sends an aggregated packet made from"
 				"5 packets and receives 5 packets";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3468,6 +3488,8 @@ public:
 		m_name = "QcncmMBIMDeaggregationOnePacketTest";
 		m_description = "MBIM Deaggregation one packet test - sends an aggregated packet made"
 				"of 1 packet and receives 1 packet";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3504,6 +3526,8 @@ public:
 		m_name = "QcncmMBIMDeaggregationAndAggregationTest";
 		m_description = "MBIM Deaggregation and Aggregation test - sends an aggregated "
 				"packet made from 5 packets and receives the same aggregated packet";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3542,6 +3566,8 @@ public:
 		m_description = "MBIM Multiple Deaggregation and Aggregation test - sends 5 aggregated "
 				"packets each one made of 1 packet and receives an aggregated packet made of the"
 				"5 packets";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3612,6 +3638,8 @@ public:
 		m_name = "QcncmMBIMDeaggregationMultipleNDPTest";
 		m_description = "MBIM Deaggregation multiple NDP test - sends an aggregated"
 				"packet made from 5 packets and 2 NDPs and receives 5 packets";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3682,6 +3710,8 @@ public:
 		m_description = "MBIM Aggregation 2 pipes test - sends 3 packets from one pipe"
 				"and an aggregated packet made of 2 packets from another pipe and "
 				"receives 1 aggregated packet made of all 5 packets";
+		m_minIPAHwType = IPA_HW_v1_0;
+		m_maxIPAHwType = IPA_HW_v2_1;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////

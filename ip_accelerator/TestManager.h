@@ -33,6 +33,7 @@
 #include "TestBase.h"
 #include <vector>
 #include <string>
+#include "linux/msm_ipa.h"
 
 using namespace std;
 
@@ -47,9 +48,8 @@ public:
 	/* This is the place to put initialization
 	 * for the whole test framework
 	 */
-	bool Run(
-			vector < string > testSuiteList,
-			vector < string > testNameList);
+	bool Run(vector <string> testSuiteList,
+		 vector <string> testNameList);
 	/* This function will run all the tests in the system */
 	bool Teardown();
 	/* This is the place to put tear-down for the whole test framework */
@@ -63,11 +63,14 @@ private:
 	void PrintSeparator(size_t len);
 	void PrintRegisteredTests();
 	void BuildRegressionTestSuite();
+	void GetIPAHwType();
 
 	static TestManager *m_instance;
 
 	size_t m_numTestsRun;
 	size_t m_numTestsFailed;
+	enum ipa_hw_type m_IPAHwType;
+
 	vector < string > m_failedTestsNames;
 };
 
