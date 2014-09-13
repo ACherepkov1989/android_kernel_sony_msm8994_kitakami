@@ -31,6 +31,7 @@
 #include <linux/delay.h> /* msleep() */
 #include <linux/string.h>
 #include "ipa_rm_ut.h"
+#include "ipa_test_module.h"
 
 #ifndef IPA_ON_R3PC
 #define IPA_ON_R3PC
@@ -81,7 +82,6 @@
 #define EXCEPTION_KFIFO_SLEEP_MS (EXCEPTION_KFIFO_SLEEP_MS)
 #define EXCEPTION_KFIFO_DEBUG_VERBOSE 1
 #define SAVE_HEADER 1
-
 
 #ifdef IPA_ON_R3PC
 int ipa_sys_setup(struct ipa_sys_connect_params *sys_in, unsigned long *ipa_bam_hdl,
@@ -6474,10 +6474,30 @@ static ssize_t ipa_test_read(
 
 static struct class *ipa_test_class;
 
+static long ipa_test_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	enum ipa_hw_type retval;
+
+	pr_debug("cmd=%x nr=%d\n", cmd, _IOC_NR(cmd));
+	if (_IOC_TYPE(cmd) != IPA_TEST_IOC_MAGIC)
+		return -ENOTTY;
+
+	switch (cmd) {
+	case IPA_TEST_IOC_GET_HW_TYPE:
+		retval = ipa_get_hw_type();
+		break;
+	default:
+		return -ENOTTY;
+	}
+
+	return retval;
+}
+
 static const struct file_operations ipa_test_fops = {
 	.owner = THIS_MODULE,
 	.write = ipa_test_write,
 	.read  = ipa_test_read,
+	.unlocked_ioctl = ipa_test_ioctl,
 };
 
 /**

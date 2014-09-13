@@ -58,5 +58,9 @@ public:
 	/* Every test can belong to multiple test suites */
 	bool m_runInRegression;
 	/* Should this test be run in a regression test ? (Default is yes) */
+	int m_minIPAHwType;
+	/* The minimal IPA HW version which this test can run on */
+	int m_maxIPAHwType;
+	/* The maximal IPA HW version which this test can run on */
 };
 #endif

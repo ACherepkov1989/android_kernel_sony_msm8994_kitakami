@@ -29,10 +29,11 @@
 
 #include "TestBase.h"
 #include "TestManager.h"
+#include "linux/msm_ipa.h"
 
 //////////////////////////////////////////////////////////////////////
 
-TestBase::TestBase() : m_runInRegression(true)
+TestBase::TestBase() : m_runInRegression(true), m_minIPAHwType(IPA_HW_v1_1), m_maxIPAHwType(IPA_HW_MAX)
 {
 }
 

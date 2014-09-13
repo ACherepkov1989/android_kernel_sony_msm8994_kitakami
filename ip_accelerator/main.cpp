@@ -58,6 +58,16 @@ enum ipa_test_type{
 	MAX_TYPE
 };
 
+const char *ipa_hw_type_name[] = {
+	"None",
+	"1.0",
+	"1.1",
+	"2.0",
+	"2.1",
+	"2.5",
+	"MAX"
+};
+
 void BuildRegressionTestSuite()
 {
 	TestBase *test;
@@ -70,6 +80,7 @@ void BuildRegressionTestSuite()
 	}
 }
 
+
 ///////////////////////////////////////////////////////////
 void showTests()
 {
@@ -79,16 +90,21 @@ void showTests()
 		test = testmanager->m_testList[i];
 		string name = test->m_name, index = test->m_testSuiteName[0];
 
-		printf("%d) %s (part of %s suite," ,i+1, name.c_str(), index.c_str());
+		printf("%d) %s (part of %s suite" ,i+1, name.c_str(), index.c_str());
 		for (unsigned j = 0; j < test->m_testSuiteName.size(); ++j) {
 			if ( test->m_testSuiteName[j] == index)
 				continue;
-			printf("   %s suite,",
+			printf(", %s suite",
 				 test->m_testSuiteName[j].c_str());
 			index = test->m_testSuiteName[j];
 		}
-		printf(")\n");
+		printf("), (%s <= HW Version <= %s)\n",
+		       ipa_hw_type_name[test->m_minIPAHwType],
+		       ipa_hw_type_name[test->m_maxIPAHwType]);
 	}
+
+	// Example:
+	// 15) DmaModeMBIMggregationLoopTest (part of DmaMbim16Agg suite), (1.0 <= HW Version <= 2.1)
 }
 
 void showSuits()
