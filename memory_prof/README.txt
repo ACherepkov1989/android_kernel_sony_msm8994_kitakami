@@ -412,3 +412,49 @@ Appendix A: Allocation Profiles for memory_prof
 
         The note on the gfp_kernel field about flag composition also
         applies here.
+
+    o `op' == ion_cache
+
+      When `op' == cache, an ION_IOC_CLEAN_CACHES/ION_IOC_INV_CACHES/
+      ION_IOC_CLEAN_INV_CACHES will be performed and profiled on an
+      allocated ion buffer. The buffer will be free'd after the
+      profiling is complete.
+
+      The following remaining fields are defined:
+
+          reps
+          heap_id
+          flags
+          alloc_size
+          alloc_size_label
+          cache_clean
+          cache_invalidate
+
+      - reps :: How many times to repeat this allocation
+
+      - heap_id :: Heap to use for allocation. Should correspond to a
+                   heap_id from `enum ion_heap_ids'. E.g.:
+                   ION_CP_MM_HEAP_ID
+
+      - flags :: Flags to be used for allocation. Can parse bitwise OR'd
+                 ION_FLAG_* constants (e.g.:
+                 ION_SECURE|ION_FLAG_CACHED). No spaces please.
+
+      - alloc_size :: The size of the buffer to be allocated. Can be
+        any valid size string (e.g. "4KB", "2MB", etc). Supported
+        suffixes are "KB" "MB" and "GB" (or no suffix for bytes).
+
+      - alloc_size_label :: A human- (and script-) readable string
+           describing the allocation size
+
+      - cache_clean:: Whether we want to profile cache clean operation
+
+      - cache_invalidate :: Whether we want to profile cache invalidate
+                    operation
+
+      For profiling ION_ION_CLEAN_INV_CACHES both cache_clean and
+      cache_invalidate should be true.
+
+      Blank lines and lines beginning with '#' are skipped.
+
+      See alloc_profiles/cache_ops.txt for a full example.
