@@ -222,13 +222,15 @@ static int hrtimer_test_start(void)
 		hrtimer_start(&my_timer[i], ktime, HRTIMER_MODE_REL);
 	}
 
-	for_each_present_cpu(cpu) {
 #ifdef CONFIG_HOTPLUG_CPU
+	for_each_present_cpu(cpu) {
 		/*Initial to bring all cpu cores online. It is to create thread for each CPU core and wait up afterwards.*/
 		if (!cpu_online(cpu))
 			cpu_up(cpu);
+	}
 #endif
-
+	get_online_cpus();
+	for_each_online_cpu(cpu) {
 		snprintf(thread_str, sizeof(thread_str), "hrtimer_thread%d", cpu);
 		k[cpu] = kthread_create(&hrtimer_test_handler, (void *)init_delay_ms,thread_str);
 		kthread_bind(k[cpu],cpu);
@@ -236,6 +238,7 @@ static int hrtimer_test_start(void)
 		mdelay(init_delay_ms);
 		init_delay_ms += 3;
 	}
+	put_online_cpus();
 
 	return 0;
 }
@@ -282,9 +285,17 @@ static struct platform_driver hrtimer_test_driver = {
 	},
 };
 
+static void platform_hrtimer_release(struct device* dev)
+{
+	return;
+}
+
 static struct platform_device hrtimer_test_device = {
 	.name = MODULE_NAME,
 	.id   = -1,
+	.dev  = {
+		.release = platform_hrtimer_release,
+	}
 };
 
 static int init_hrtimer_test(void)
