@@ -49,6 +49,7 @@ static struct dentry *dent;
 static struct monitor_lock * pmon_locks[NR_CPUS];
 static struct task_struct* k[NR_CPUS][NR_CPUS];
 static int start;
+static struct device * ldrex_dev;
 
 static void wait_to_die(void)
 {
@@ -62,27 +63,25 @@ static void wait_to_die(void)
 
 static void* do_alloc_cached(size_t size)
 {
-	void *temp = NULL;
-	temp = kmalloc(size, GFP_KERNEL);
-	if(!temp)
-		return (void*)-ENOMEM;
-	return temp;
+	return kmalloc(size, GFP_KERNEL);
 }
 
 static void* do_alloc_coherent(size_t size)
 {
 	dma_addr_t dma_addr; /* DMA address of aligned chunk    */
-	void *temp = NULL;
-
-	temp = dma_alloc_coherent(NULL, size, &dma_addr, 0);
-	if(!temp)
-		return (void*)-ENOMEM;
-	return temp;
+	struct device *pdev = NULL;
+#ifdef CONFIG_ARM64
+	pdev = ldrex_dev;
+	if (!pdev)
+		return NULL;
+#endif
+	return dma_alloc_coherent(pdev, size, &dma_addr, 0);
 }
 
-static int do_ldrex_strex(struct monitor_lock *pmon_lock)
+#if defined(CONFIG_ARM)
+static unsigned int do_ldrex_strex(struct monitor_lock *pmon_lock)
 {
-	int result, new_result, tmp;
+	unsigned int result, new_result, tmp;
 
 	__asm__ __volatile__(
 		" ldrex %[result],[%[lock]]\n"
@@ -94,22 +93,54 @@ static int do_ldrex_strex(struct monitor_lock *pmon_lock)
 	return !(tmp);
 }
 
-static void do_ldrex(int * l)
+static void do_ldrex(unsigned int * l)
 {
 	unsigned int result;
+
 	__asm__ __volatile__(
 		"ldrex %[result],[%[lock]]\n"
 		: [result] "=&r" (result)
 		: [lock] "r" (l)
 		: "cc");
+}
+#elif defined(CONFIG_ARM64)
+static unsigned int do_ldrex_strex(struct monitor_lock *pmon_lock)
+{
+        unsigned int result, new_result, tmp;
 
+        __asm__ __volatile__(
+                " ldxr %w[result],[%[lock]]\n"
+                " add %w[new_result],%w[result], #1\n"
+                " stxr %w[tmp], %w[new_result], [%[lock]]\n"
+                : [result] "=&r" (result), [new_result] "=&r" (new_result), [tmp] "=&r" (tmp)
+                : [lock] "r" (&pmon_lock->lock[0])
+                : "cc");
+	return !(tmp);
 }
 
+static void do_ldrex(unsigned int * l)
+{
+	unsigned int result;
+
+        __asm__ __volatile__(
+                "ldxr %w[result],[%[lock]]\n"
+                : [result] "=&r" (result)
+                : [lock] "r" (l)
+                : "cc");
+}
+#else
+static unsigned long do_ldrex_strex(struct monitor_lock *pmon_lock)
+{
+	return 0;
+}
+
+static void do_ldrex(unsigned int * l) {}
+#endif
 
 /*
  * Uncacheable: 4 LDREX on same memory location - same cpu
  */
-static int ldrext_test_handler(void *data)
+static int ldrex_test_handler(void *data)
 {
 	struct monitor_lock* pmon_lock = (struct monitor_lock*)data;
 	int i;
@@ -131,7 +162,7 @@ static int ldrext_test_handler(void *data)
 	return 0;
 }
 
-static int ldrext_wait_handler(void *data)
+static int ldrex_wait_handler(void *data)
 {
 	struct monitor_lock* pmon_lock = (struct monitor_lock*)data;
 
@@ -145,6 +176,7 @@ static int ldrext_wait_handler(void *data)
 	return 0;
 }
 
+static int test_stop(void);
 static int run_test(struct test_parameter t_param)
 {
 	int i;
@@ -165,6 +197,12 @@ static int run_test(struct test_parameter t_param)
 			pmon_locks[i] = do_alloc_cached(sizeof(struct monitor_lock));
 		else
 			pmon_locks[i] = do_alloc_coherent(sizeof(struct monitor_lock));
+
+		if (!pmon_locks[i])
+		{
+			pr_err("Unable to allocate memory\n");
+			goto err;
+		}
 
 		for(j = 0; j < ARRAY_SIZE(pmon_locks[i]->lock); j++)
 			pmon_locks[i]->lock[j] = 1;
@@ -189,16 +227,16 @@ static int run_test(struct test_parameter t_param)
 		if(multi_thread){
 			for(i=0; i<NR_CPUS; i++){
 				snprintf(thread_str, sizeof(thread_str), "ldrext_test_w%d_%d", wait_cpu,i);
-	                        k[cpu][i] = kthread_create(&ldrext_wait_handler, (void *)pmon_locks[cpu], thread_str);
+	                        k[cpu][i] = kthread_create(&ldrex_wait_handler, (void *)pmon_locks[cpu], thread_str);
 				kthread_bind(k[cpu][i],cpu);
 				wake_up_process(k[cpu][i]);
 			}
 		} else {
 	                snprintf(thread_str, sizeof(thread_str), "ldrext_test_t%d", cpu);
 	                if(same_lock)
-				k[cpu][0] = kthread_create(&ldrext_test_handler, (void *)pmon_locks[0], thread_str);
+				k[cpu][0] = kthread_create(&ldrex_test_handler, (void *)pmon_locks[0], thread_str);
 			else
-				k[cpu][0] = kthread_create(&ldrext_test_handler, (void *)pmon_locks[cpu], thread_str);
+				k[cpu][0] = kthread_create(&ldrex_test_handler, (void *)pmon_locks[cpu], thread_str);
 			kthread_bind(k[cpu][0],cpu);
 			wake_up_process(k[cpu][0]);
 		}
@@ -213,14 +251,17 @@ static int run_test(struct test_parameter t_param)
 		if (!cpu_online(wait_cpu))
 			cpu_up(wait_cpu);
 		snprintf(thread_str, sizeof(thread_str), "ldrext_test_w%d", wait_cpu);
-		k[wait_cpu][0] = kthread_create(&ldrext_wait_handler, (void *)pmon_locks[wait_cpu], thread_str);
+		k[wait_cpu][0] = kthread_create(&ldrex_wait_handler, (void *)pmon_locks[wait_cpu], thread_str);
 		kthread_bind(k[wait_cpu][0],wait_cpu);
 		wake_up_process(k[wait_cpu][0]);
 	}
 
         put_online_cpus();
-
 	return 0;
+
+err:
+	test_stop();
+	return -1;
 }
 
 static int test_stop(void)
@@ -245,6 +286,7 @@ static int test_stop(void)
 		}else{
 			dma_free_coherent(NULL, sizeof(struct monitor_lock), pmon_locks[i], 0);
 		}
+		pmon_locks[i] = NULL;
 	}
 	return 0;
 }
@@ -418,9 +460,8 @@ static int test_start(int case_num)
 		pr_err("wrong parameter for start case: %d\n", case_num);
 	}
 
-	run_test(t_param);
+	return run_test(t_param);
 
-	return 0;
 }
 
 static int set_test_case(void *data, u64 val)
@@ -428,7 +469,7 @@ static int set_test_case(void *data, u64 val)
 	start = val;
 	if (val > 0) {
 		test_stop();
-		test_start(val);
+		return test_start(val);
 	} else if (val == 0) {
 		test_stop();
 	}
@@ -466,6 +507,7 @@ static int create_test_debugfs(void)
 		debugfs_remove_recursive(dent);
 		return -1;
 	}
+	ldrex_dev = NULL;
 
 	return 0;
 
@@ -478,6 +520,8 @@ static int ldrex_test_probe(struct platform_device *pdev)
 	if (create_result != 0){
 		pr_err("Fail to create test debugfs \n");
 	}
+
+	ldrex_dev = &pdev->dev;
 
 	return 0;
 }
