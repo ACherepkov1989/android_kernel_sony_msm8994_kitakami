@@ -1,0 +1,1 @@
+obj-m := ldrex_test_module.o
