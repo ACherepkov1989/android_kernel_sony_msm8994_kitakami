@@ -32,24 +32,26 @@
 
 #define MS_TO_NS(x)	(x * 1000000)
 #define SEC_TO_NS(x)	(x * 1000000000)
+#define INNER_TEST_DELAY_MS		20
+#define KTHREAD_INIT_DELAY_MS	2
+#define KTHREAD_DELAY_DELTA_MS	3
+#define ESTIMATED_DELAY_RATE	(5/4)
 
-static struct hrtimer my_timer[2];
-struct task_struct *k[16];
+static struct hrtimer *my_timer;
+struct task_struct *k[NR_CPUS];
+static unsigned int pstate[NR_CPUS];
 static atomic_t counter = ATOMIC_INIT(0);
 static DEFINE_MUTEX(hrtimer_mutex);
 static struct dentry *dent;
 static int hrtimer_num = 2, loop = 1000, start = 0, kill_test = 0;
 
 static ssize_t hrtimer_debug_read_stats(struct file *file, char __user *ubuf,
-										size_t count, loff_t *ppos)
+			size_t count, loff_t *ppos)
 {
 	char buf[20];
-	int	ret = 0;
-
+	int ret = 0;
 	ret += scnprintf(buf, sizeof(buf), "%d\n", counter.counter);
-	ret = simple_read_from_buffer(ubuf, count, ppos, buf, ret);
-
-	return ret;
+	return simple_read_from_buffer(ubuf, count, ppos, buf, ret);
 }
 
 static int set_hrtimer_num(void *data, u64 val)
@@ -173,6 +175,7 @@ static int hrtimer_test_handler(void *data)
 	ktime_t ktime;
 	int ret;
 	int i = loop, j;
+	int cpu = smp_processor_id();
 
 	atomic_inc(&counter);
 	while (i-- && !kill_test) {
@@ -192,9 +195,11 @@ static int hrtimer_test_handler(void *data)
 			hrtimer_start(&my_timer[j], ktime, HRTIMER_MODE_REL);
 			mutex_unlock(&hrtimer_mutex);
 		}
-		mdelay(20);
+		mdelay(INNER_TEST_DELAY_MS);
 	}
 	atomic_dec(&counter);
+	mdelay(delay_in_ms);
+	pstate[cpu] = 0;
 	wait_to_die();
 	pr_info("HANDLER: Starting timer fire in %ldms finished\n",
 			delay_in_ms);
@@ -207,9 +212,17 @@ static int hrtimer_test_start(void)
 	ktime_t ktime;
 	char thread_str[20] = "";
 	unsigned int cpu, i;
-	unsigned long init_delay_ms = 2;
+	long total_delay_ms;
+	unsigned long init_delay_ms = KTHREAD_INIT_DELAY_MS;
 	unsigned long delay_in_ms = 200L;
 
+	atomic_set(&counter, 0);
+	my_timer = kzalloc(hrtimer_num * sizeof(struct hrtimer), GFP_KERNEL);
+	if (!my_timer) {
+		pr_err("Alloc memory for my_timer failed!\n");
+		start = 0;
+		return -1;
+	}
 	ktime = ktime_set(0, MS_TO_NS(delay_in_ms));
 	for(i = 0; i < hrtimer_num; i++) {
 		hrtimer_init(&my_timer[i], CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -218,7 +231,6 @@ static int hrtimer_test_start(void)
 
 		pr_info("PROBE: Starting timer to fire in %ldms (%lu)\n",
 		delay_in_ms, jiffies);
-
 		hrtimer_start(&my_timer[i], ktime, HRTIMER_MODE_REL);
 	}
 
@@ -235,17 +247,39 @@ static int hrtimer_test_start(void)
 		k[cpu] = kthread_create(&hrtimer_test_handler, (void *)init_delay_ms,thread_str);
 		kthread_bind(k[cpu],cpu);
 		wake_up_process(k[cpu]);
-		mdelay(init_delay_ms);
-		init_delay_ms += 3;
+		pstate[cpu] = 1;
+		init_delay_ms += KTHREAD_DELAY_DELTA_MS;
 	}
 	put_online_cpus();
 
+	/*
+	 * Estimate and calculate total wait time according to
+	 * - inner delay within each hrtimer test loop
+	 * - number of loops
+	 * - Estimated additional delay during test
+	 */
+	total_delay_ms = ESTIMATED_DELAY_RATE * INNER_TEST_DELAY_MS * loop;
+	pr_info("hrtimer test might take about %ld(s)\n", total_delay_ms);
+	while(total_delay_ms > 0 && !kill_test) {
+		for(i = 0; i < NR_CPUS; i++) {
+			if(pstate[i])
+				break;
+		}
+		if(i == NR_CPUS) {
+			pr_info("hrtimer test is Okay!\n");
+			break;
+		}
+		total_delay_ms -= 1000;
+		mdelay(1000);
+	}
+	hrtimer_test_stop();
 	return 0;
 }
 
 static int hrtimer_test_stop(void)
 {
 	unsigned int cpu;
+	start = 0;
 
 	/* We need to destroy also the parked threads of offline cpus */
 	for_each_possible_cpu(cpu) {
@@ -253,6 +287,11 @@ static int hrtimer_test_stop(void)
 			kthread_stop(k[cpu]);
 			k[cpu] = NULL;
 		}
+		pstate[cpu] = 0;
+	}
+	if (my_timer) {
+		kfree(my_timer);
+		my_timer = NULL;
 	}
 	return 0;
 }
@@ -265,7 +304,6 @@ static int hrtimer_test_remove(struct platform_device *pdev)
 		debugfs_remove_recursive(dent);
 		dent = NULL;
 	}
-	kill_test = 0;
 	return 0;
 }
 
