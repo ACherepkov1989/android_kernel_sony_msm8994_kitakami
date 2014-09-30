@@ -38,7 +38,7 @@ hrtimer_dev_sys_count=${test_debugfs_dev}/hrtimer-test/count
 hrtimer_dev_sys_timernum=${test_debugfs_dev}/hrtimer-test/timer_num
 hrtimer_dev_sys_start=${test_debugfs_dev}/hrtimer-test/start
 hrtimer_module_name=hrtimer_test_module
-hrtimer_test_time=0
+hrtimer_test_time=3600
 timer_num=0
 count=0
 
@@ -93,14 +93,12 @@ hrtimer_test(){
 	if [ -z "$1" ]; then
 		if [ -f $hrtimer_dev_sys_count ]; then
 			count=`cat ${hrtimer_dev_sys_count}`
-			let hrtimer_test_time=20*${count}/1000+1
 		else
 			echo "ERROR: failed to get hrtimer test times"
 			return 1
 		fi
 	else
 		count=$1
-		let hrtimer_test_time=20*${1}/1000+1
 	fi
 
 	if [ -z "$2" ]; then
@@ -115,7 +113,7 @@ hrtimer_test(){
 	fi
 
 	# Start to test
-	echo "=== Total test time: $hrtimer_test_time (s) ==="
+	echo "Hrtimer is starting. It might take several minutes or longer..."
 	echo $count > ${hrtimer_dev_sys_count}
 	if [ $? -ne 0 ]; then
 		echo "ERROR: failed to pass parameter(count) to driver"
@@ -138,16 +136,12 @@ hrtimer_test(){
 		echo "ERROR: failed to find the path: $hrtimer_dev_sys_start"
 		return 1
 	fi
-
 	# check test result
-	i=0
-	echo "Hrtimer is testing, please wait ...."
-	while [ $i -le $hrtimer_test_time ]; do
-		let i=i+1
+	while [ $hrtimer_test_time -gt 0 ]; do
+		let hrtimer_test_time=hrtimer_test_time-1
 		sleep 1
 		start_result=`cat $hrtimer_dev_sys_start`
 		if [ ${start_result} -eq 0 ]; then
-			echo "Force to stop test!!!"
 			break
 		fi
 	done
@@ -206,7 +200,7 @@ do
     ;;
     -s | --stress)
     stress_test=1
-    hrtimer_loop=180000
+    hrtimer_loop=50000
 	hrtimer_num=10
     shift 1
     ;;
