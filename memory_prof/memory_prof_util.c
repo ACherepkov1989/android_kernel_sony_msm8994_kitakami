@@ -44,7 +44,7 @@ void set_oom_score_adj_path(const char *path, int adj)
 	char *val;
 	int fd;
 
-	asprintf(&val, "%d", adj);
+	ASPRINTF(&val, "%d", adj);
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
@@ -63,7 +63,7 @@ free_val:
 void set_oom_score_adj_pid(int pid, int adj)
 {
 	char *path;
-	asprintf(&path, "/proc/%d/oom_score_adj", pid);
+	ASPRINTF(&path, "/proc/%d/oom_score_adj", pid);
 	set_oom_score_adj_path(path, adj);
 	free(path);
 }

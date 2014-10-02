@@ -26,34 +26,40 @@ LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_MODULE      := ip_accelerator
 LOCAL_SRC_FILES   := \
-		TestManager.cpp \
-		TestBase.cpp \
+		DataPathTestFixture.cpp \
+		DataPathTests.cpp \
+		Filtering.cpp \
+		FilteringTest.cpp \
+		HeaderInsertion.cpp \
+		HeaderInsertionTests.cpp \
+		HeaderRemovalTestFixture.cpp \
+		HeaderRemovalTests.cpp \
 		InterfaceAbstraction.cpp \
-		Pipe.cpp \
-		PipeTestFixture.cpp \
-		PipeTests.cpp \
-		TLPAggregationTestFixture.cpp \
-		TLPAggregationTests.cpp \
+		IPAFilteringTable.cpp \
+		IPAInterruptsTestFixture.cpp \
+		IPAInterruptsTests.cpp \
+		IPv4Packet.cpp \
+		Logger.cpp \
+		main.cpp \
 		MBIMAggregationTestFixture.cpp \
 		MBIMAggregationTestFixtureConf10.cpp \
 		MBIMAggregationTestFixtureConf11.cpp \
 		MBIMAggregationTestFixtureConf12.cpp \
 		MBIMAggregationTests.cpp \
-		Logger.cpp \
-		RoutingDriverWrapper.cpp \
-		RoutingTests.cpp \
-		IPAFilteringTable.cpp \
-		Filtering.cpp \
-		FilteringTest.cpp \
-		HeaderInsertion.cpp \
-		HeaderInsertionTests.cpp \
-		TestsUtils.cpp \
-		HeaderRemovalTestFixture.cpp \
-		HeaderRemovalTests.cpp \
-		IPv4Packet.cpp \
+		Pipe.cpp \
+		PipeTestFixture.cpp \
+		PipeTests.cpp \
 		RNDISAggregationTestFixture.cpp \
 		RNDISAggregationTests.cpp \
-		main.cpp
+		RoutingDriverWrapper.cpp \
+		RoutingTests.cpp \
+		TestBase.cpp \
+		TestManager.cpp \
+		TestsUtils.cpp \
+		TLPAggregationTestFixture.cpp \
+		TLPAggregationTests.cpp \
+		USBIntegration.cpp \
+		USBIntegrationFixture.cpp
 
 LOCAL_SHARED_LIBRARIES := \
 		libstlport \
