@@ -1,6 +1,5 @@
 ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
-ifneq (,$(filter arm, $(TARGET_ARCH)))
-ifeq (,$(filter arm64, $(TARGET_KERNEL_ARCH)))
+ifneq (,$(filter arm arm64 aarch64, $(TARGET_ARCH)))
 
 LOCAL_PATH := $(call my-dir)
 commonSources :=
@@ -23,6 +22,5 @@ LOCAL_MODULE_TAGS := optional debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_PREBUILT)
 
-endif
 endif
 endif
