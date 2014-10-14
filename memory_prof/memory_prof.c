@@ -316,74 +316,6 @@ static int basic_sanity_tests(unsigned long size)
 	return rc;
 }
 
-static int do_map_extra_test(void)
-{
-	int rc = 0;
-	int ionfd, memory_prof_fd;
-	struct memory_prof_map_extra_args args;
-	size_t buffer_length = SZ_1M;
-	struct ion_allocation_data alloc_data = {
-		.align	   = SZ_1M,
-		.len	   = buffer_length,
-		.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID),
-		.flags	   = 0,
-	};
-	struct ion_fd_data fd_data;
-
-	ionfd = open(ION_DEV, O_RDONLY);
-	if (ionfd < 0) {
-		perror("couldn't open " ION_DEV);
-		goto out;
-	}
-
-	memory_prof_fd = open(MEMORY_PROF_DEV, 0);
-	if (memory_prof_fd < 0) {
-		perror("couldn't open " MEMORY_PROF_DEV);
-		rc = memory_prof_fd;
-		goto close_ion_fd;
-	}
-
-	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_CREATE);
-	if (rc) {
-		perror("couldn't do MEMORY_PROF_IOC_CLIENT_CREATE");
-		goto close_memory_prof_fd;
-	}
-
-	rc = alloc_me_up_some_ion(ionfd, &alloc_data);
-	if (rc)
-		goto destroy_ion_client;
-
-	fd_data.handle = alloc_data.handle;
-
-	rc = ioctl(ionfd, ION_IOC_SHARE, &fd_data);
-	if (rc) {
-		perror("Couldn't do ION_IOC_SHARE");
-		goto ion_free_and_close;
-	}
-
-	args.ionfd = fd_data.fd;
-	args.iommu_map_len = buffer_length * 2;
-
-	print_n_slow("Doing MEMORY_PROF_IOC_TEST_MAP_EXTRA");
-	rc = ioctl(memory_prof_fd, MEMORY_PROF_IOC_TEST_MAP_EXTRA, &args);
-	if (rc) {
-		perror("couldn't do MEMORY_PROF_IOC_TEST_MAP_EXTRA");
-		goto ion_free_and_close;
-	}
-
-ion_free_and_close:
-	rc |= ioctl(ionfd, ION_IOC_FREE, &alloc_data.handle);
-	close(ionfd);
-destroy_ion_client:
-	rc |= ioctl(memory_prof_fd, MEMORY_PROF_IOC_CLIENT_DESTROY);
-close_memory_prof_fd:
-	close(memory_prof_fd);
-close_ion_fd:
-	close(ionfd);
-out:
-	return rc;
-}
-
 /**
  * Free memory in alloc_list
  */
@@ -632,16 +564,6 @@ int profile_alloc_for_heap(unsigned int heap_id_mask,
 	return do_profile_alloc_for_heap(
 		heap_id_mask, flags, size, alloc_ms, map_ms, memset_ms, free_ms,
 		true, 0, -1, true);
-}
-
-static int map_extra_test(void)
-{
-	int rc = 0;
-	puts("testing msm_iommu_map_extra...");
-	rc = do_map_extra_test();
-	if (rc) puts("FAILED!");
-	hr();
-	return rc;
 }
 
 static int profile_kernel_alloc(void)
@@ -1264,7 +1186,6 @@ static int file_exists(const char const *fname)
 	"             from stdin.\n"					\
 	"  -k         Do kernel alloc profiling (requires kernel module)\n" \
 	"  -l         Do leak test (leak an ion handle)\n"		\
-	"  -m         Do map extra test (requires kernel module)\n"	\
 	"  -n         Do the nominal test (same as -b)\n"		\
 	"  -o         Do OOM test (alloc from Ion system heap until OOM)\n" \
 	"  -p MS      Sleep for MS milliseconds between stuff (for debugging)\n" \
@@ -1302,7 +1223,6 @@ int main(int argc, char *argv[])
 	bool do_basic_sanity_tests = false;
 	bool do_heap_profiling = false;
 	bool do_kernel_alloc_profiling = false;
-	bool do_map_extra_test = false;
 	bool do_oom_test = false;
 	bool do_leak_test = false;
 	bool do_ion_memcpy_test = false;
@@ -1367,9 +1287,6 @@ int main(int argc, char *argv[])
 		case 'l':
 			do_leak_test = true;
 			break;
-		case 'm':
-			do_map_extra_test = true;
-			break;
 		case 'o':
 			do_oom_test = true;
 			break;
@@ -1400,11 +1317,6 @@ int main(int argc, char *argv[])
 	if (do_basic_sanity_tests) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= basic_sanity_tests(basic_sanity_size);
-		did_something = true;
-	}
-	if (do_map_extra_test) {
-		for (i = 0; i < num_reps; ++i)
-			rc |= map_extra_test();
 		did_something = true;
 	}
 	if (do_heap_profiling) {
