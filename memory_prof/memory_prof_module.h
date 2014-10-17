@@ -15,11 +15,6 @@
 #include <linux/ioctl.h>
 #include <linux/types.h>
 
-struct memory_prof_map_extra_args {
-	int ionfd;
-	unsigned long iommu_map_len;
-};
-
 /**
  * Since userspace doesn't have the definitions for the various gfp
  * flags, we define some common ones here. You can't compose gfp flags
@@ -87,9 +82,6 @@ struct mp_iommu_attach_test_args {
 
 #define MEMORY_PROF_IOC_CLIENT_CREATE _IO(MEMORY_PROF_MAGIC, 0)
 #define MEMORY_PROF_IOC_CLIENT_DESTROY _IO(MEMORY_PROF_MAGIC, 1)
-
-#define MEMORY_PROF_IOC_TEST_MAP_EXTRA \
-	_IOR(MEMORY_PROF_MAGIC, 2, struct memory_prof_map_extra_args)
 
 #define MEMORY_PROF_IOC_TEST_KERNEL_ALLOCS _IO(MEMORY_PROF_MAGIC, 3)
 
