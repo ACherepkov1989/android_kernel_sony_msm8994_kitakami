@@ -165,7 +165,7 @@ static struct bus_timeout_data data[] = {
 			.usb_otg_hs_base = 0xf9a55000,
 		},
 	[MSM8916] = {
-			.target = "msm8916",
+			.target = "msm8916, msm8939, msm8909",
 			.ahb_bus_timeout = 0x193c000,
 			.sec_wdog = 0x4aa000,
 			.mmss_vfe_base = 0x1b10000,
@@ -179,7 +179,8 @@ static struct bus_timeout_data *bus_timeout_get_data(void)
 	int rc;
 
 	rc = of_machine_is_compatible("qcom,msm8916")
-				|| of_machine_is_compatible("qcom,msm8939");
+				|| of_machine_is_compatible("qcom,msm8939")
+				|| of_machine_is_compatible("qcom,msm8909");
 	if (rc)
 		index = MSM8916;
 
