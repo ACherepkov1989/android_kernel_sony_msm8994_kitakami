@@ -525,37 +525,6 @@ static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned lon
 		ion_client_destroy(module_data->client);
 		break;
 	}
-	case MEMORY_PROF_IOC_TEST_MAP_EXTRA:
-	{
-		struct memory_prof_map_extra_args args;
-		struct ion_handle *handle;
-		struct ion_client *client = module_data->client;
-		unsigned long buffer_size;
-		dma_addr_t iova;
-
-		if (copy_from_user(&args, (void __user *)arg,
-					sizeof(struct memory_prof_map_extra_args)))
-			return -EFAULT;
-
-		handle = ion_import_dma_buf(client, args.ionfd);
-		if (IS_ERR_OR_NULL(handle)) {
-			pr_err("Couldn't do ion_import_dma_buf in "
-				"MEMORY_PROF_IOC_TEST_MAP_EXTRA\n");
-			return -EINVAL;
-		}
-
-		ret = ion_map_iommu(client, handle, VIDEO_DOMAIN,
-				VIDEO_FIRMWARE_POOL, SZ_8K,
-				args.iommu_map_len, &iova, &buffer_size,
-				0, 0);
-
-		if (ret) {
-			pr_err("Couldn't ion_map_iommu in "
-				"MEMORY_PROF_IOC_TEST_MAP_EXTRA\n");
-			return ret;
-		}
-		break;
-	}
 	case MEMORY_PROF_IOC_TEST_KERNEL_ALLOCS:
 	{
 		test_kernel_allocs();
