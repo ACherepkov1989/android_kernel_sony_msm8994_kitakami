@@ -21,4 +21,5 @@ to guarantee that the disable will actually work is to make sure the
 system is not using the required clocks.
 
 For this module, the camera must not be on while attempting to do the
-test since the camera registers are used for testing.
+test since the camera registers are used for testing. The usb cable
+must not be plugged in while attempting to do the usb timeout test.
