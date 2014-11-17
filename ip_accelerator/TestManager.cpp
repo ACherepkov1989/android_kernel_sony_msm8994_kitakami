@@ -32,6 +32,10 @@
 #include <vector>       // std::vector
 #include "TestManager.h"
 #include "TestsUtils.h"
+#include <fcntl.h>
+#include <unistd.h>
+#include "ipa_test_module.h"
+#include <sys/ioctl.h>
 
 using namespace std;
 
@@ -44,6 +48,7 @@ TestManager::TestManager()
 	m_failedTestsNames.clear();
 	m_numTestsFailed = 0;
 	m_numTestsRun = 0;
+	GetIPAHwType();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,11 +104,18 @@ bool TestManager::Run(vector<string> testSuiteList, vector<string> testNameList)
 				}
 			}
 		}
-		//We also support test by name
+
+		// We also support test by name
 		if (testNameList.size() > 0) {
 			testIter = find(testNameList.begin(), testNameList.end(), test->m_name);
 			if (testIter != testNameList.end())
 				runTest = true;
+		}
+
+		// Run the test only if it's applicable to the current IPA HW type / version
+		if (runTest) {
+			if (!(m_IPAHwType >= test->m_minIPAHwType && m_IPAHwType <= test->m_maxIPAHwType))
+				runTest = false;
 		}
 
 		if (!runTest)
@@ -198,3 +210,27 @@ void TestManager::PrintRegisteredTests()
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+void TestManager::GetIPAHwType()
+{
+	int fd;
+
+	// Open ipa_test device node
+	fd = open("/dev/ipa_test" , O_RDONLY);
+	if (0 == fd) {
+		printf("Failed opening %s.\n", "/dev/ipa_test");
+		m_IPAHwType = IPA_HW_None;
+	}
+
+	m_IPAHwType = (enum ipa_hw_type)ioctl(fd, IPA_TEST_IOC_GET_HW_TYPE);
+	if (-1 == m_IPAHwType) {
+		printf("%s(), IPA_TEST_IOC_GET_HW_TYPE ioctl failed\n", __FUNCTION__);
+		m_IPAHwType = IPA_HW_None;
+	}
+
+	printf("%s(), IPA HW type (version) = %d\n", __FUNCTION__, m_IPAHwType);
+	close(fd);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////

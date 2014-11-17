@@ -115,7 +115,10 @@ bool USBIntegrationFixture::TestLogic()
 		do // Wait for data to arrive in USB1_PROD pipe
 		{
 			LOG_MSG_DEBUG("Waiting for Packet (1 s)");
-			struct timespec time = {0, 100e6};
+			// Sleep for 100 msec
+			struct timespec time;
+			time.tv_sec = 0;
+			time.tv_nsec = 100e6;
 			nanosleep(&time, NULL);
 			m_nBufSize = m_Consumer1.ReceiveData(m_aBuffer,BUFF_MAX_SIZE);
 			LOG_MSG_INFO("Packet Recieved (%d)Bytes!",m_nBufSize);
