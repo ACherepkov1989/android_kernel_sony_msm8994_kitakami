@@ -82,12 +82,25 @@ static void keep_looping(int arg)
 static void keep_looping_2(struct work_struct *work)
 {
 	int ret = 0;
+	int scm_ret = 0;
 	u32 argument = 0;
+	struct scm_desc desc = {0};
+
 	pr_info("Forcing secure lockup of cpu 1 using SCM call\n");
 	atomic_inc(&cause_bark);
-	ret = scm_call(SCM_SVC_BOOT, SCM_SVC_SPIN_CPU, &argument,
+
+	desc.args[0] = 0;
+	desc.arginfo = SCM_ARGS(1);
+	if (!is_scm_armv8()) {
+		ret = scm_call(SCM_SVC_BOOT, SCM_SVC_SPIN_CPU, &argument,
 					sizeof(argument), NULL, 0);
-	pr_err("scm call failed!\n");
+	} else {
+		ret = scm_call2(SCM_SIP_FNID(SCM_SVC_BOOT,
+				SCM_SVC_SPIN_CPU), &desc);
+		scm_ret = desc.ret[0];
+	}
+	if (ret || scm_ret)
+		pr_err("scm call failed!\n");
 	while(1);
 }
 
@@ -255,7 +268,12 @@ static int sec_wdog_bite_set(const char *val, struct kernel_param *kp)
 static int sec_wdog_scm_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
+	int scm_ret = 0;
 	int old_val;
+	struct scm_desc desc = {0};
+
+	desc.args[0] = 0;
+	desc.arginfo = SCM_ARGS(1);
 
 	old_val = sec_wdog_scm;
 	ret = param_set_int(val, kp);
@@ -264,9 +282,16 @@ static int sec_wdog_scm_set(const char *val, struct kernel_param *kp)
 	if (sec_wdog_scm == 1) {
 		u8 trigger = 0;
 		pr_info("sec watchdog bite\n");
-		ret = scm_call(SCM_SVC_BOOT, SCM_SVC_SEC_WDOG_TRIG, &trigger,
+		if (!is_scm_armv8()) {
+			ret = scm_call(SCM_SVC_BOOT, SCM_SVC_SEC_WDOG_TRIG, &trigger,
 						sizeof(trigger), NULL, 0);
-		pr_err("Secure watchdog bite failed\n");
+		} else {
+			ret = scm_call2(SCM_SIP_FNID(SCM_SVC_BOOT,
+					SCM_SVC_SEC_WDOG_TRIG), &desc);
+			scm_ret = desc.ret[0];
+		}
+		if (ret || scm_ret)
+			pr_err("Secure watchdog bite failed\n");
 	}
 	return ret;
 }
