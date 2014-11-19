@@ -1,0 +1,1 @@
+obj-m := modsign_test_module.o
