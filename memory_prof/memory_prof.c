@@ -1025,6 +1025,71 @@ out:
 	return rc;
 }
 
+int profile_ion_cache_ops_for_heap(unsigned int heap_id_mask,
+					unsigned int flags, unsigned int size,
+					double *time_elapsed_flush_ms,
+					bool cache_clean, bool cache_inv)
+{
+	struct ion_allocation_data alloc_data;
+	int ionfd, data_fd, rc = 0;
+	char *buffer;
+	struct timeval tv;
+	struct ion_flush_data flush_data;
+	struct ion_custom_data custom_data;
+
+	ionfd = open(ION_DEV, O_RDONLY);
+	if (ionfd < 0) {
+		perror("couldn't open " ION_DEV);
+		rc = 1;
+		goto out;
+	}
+
+	alloc_data.len = size;
+	alloc_data.align = SZ_4K;
+	alloc_data.heap_id_mask = heap_id_mask;
+	alloc_data.flags = flags;
+
+	if (alloc_and_map_some_ion(ionfd, &alloc_data, &buffer, &data_fd)) {
+		perror("Couldn't alloc and map buffer");
+		rc = 1;
+		goto close_ionfd;
+	}
+
+	memset(buffer, 0x5a, size);
+
+	flush_data.handle = alloc_data.handle;
+	flush_data.vaddr = buffer;
+	flush_data.length = size;
+
+	if (cache_clean && cache_inv)
+		custom_data.cmd = ION_IOC_CLEAN_INV_CACHES;
+	else if (cache_clean)
+		custom_data.cmd = ION_IOC_CLEAN_CACHES;
+	else if (cache_inv)
+		custom_data.cmd = ION_IOC_INV_CACHES;
+	else {
+		perror("Not cleaning or invalidating caches");
+		goto munmap_and_close;
+	}
+	custom_data.arg = (unsigned long) &flush_data;
+	mprof_tick(&tv);
+	if (ioctl(ionfd, ION_IOC_CUSTOM, &custom_data)) {
+		perror("Couldn't flush caches");
+		rc = 1;
+	}
+
+	*time_elapsed_flush_ms = mprof_tock(&tv);
+
+munmap_and_close:
+	munmap(buffer, size);
+	close(data_fd);
+free_src:
+	ioctl(ionfd, ION_IOC_FREE, &alloc_data.handle);
+close_ionfd:
+	close(ionfd);
+out:
+	return rc;
+}
 /**
  * Profiles the time it takes to copy between various types of Ion
  * buffers. Namely, copies between every permutation of
