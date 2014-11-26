@@ -55,6 +55,9 @@ endif
 if USESWP
 BUILD_TEST += swp
 endif
+if USEMODSIGN
+BUILD_TEST += modsign
+endif
 
 SUBDIRS = $(BUILD_TEST)
 
