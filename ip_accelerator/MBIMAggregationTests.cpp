@@ -126,8 +126,8 @@ private:
 	//to the expected packets
 	static bool DeaggragateAndComparePackets(
 			Byte pAggregatedPacket[MAX_PACKET_SIZE],
-			Byte pExpectedPackets[NUM_PACKETS][MAX_PACKET_SIZE],
-			int pPacketsSizes[NUM_PACKETS], int nNumPackets,
+			Byte pExpectedPackets[MAX_PACKETS_IN_MBIM_TESTS][MAX_PACKET_SIZE],
+			int pPacketsSizes[MAX_PACKETS_IN_MBIM_TESTS], int nNumPackets,
 			int nAggregatedPacketSize, bool isQcncm);
 	//This method will aggregate packets
 	static void AggregatePackets(
@@ -1437,7 +1437,7 @@ bool MBIMAggregationScenarios::MBIMAggregationMultiplePacketsTest(
 
 	//deaggregating the aggregated packet
 	return DeaggragateAndComparePackets(pReceivedPacket, pPackets,
-			pPacketsSizes, NUM_PACKETS, MAX_PACKET_SIZE, isQcncm);
+			pPacketsSizes, MAX_PACKETS_IN_NDP + 1, MAX_PACKET_SIZE, isQcncm);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1647,8 +1647,8 @@ bool MBIMAggregationScenarios::MBIMAggregationNoInterleavingStreamIdsTest(
 
 bool MBIMAggregationScenarios::DeaggragateAndComparePackets(
 		Byte pAggregatedPacket[MAX_PACKET_SIZE],
-		Byte pExpectedPackets[NUM_PACKETS][MAX_PACKET_SIZE],
-		int pPacketsSizes[NUM_PACKETS], int nNumPackets, int nAggregatedPacketSize,
+		Byte pExpectedPackets[MAX_PACKETS_IN_MBIM_TESTS][MAX_PACKET_SIZE],
+		int pPacketsSizes[MAX_PACKETS_IN_MBIM_TESTS], int nNumPackets, int nAggregatedPacketSize,
 		bool isQcncm)
 {
 	int nPacketNum = 0;

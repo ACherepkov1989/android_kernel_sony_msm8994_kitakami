@@ -41,6 +41,7 @@
 #include "Pipe.h"
 
 #define NUM_PACKETS 5
+#define MAX_PACKETS_IN_MBIM_TESTS 10
 #define MAX_PACKET_SIZE 1024
 
 /*This class will be the base class of MBIM Aggregation tests.
