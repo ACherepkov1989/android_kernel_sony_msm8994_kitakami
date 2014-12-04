@@ -61,5 +61,8 @@ endif
 if USECORESIGHT
 BUILD_TEST += coresight
 endif
+if USEBUS_TIMEOUT
+BUILD_TEST += bus-timeout
+endif
 SUBDIRS = $(BUILD_TEST)
 
