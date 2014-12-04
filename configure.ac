@@ -124,6 +124,9 @@ ENABLE_KERNEL_TEST([coresight],[include the coresight test (default=yes)])
 # bus-timeout
 ENABLE_KERNEL_TEST([bus-timeout],[include the bus-timeout test (default=yes)])
 
+# abnormal_reset
+ENABLE_KERNEL_TEST([abnormal_reset],[include the abnormal_reset test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -148,6 +151,7 @@ AC_CONFIG_FILES([
 	coresight/profile/Makefile
 	coresight/sink_switch/Makefile
 	bus-timeout/Makefile
+	abnormal_reset/Makefile
 	v4l2apps/Makefile
 	watchdog/Makefile
 	ip_accelerator/Makefile

@@ -64,5 +64,8 @@ endif
 if USEBUS_TIMEOUT
 BUILD_TEST += bus-timeout
 endif
+if USEABNORMAL_RESET
+BUILD_TEST += abnormal_reset
+endif
 SUBDIRS = $(BUILD_TEST)
 
