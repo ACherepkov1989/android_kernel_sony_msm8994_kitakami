@@ -154,15 +154,6 @@ out:
 	complete(&timeout_complete);
 }
 
-static void timeout_work(struct work_struct *work)
-{
-	pr_info("apps watchdog bark\n");
-	preempt_disable();
-	mdelay(MDELAY_TIME);
-	preempt_enable();
-	complete(&timeout_complete);
-}
-
 #ifdef CONFIG_HOTPLUG_CPU
 static void bring_other_cpus_down(void)
 {
@@ -179,6 +170,16 @@ static void bring_other_cpus_down(void)
 {
 }
 #endif
+
+static void timeout_work(struct work_struct *work)
+{
+	bring_other_cpus_down();
+	pr_info("apps watchdog bark\n");
+	preempt_disable();
+	mdelay(MDELAY_TIME);
+	preempt_enable();
+	complete(&timeout_complete);
+}
 
 static void apps_bite_work(struct work_struct *work)
 {
