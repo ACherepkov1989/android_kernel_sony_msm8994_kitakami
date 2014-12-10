@@ -1105,8 +1105,10 @@ static int ion_memcpy_test(void)
 		time_elapsed_flush_ms = 0;
 
 	src_alloc_data.len = SZ_4M;
+	src_alloc_data.align = SZ_4K;
 	src_alloc_data.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
 	dst_alloc_data.len = SZ_4M;
+	dst_alloc_data.align = SZ_4K;
 	dst_alloc_data.heap_id_mask = ION_HEAP(ION_SYSTEM_HEAP_ID);
 
 	src_alloc_data.flags = 0;
