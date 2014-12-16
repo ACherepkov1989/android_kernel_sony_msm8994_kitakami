@@ -4144,6 +4144,7 @@ public:
 			All ICMP traffic goes to routing table 2";
 		m_IpaIPType = IPA_IP_v6;
 		m_extHdrType = FRAGMENT;
+		m_minIPAHwType = IPA_HW_v2_5;
 		Register(*this);
 	}
 
@@ -4286,6 +4287,7 @@ public:
 			Packets with MF flag set to zero and fragment offset field zero goes to routing table 1";
 		m_IpaIPType = IPA_IP_v6;
 		m_extHdrType = FRAGMENT;
+		m_minIPAHwType = IPA_HW_v2_5;
 		Register(*this);
 	}
 
@@ -4486,6 +4488,7 @@ public:
 			All (DST_PORT = 100) traffic goes to routing table 1 \
 			All (5 >= SRC_PORT_RANGE >= 15) traffic goes to routing table 2";
 		m_IpaIPType = IPA_IP_v6;
+		m_minIPAHwType = IPA_HW_v2_5;
 		Register(*this);
 	}
 
