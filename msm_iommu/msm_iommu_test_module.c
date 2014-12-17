@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,6 +37,27 @@
 static struct class *iommu_test_class;
 static int iommu_test_major;
 static struct device *iommu_test_dev;
+
+struct cats_reg cats = {
+	.phys_smmu_local_base = 0x1EF0000,
+	.cats_128_bit_base_addr = 0x40000000,
+	.cats_64_bit_base_addr = 0x60000000,
+	.tbu_id_shift = 0x1,
+	.va_remap_shift = 0x5,
+	.enable_sid_shift = 0x8,
+	.sid_shift = 0x9,
+	.sid_mask = 0x3FF,
+};
+
+#define TBU_ID_MASK  (((1 << cats.va_remap_shift) - 1) >> cats.tbu_id_shift)
+#define VA_REMAP (32 - (cats.enable_sid_shift - cats.va_remap_shift))
+#define VA_REMAP_MASK (((1 << (cats.enable_sid_shift - cats.va_remap_shift)) - 1) << VA_REMAP)
+
+#define SMMU_CATS_128_BIT_CTL_SEC	0x18
+#define SMMU_CATS_64_BIT_CTL_SEC	0x10
+
+#define ENABLE_CATS			0x1
+#define ENABLE_CUSTOM_SID		0x1
 
 #ifdef CONFIG_IOMMU_LPAE
 static const unsigned int LPAE_ENABLED = 1;
@@ -977,24 +998,6 @@ out:
 	return ret;
 }
 
-void __iomem *smmu_local_base;
-#define SMMU_LOCAL_BASE			0x1EF0000
-#define SMMU_CATS_128_BIT_CTL_SEC	0x18
-#define SMMU_CATS_64_BIT_CTL_SEC	0x10
-#define CATS_128_BIT_ADDR_BASE		0x40000000
-#define CATS_64_BIT_ADDR_BASE		0x60000000
-
-#define ENABLE_CATS			0x1
-#define TBU_ID_SHIFT			0x1
-#define TBU_ID_MASK			0xF
-#define VA_REMAP_MASK			0xE0000000
-#define VA_REMAP_SHIFT			0x5
-#define VA_REMAP			0x1D
-#define ENABLE_CUSTOM_SID		0x1
-#define ENABLE_CUSTOM_SID_SHIFT		0x8
-#define CUSTOM_SID_SHIFT		0x9
-#define CUSTOM_SID_MASK			0x3FF
-
 static int cats_test(const struct msm_iommu_test *iommu_test,
 				struct test_iommu *tst_iommu)
 {
@@ -1014,6 +1017,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 	phys_addr_t magic_phys;
 	phys_addr_t cats_phys;
 	u32 mux, iova;
+	void __iomem *smmu_local_base;
 	u32 *sids = NULL;
 	u32 *sid_masks = NULL;
 
@@ -1062,7 +1066,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 		goto unreg_dom;
 	}
 
-	smmu_local_base = ioremap((phys_addr_t)SMMU_LOCAL_BASE, SZ_64K);
+	smmu_local_base = ioremap((phys_addr_t)cats.phys_smmu_local_base, SZ_64K);
 
 	sids = ctx_drvdata->sids;
 	sid_masks = ctx_drvdata->sid_mask;
@@ -1106,23 +1110,23 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 
 			mux = 0;
 			mux |= ENABLE_CATS;
-			mux |= ((tst_iommu->cats_tbu_id & TBU_ID_MASK) << TBU_ID_SHIFT);
-			mux |= (((iova & VA_REMAP_MASK) >> VA_REMAP) << VA_REMAP_SHIFT);
-			mux |= (ENABLE_CUSTOM_SID << ENABLE_CUSTOM_SID_SHIFT);
-			mux |= ((sid_list.sids[i] & CUSTOM_SID_MASK) << CUSTOM_SID_SHIFT);
+			mux |= ((tst_iommu->cats_tbu_id & TBU_ID_MASK) << cats.tbu_id_shift);
+			mux |= (((iova & VA_REMAP_MASK) >> VA_REMAP) << cats.va_remap_shift);
+			mux |= (ENABLE_CUSTOM_SID << cats.enable_sid_shift);
+			mux |= ((sid_list.sids[i] & cats.sid_mask) << cats.sid_shift);
 
 			if (tst_iommu->is_mm_tbu) {
 				writel_relaxed(mux, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
 				pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
-					SMMU_LOCAL_BASE + SMMU_CATS_128_BIT_CTL_SEC);
+					cats.phys_smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
 
-				cats_phys = (iova & 0x1FFFFFFF) + CATS_128_BIT_ADDR_BASE;
+				cats_phys = (iova & ~VA_REMAP_MASK) + cats.cats_128_bit_base_addr;
 			} else {
 				writel_relaxed(mux, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
 				pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
-					SMMU_LOCAL_BASE + SMMU_CATS_64_BIT_CTL_SEC);
+					cats.phys_smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
 
-				cats_phys = (iova & 0x1FFFFFFF) + CATS_64_BIT_ADDR_BASE;
+				cats_phys = (iova & ~VA_REMAP_MASK) + cats.cats_64_bit_base_addr;
 			}
 			mb();
 
@@ -1407,6 +1411,15 @@ static long iommu_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	{
 		get_target(&target);
 		if (copy_to_user((void __user *)arg, &target, sizeof(target)))
+			ret = -EFAULT;
+		else
+			ret = 0;
+		break;
+	}
+	case IOC_IOMMU_SET_CONFIG:
+	{
+		if (copy_from_user(&cats, (void __user *)arg,
+				sizeof(struct cats_reg)))
 			ret = -EFAULT;
 		else
 			ret = 0;

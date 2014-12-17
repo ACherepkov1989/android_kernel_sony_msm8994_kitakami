@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -42,6 +42,7 @@
 #include <linux/input.h>
 #include <linux/kernel.h>
 #include "iommutest.h"
+#include "msm_iommu_config.h"
 
 #define ERR	0
 #define INFO	1
@@ -408,6 +409,18 @@ int do_va2pa_test(int iommu_test_fd, struct get_next_cb *gnc, int *skipped)
 	return ret;
 }
 
+static int get_config_index(struct target_struct target)
+{
+	int i;
+
+	for (i = 0; tc[i].ts.name; i++) {
+		if (!strncmp(target.name, tc[i].ts.name, NAME_LEN))
+			return i;
+	}
+
+	return -EINVAL;
+}
+
 struct test_results run_nominal_tests(void)
 {
 	int ret = 0;
@@ -419,6 +432,7 @@ struct test_results run_nominal_tests(void)
 	struct test_results result = { 0, 0, 0 };
 	struct target_struct target;
 	unsigned int current_iommu = -1;
+	int index;
 
 	iommu_test_fd = open(MSM_IOMMU_TEST, O_RDWR);
 
@@ -434,6 +448,19 @@ struct test_results run_nominal_tests(void)
 		debug(ERR, "Failed to get target: %d\n", ret);
 		result.no_failed = 1;
 		return result;
+	}
+
+	index = get_config_index(target);
+
+	if (index >= 0) {
+		ret = ioctl(iommu_test_fd, IOC_IOMMU_SET_CONFIG, tc[index].cr);
+		if (ret) {
+			debug(ERR, "Failed to set target config: %d\n", ret);
+			result.no_failed = 1;
+			return result;
+		}
+	} else {
+		debug(INFO, "Target config not defined, using default\n");
 	}
 
 	gnc.iommu_no = iommu_idx;

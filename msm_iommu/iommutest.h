@@ -39,6 +39,22 @@ struct target_struct {
 	char name[NAME_LEN];
 };
 
+struct cats_reg {
+	unsigned int phys_smmu_local_base;
+	unsigned int cats_128_bit_base_addr;
+	unsigned int cats_64_bit_base_addr;
+	unsigned int tbu_id_shift;
+	unsigned int va_remap_shift;
+	unsigned int enable_sid_shift;
+	unsigned int sid_shift;
+	unsigned int sid_mask;
+};
+
+struct target_config {
+	struct target_struct ts;
+	struct cats_reg *cr;
+};
+
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 /*
@@ -61,5 +77,6 @@ struct target_struct {
 						struct test_iommu)
 #define IOC_IOMMU_TEST_IOMMU_BFB _IOWR(MSM_IOMMU_MAGIC, 4, struct test_iommu)
 #define IOC_IOMMU_TEST_CATS _IOWR(MSM_IOMMU_MAGIC, 5, struct test_iommu)
+#define IOC_IOMMU_SET_CONFIG _IOW(MSM_IOMMU_MAGIC, 6, struct cats_reg)
 
 #endif
