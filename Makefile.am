@@ -70,5 +70,8 @@ endif
 if USEABNORMAL_RESET
 BUILD_TEST += abnormal_reset
 endif
+if USESPINLOCK
+BUILD_TEST += spinlock
+endif
 SUBDIRS = $(BUILD_TEST)
 

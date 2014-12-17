@@ -138,6 +138,9 @@ ENABLE_KERNEL_TEST([abnormal_reset],[include the abnormal_reset test (default=ye
 #glink
 ENABLE_KERNEL_TEST([glink],[include the glink test (default=yes)], [$msm_glink_configured])
 
+# spinlock
+ENABLE_KERNEL_TEST([spinlock],[include the spinlock test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -172,5 +175,6 @@ AC_CONFIG_FILES([
 	page-nom/Makefile
 	modsign/Makefile
 	glink/Makefile
+	spinlock/Makefile
 	])
 AC_OUTPUT
