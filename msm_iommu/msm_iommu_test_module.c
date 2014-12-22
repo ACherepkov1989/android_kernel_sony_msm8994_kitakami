@@ -62,6 +62,11 @@ struct msm_iommu_test {
 	unsigned int iommu_rev;
 };
 
+struct sid_list {
+	u32 *sids;
+	u32 count;
+} sid_list;
+
 static struct iommu_access_ops *iommu_access_ops;
 
 static void msm_iommu_set_access_ops(void)
@@ -104,7 +109,7 @@ static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 	if (!of_property_read_u32(iommu_node, "qcom,iommu-secure-id", &dummy))
 		iommu_inst->secure = 1;
 
-	for_each_child_of_node(iommu_node, iommu_child) {
+	for_each_available_child_of_node(iommu_node, iommu_child) {
 		++iommu_inst->no_cb;
 	}
 
@@ -117,7 +122,7 @@ static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 			ret = -ENOMEM;
 			goto out;
 		}
-		for_each_child_of_node(iommu_node, iommu_child) {
+		for_each_available_child_of_node(iommu_node, iommu_child) {
 			ret = of_property_read_string(iommu_child, "label",
 				&iommu_inst->cb_list[cb_idx].name);
 			if (ret) {
@@ -892,6 +897,85 @@ out:
 	return ret;
 }
 
+#define NUMBER_SID_MASK_BITS	15
+
+static void __generate_all_sid(u32 curr_sid, u32 curr_mask, int maskpos)
+{
+	int is_mask_bit_set;
+	u32 new_sid;
+
+	while (maskpos > 0) {
+		is_mask_bit_set = curr_mask & (1 << (maskpos - 1));
+
+		if (is_mask_bit_set) {
+			new_sid = curr_sid & ~(1 << (maskpos - 1));
+			__generate_all_sid(new_sid, curr_mask, maskpos-1);
+
+			new_sid = curr_sid | (1 << (maskpos - 1));
+			__generate_all_sid(new_sid, curr_mask, maskpos-1);
+
+			break;
+		}
+		maskpos--;
+	}
+
+	if (maskpos == 0) {
+		sid_list.sids[sid_list.count] = curr_sid;
+		sid_list.count++;
+	}
+}
+
+static int generate_all_sid(u32 *sids, u32 *masks, unsigned int nmask)
+{
+	int sid_loop, mask_loop;
+	int mask_bits_set, total_poss_sids, is_mask_bit_set = 0;
+	u32 curr_sid, curr_mask;
+	int ret = 0;
+
+	for (sid_loop = 0; sid_loop < nmask / sizeof(*sids); sid_loop++) {
+		curr_sid = sids[sid_loop];
+		curr_mask = masks[sid_loop];
+		mask_bits_set = 0;
+
+		if (curr_mask == 0)
+			total_poss_sids++;
+		else {
+			for (mask_loop = 0; mask_loop < NUMBER_SID_MASK_BITS;
+					mask_loop++){
+				is_mask_bit_set = curr_mask & (1 << mask_loop);
+
+				if (is_mask_bit_set)
+					mask_bits_set++;
+			}
+
+			total_poss_sids += (1 << mask_bits_set);
+		}
+	}
+
+	sid_list.sids = kmalloc((sizeof(u32)*total_poss_sids), GFP_KERNEL);
+	if (!sid_list.sids) {
+		pr_err("%s: Could not get memory for sid list\n", __func__);
+		ret = -ENOMEM;
+		goto out;
+	}
+	sid_list.count = 0;
+
+	for (sid_loop = 0; sid_loop < nmask / sizeof(*sids); sid_loop++) {
+		curr_sid = sids[sid_loop];
+		curr_mask = masks[sid_loop];
+
+		if (curr_mask != 0)
+			__generate_all_sid(curr_sid, curr_mask,
+					NUMBER_SID_MASK_BITS);
+		else {
+			sid_list.sids[sid_list.count] = curr_sid;
+			sid_list.count++;
+		}
+	}
+out:
+	return ret;
+}
+
 void __iomem *smmu_local_base;
 #define SMMU_LOCAL_BASE			0x1EF0000
 #define SMMU_CATS_128_BIT_CTL_SEC	0x18
@@ -914,7 +998,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 				struct test_iommu *tst_iommu)
 {
 	int ret = 0;
-	int domain_id;
+	int domain_id, nsid;
 	int prot = IOMMU_WRITE | IOMMU_READ;
 	struct iommu_domain *domain;
 	struct iommu *smmu = &iommu_test->iommu_list[tst_iommu->iommu_no];
@@ -922,7 +1006,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 	struct device *dev;
 	struct msm_iommu_drvdata *drvdata;
 	struct msm_iommu_ctx_drvdata *ctx_drvdata;
-	unsigned int i;
+	unsigned int i, j;
 	unsigned long *magic_virt;
 	unsigned long *cats_virt;
 	unsigned long pattern;
@@ -930,6 +1014,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 	phys_addr_t cats_phys;
 	u32 mux, iova;
 	u32 *sids = NULL;
+	u32 *sid_masks = NULL;
 
 	if (iommu_test->iommu_rev != 2)
 		goto out;
@@ -979,79 +1064,109 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
 	smmu_local_base = ioremap((phys_addr_t)SMMU_LOCAL_BASE, SZ_64K);
 
 	sids = ctx_drvdata->sids;
+	sid_masks = ctx_drvdata->sid_mask;
+
+	if (ctx_drvdata->n_sid_mask > 0) {
+		ret = generate_all_sid(sids, sid_masks,
+				ctx_drvdata->n_sid_mask);
+		if (ret) {
+			pr_err("Generate SID failed:  %x\n", ret);
+			goto detach;
+		}
+	} else {
+		nsid = ctx_drvdata->nsid / sizeof(*sids);
+
+		sid_list.sids = kmalloc((sizeof(u32)*nsid), GFP_KERNEL);
+		if (!sid_list.sids) {
+			pr_err("%s: Could not get memory for sid list\n",
+					__func__);
+			ret = -ENOMEM;
+			goto detach;
+		}
+		sid_list.count = 0;
+
+		for (i = 0; i < nsid; i++) {
+			sid_list.sids[sid_list.count] = sids[i];
+			sid_list.count++;
+		}
+	}
 
 	/* Any random VA to be used */
 	iova = 0x0abcd000;
-	for (i = 0; i < 15; i++) {
-		iova += (1 << 28);
-		ret = iommu_map(domain, iova, magic_phys, SZ_4K, prot);
-		if (ret) {
-			pr_err("%s: could not map 0x%u in domain %p\n",
+	for (i = 0; i < sid_list.count; i++) {
+		for (j = 0; j < 15; j++) {
+			iova += (1 << 28);
+			ret = iommu_map(domain, iova, magic_phys, SZ_4K, prot);
+			if (ret) {
+				pr_err("%s: could not map 0x%u in domain %p\n",
 						__func__, iova, domain);
-			goto detach;
-		}
+				goto free_sid;
+			}
 
-		mux = 0;
-		mux |= ENABLE_CATS;
-		mux |= ((tst_iommu->cats_tbu_id & TBU_ID_MASK) << TBU_ID_SHIFT);
-		mux |= (((iova & VA_REMAP_MASK) >> VA_REMAP) << VA_REMAP_SHIFT);
-		mux |= (ENABLE_CUSTOM_SID << ENABLE_CUSTOM_SID_SHIFT);
-		mux |= ((sids[0] & CUSTOM_SID_MASK) << CUSTOM_SID_SHIFT);
+			mux = 0;
+			mux |= ENABLE_CATS;
+			mux |= ((tst_iommu->cats_tbu_id & TBU_ID_MASK) << TBU_ID_SHIFT);
+			mux |= (((iova & VA_REMAP_MASK) >> VA_REMAP) << VA_REMAP_SHIFT);
+			mux |= (ENABLE_CUSTOM_SID << ENABLE_CUSTOM_SID_SHIFT);
+			mux |= ((sid_list.sids[i] & CUSTOM_SID_MASK) << CUSTOM_SID_SHIFT);
 
-		if (tst_iommu->is_mm_tbu) {
-			writel_relaxed(mux, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
-			pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
-				SMMU_LOCAL_BASE + SMMU_CATS_128_BIT_CTL_SEC);
+			if (tst_iommu->is_mm_tbu) {
+				writel_relaxed(mux, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
+				pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
+					SMMU_LOCAL_BASE + SMMU_CATS_128_BIT_CTL_SEC);
 
-			cats_phys = (iova & 0x1FFFFFFF) + CATS_128_BIT_ADDR_BASE;
-		} else {
-			writel_relaxed(mux, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
-			pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
-				SMMU_LOCAL_BASE + SMMU_CATS_64_BIT_CTL_SEC);
+				cats_phys = (iova & 0x1FFFFFFF) + CATS_128_BIT_ADDR_BASE;
+			} else {
+				writel_relaxed(mux, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
+				pr_debug("CATS MUX value 0x%x written to 0x%x", mux,
+					SMMU_LOCAL_BASE + SMMU_CATS_64_BIT_CTL_SEC);
 
-			cats_phys = (iova & 0x1FFFFFFF) + CATS_64_BIT_ADDR_BASE;
-		}
-		mb();
+				cats_phys = (iova & 0x1FFFFFFF) + CATS_64_BIT_ADDR_BASE;
+			}
+			mb();
 
-		cats_virt = ioremap(cats_phys, SZ_4K);
+			cats_virt = ioremap(cats_phys, SZ_4K);
 
-		/* CATS reads */
-		*magic_virt = 0xabababab;
-		dmac_flush_range(magic_virt, magic_virt+0x10);
-		pattern = readl_relaxed(cats_virt);
+			/* CATS reads */
+			*magic_virt = 0xabababab;
+			dmac_flush_range(magic_virt, magic_virt+0x10);
+			pattern = readl_relaxed(cats_virt);
 
-		if (*magic_virt != pattern) {
-			pr_err("CPU write 0x%lx, CATS read 0x%lx\n",
-					*magic_virt, pattern);
-			ret = -EFAULT;
+			if (*magic_virt != pattern) {
+				pr_err("CPU write 0x%lx, CATS read 0x%lx\n",
+						*magic_virt, pattern);
+				ret = -EFAULT;
+				iounmap(cats_virt);
+				iommu_unmap(domain, iova, SZ_4K);
+				break;
+			}
+
+			/* CATS writes */
+			pattern = 0xcdcdcdcd;
+			writel_relaxed(pattern, cats_virt);
+			mb();
+			dmac_inv_range(magic_virt, magic_virt+0x10);
+
+			if (*magic_virt != pattern) {
+				pr_err("CATS write 0x%lx, CPU read 0x%lx\n",
+						pattern, *magic_virt);
+				ret = -EFAULT;
+				iounmap(cats_virt);
+				iommu_unmap(domain, iova, SZ_4K);
+				break;
+			}
+
 			iounmap(cats_virt);
 			iommu_unmap(domain, iova, SZ_4K);
-			break;
 		}
 
-		/* CATS writes */
-		pattern = 0xcdcdcdcd;
-		writel_relaxed(pattern, cats_virt);
+		/* Reset the CATS MUX */
+		writel_relaxed(0, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
+		writel_relaxed(0, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
 		mb();
-		dmac_inv_range(magic_virt, magic_virt+0x10);
-
-		if (*magic_virt != pattern) {
-			pr_err("CATS write 0x%lx, CPU read 0x%lx\n",
-					pattern, *magic_virt);
-			ret = -EFAULT;
-			iounmap(cats_virt);
-			iommu_unmap(domain, iova, SZ_4K);
-			break;
-		}
-
-		iounmap(cats_virt);
-		iommu_unmap(domain, iova, SZ_4K);
 	}
-
-	/* Reset the CATS MUX */
-	writel_relaxed(0, smmu_local_base + SMMU_CATS_128_BIT_CTL_SEC);
-	writel_relaxed(0, smmu_local_base + SMMU_CATS_64_BIT_CTL_SEC);
-	mb();
+free_sid:
+	kfree(sid_list.sids);
 detach:
 	iounmap(smmu_local_base);
 	iommu_detach_device(domain, dev);
