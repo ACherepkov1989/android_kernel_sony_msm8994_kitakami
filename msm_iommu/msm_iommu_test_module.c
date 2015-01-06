@@ -928,7 +928,8 @@ static void __generate_all_sid(u32 curr_sid, u32 curr_mask, int maskpos)
 static int generate_all_sid(u32 *sids, u32 *masks, unsigned int nmask)
 {
 	int sid_loop, mask_loop;
-	int mask_bits_set, total_poss_sids, is_mask_bit_set = 0;
+	int mask_bits_set, is_mask_bit_set;
+	int total_poss_sids = 0;
 	u32 curr_sid, curr_mask;
 	int ret = 0;
 
