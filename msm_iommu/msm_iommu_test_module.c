@@ -1027,7 +1027,7 @@ static int cats_test(const struct msm_iommu_test *iommu_test,
                 goto out;
         }
 
-	magic_virt = kmalloc(SZ_4K, GFP_KERNEL);
+	magic_virt = (unsigned long *) __get_free_page(GFP_KERNEL);
 	if (!magic_virt) {
 		pr_err("%s: Could not get memory for magic number\n", __func__);
 		ret = -ENOMEM;
@@ -1172,7 +1172,7 @@ detach:
 	iounmap(smmu_local_base);
 	iommu_detach_device(domain, dev);
 unreg_dom:
-	kfree(magic_virt);
+	free_page((unsigned long) magic_virt);
 	msm_unregister_domain(domain);
 out:
 	tst_iommu->ret_code = ret;
