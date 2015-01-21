@@ -57,4 +57,8 @@ ip_accelerator_SOURCES =\
 		DataPathTests.cpp \
 		IPAInterruptsTestFixture.cpp \
 		IPAInterruptsTests.cpp \
+		HeaderProcessingContextTestFixture.cpp \
+		HeaderProcessingContextTests.cpp \
+		FilteringEthernetBridgingTestFixture.cpp \
+		FilteringEthernetBridgingTests.cpp \
 		main.cpp

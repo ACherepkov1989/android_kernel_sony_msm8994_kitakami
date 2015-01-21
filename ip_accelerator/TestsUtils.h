@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <vector>
 #include <string>
+#include <linux/if_ether.h>
 #include "TestBase.h"
 #include "Constants.h"
 #include "RoutingDriverWrapper.h"
@@ -45,7 +46,40 @@ using namespace std;
 
 #define Free(x) do { if (x) {free(x); x = NULL; } } while (0)
 
-enum msgType {ERROR = 0, DEBUG, INFO, STACK};
+#define ETH2_DST_ADDR_OFFSET (0)
+#define ETH2_SRC_ADDR_OFFSET (ETH_ALEN)
+#define ETH2_ETH_TYPE_OFFSET (ETH2_SRC_ADDR_OFFSET + ETH_ALEN)
+#define ETH2_ETH_TYPE_LEN (2)
+#define ETH2_PAYLOAD_OFFSET (ETH2_ETH_TYPE_OFFSET + ETH2_ETH_TYPE_LEN)
+
+#define WLAN_HDR_SIZE (4)
+#define RNDIS_HDR_SIZE (44)
+
+// 26 ROME WLAN Frame =
+// 4	ROME WLAN header +
+// 14	IEEE 802.3 +
+// 8	802.2 LLC/SNAP
+#define _802_3_HDR_SIZE (26)
+
+// [WLAN][ETH2] header
+#define WLAN_ETH2_HDR_SIZE (WLAN_HDR_SIZE + ETH_HLEN)
+
+// [RNDIS][ETH2] header
+#define RNDIS_ETH2_HDR_SIZE (RNDIS_HDR_SIZE + ETH_HLEN)
+#define IP4_PACKET_SIZE (70) // Arbitrary number
+
+// OFFSET = sizeof(struct rndis_pkt_hdr) - RNDIS_HDR_OFST(data_ofst)
+#define RNDIS_DATA_OFFSET (36)
+
+// [WLAN][802.3] header
+#define WLAN_802_3_HDR_SIZE (WLAN_HDR_SIZE + _802_3_HDR_SIZE)
+
+enum msgType {
+	ERROR = 0,
+	DEBUG,
+	INFO,
+	STACK
+};
 
 /**
 	@brief
@@ -94,9 +128,24 @@ __log_msg(STACK, __FILE__, __LINE__, __func__, x)*/
 	Function loads a default IPv4 / IPv6 packet into pBuffer.
 	*/
 bool LoadDefaultPacket(
-		enum ipa_ip_type eIP,
-		uint8_t *pBuffer,
-		size_t & nMaxSize);
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize);
+
+bool LoadDefaultEth2Packet(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize);
+
+bool LoadDefaultWLANEth2Packet(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize);
+
+bool LoadDefaultWLAN802_32Packet(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize);
 
 /**
 	@brief
@@ -118,7 +167,7 @@ bool LoadDefaultPacket(
 		enum ipa_ip_type eIP,
 		enum ipv6_ext_hdr_type extHdrType,
 		uint8_t *pBuffer,
-		size_t & nMaxSize);
+		size_t &nMaxSize);
 /**
 	@brief
 	Function Sends a Packet, Receive a packet
@@ -258,5 +307,133 @@ bool file_exists(const char *filename);
 */
 void print_buff(void *data, size_t size);
 
+void add_buff(uint8_t *data, size_t size, uint8_t val);
+
+class Eth2Helper {
+public:
+	static const Byte m_ETH2_IP4_HDR[ETH_HLEN];
+
+	static bool LoadEth2IP4Header(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadEth2IP6Header(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadEth2IP4Packet(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadEth2IP6Packet(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+};
+
+class WlanHelper {
+public:
+	static const Byte m_WLAN_HDR[WLAN_HDR_SIZE];
+
+	static bool LoadWlanHeader(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadWlanEth2IP4Header(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadWlanEth2IP6Header(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadWlanEth2IP4Packet(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+
+	static bool LoadWlanEth2IP4PacketByLength(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t len,
+		uint8_t padValue);
+
+	static bool LoadWlanEth2IP6Packet(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		size_t *pLen);
+};
+
+#pragma pack(push)  /* push current alignment to stack */
+#pragma pack(1)     /* set alignment to 1 byte boundary */
+struct RndisHeader {
+	uint32_t MessageType;
+	uint32_t MessageLength;
+	uint32_t DataOffset;
+	uint32_t DataLength;
+	uint32_t OOBDataOffset;
+	uint32_t OOBDataLength;
+	uint32_t OOBNumber;
+	uint32_t PacketInfoOffset;
+	uint32_t PacketInfoLength;
+	uint64_t Reserved;
+};
+
+struct RndisEtherHeader {
+	struct RndisHeader rndisHeader;
+	struct ethhdr etherHeader;
+};
+#pragma pack(pop)   /* restore original alignment from stack */
+
+class RNDISAggregationHelper {
+public:
+	static const size_t RNDIS_AGGREGATION_BYTE_LIMIT = 1024;
+
+	static bool LoadRNDISHeader(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		uint32_t messageLength,
+		size_t *pLen);
+
+	static bool LoadRNDISEth2IP4Header(
+		uint8_t *pBuffer,
+		size_t bufferSize,
+		uint32_t messageLength,
+		size_t *pLen);
+
+	static bool LoadRNDISPacket(
+		enum ipa_ip_type eIP,
+		uint8_t *pBuffer,
+		size_t &nMaxSize);
+
+	static bool LoadEtherPacket(
+		enum ipa_ip_type eIP,
+		uint8_t *pBuffer,
+		size_t &nMaxSize);
+
+	static bool ComparePackets(
+		Byte *pPacket1,
+		int pPacket1Size,
+		Byte *pPacket2,
+		int pPacket2Size);
+
+	static bool CompareEthervsRNDISPacket(
+		Byte *pIPPacket,
+		size_t ipPacketSize,
+		Byte *pRNDISPacket,
+		size_t rndisPacketSize);
+
+	static bool CompareIPvsRNDISPacket(
+		Byte *pIPPacket,
+		int ipPacketSize,
+		Byte *pRNDISPacket,
+		size_t rndisPacketSize);
+};
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,11 +37,17 @@ class HeaderInsertion
 {
 private:
 	int m_fd;
+
 public:
 	bool AddHeader(struct ipa_ioc_add_hdr *pHeaderTable);
 	bool DeleteHeader(struct ipa_ioc_del_hdr *pHeaderTable);
 	bool GetHeaderHandle(struct ipa_ioc_get_hdr *pHeaderStruct);
 	bool CopyHeader(struct ipa_ioc_copy_hdr *pCopyHeaderStruct);
+
+	// Processing context
+	bool AddProcCtx(struct ipa_ioc_add_hdr_proc_ctx *procCtxTable);
+	bool DeleteProcCtx(struct ipa_ioc_del_hdr_proc_ctx *procCtxTable);
+
 	bool Commit();
 	bool Reset();
 
@@ -51,5 +57,3 @@ public:
 };
 
 #endif
-
-

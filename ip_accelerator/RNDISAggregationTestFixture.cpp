@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,8 +31,6 @@
 #include "RNDISAggregationTestFixture.h"
 
 /////////////////////////////////////////////////////////////////////////////////
-Byte const RNDISAggregationTestFixture::m_EtherHeader[14] = {0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8,
-	0xA9, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4};
 
 //define the static Pipes which will be used by all derived tests.
 Pipe RNDISAggregationTestFixture::m_IpaToUsbPipeAgg(IPA_CLIENT_TEST2_CONS,
@@ -266,7 +264,7 @@ bool RNDISAggregationTestFixture::AddRulesAggTimeLimit() {
 	memset(&rndisEtherHeader, 0, sizeof(struct RndisEtherHeader));
 	rndisEtherHeader.rndisHeader.MessageType = 0x01;
 	rndisEtherHeader.rndisHeader.DataOffset = 0x24;
-	memcpy(&rndisEtherHeader.etherHeader, m_EtherHeader, sizeof(struct ethhdr));
+	memcpy(&rndisEtherHeader.etherHeader, Eth2Helper::m_ETH2_IP4_HDR, sizeof(struct ethhdr));
 
 	// Create Header:
 	// Allocate Memory, populate it, and add in to the Header Insertion.
@@ -372,7 +370,7 @@ bool RNDISAggregationTestFixture::AddRulesAggByteLimit() {
 
 	rndisEtherHeader.rndisHeader.MessageType = 0x01;
 	rndisEtherHeader.rndisHeader.DataOffset = 0x24;
-	memcpy(&rndisEtherHeader.etherHeader, m_EtherHeader, sizeof(struct ethhdr));
+	memcpy(&rndisEtherHeader.etherHeader, Eth2Helper::m_ETH2_IP4_HDR, sizeof(struct ethhdr));
 
 	// Create Header:
 	// Allocate Memory, populate it, and add in to the Header Insertion.
@@ -478,7 +476,7 @@ bool RNDISAggregationTestFixture::AddRulesAggPacketLimit() {
 
 	rndisEtherHeader.rndisHeader.MessageType = 0x01;
 	rndisEtherHeader.rndisHeader.DataOffset = 0x24;
-	memcpy(&rndisEtherHeader.etherHeader, m_EtherHeader, sizeof(struct ethhdr));
+	memcpy(&rndisEtherHeader.etherHeader, Eth2Helper::m_ETH2_IP4_HDR, sizeof(struct ethhdr));
 
 	// Create Header:
 	// Allocate Memory, populate it, and add in to the Header Insertion.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -148,6 +148,14 @@
  */
 #define PHASE_NINETEEN_TEST_CONFIGURATION 19
 
+#define PHASE_TWENTY_TEST_CONFIGURATION 20
+/*----------------------------------------------------------------------
+ *Configuration 20 (see configure_system_20 )
+ *-----PROD (WLAN header removal)--------------------->[IPA]----CONS---->
+ *-----PROD (RNDIS de-aggregation + Header removal)--->[IPA]
+ *----------------------------------------------------------------------
+ */
+
 enum IPATestConfiguration {
 	IPA_TEST_CONFIFURATION_0 = PRE_PHASE_ZERO_TEST_CONFIGURATION,
 	IPA_TEST_CONFIFURATION_1 = PHASE_ZERO_TEST_CONFIGURATION,
@@ -164,12 +172,17 @@ enum IPATestConfiguration {
 	IPA_TEST_CONFIGURATION_17 = PHASE_SEVENTEEN_TEST_CONFIGURATION,
 	IPA_TEST_CONFIGURATION_18 = PHASE_EIGHTEEN_TEST_CONFIGURATION,
 	IPA_TEST_CONFIGURATION_19 = PHASE_NINETEEN_TEST_CONFIGURATION,
+	IPA_TEST_CONFIGURATION_20 = PHASE_NINETEEN_TEST_CONFIGURATION,
 };
 #define CONFIGURATION_NODE_PATH "/dev/ipa_test"
 
 /*producer*/
 #define INTERFACE0_TO_IPA_DATA_PATH			"/dev/to_ipa_0"
 #define INTERFACE0_FROM_IPA_DATA_PATH		NULL
+
+/*producer*/
+#define INTERFACE4_TO_IPA_DATA_PATH			"/dev/to_ipa_1"
+#define INTERFACE4_FROM_IPA_DATA_PATH		NULL
 
 /*consumer*/
 #define INTERFACE1_TO_IPA_DATA_PATH			NULL
@@ -366,8 +379,7 @@ enum ipv6_ext_hdr_type {
 	Mobility	= 135,
 	NONE		= 59
 };
-
-/*File that are being used by the test applicaiton:*/
+/*File that are being used by the test application:*/
 
 #define IPV4_FILE_PATH				"Input/IPV4_3"
 

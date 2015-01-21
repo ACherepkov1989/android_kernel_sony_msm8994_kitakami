@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,32 +46,6 @@
 				sizeof(struct RndisHeader))
 
 #define NUM_PACKETS (4)
-
-class RNDISAggregationHelper {
-public:
-	static bool LoadRNDISPacket(enum ipa_ip_type eIP,
-				uint8_t *pBuffer,
-				size_t &nMaxSize);
-
-	static bool LoadEtherPacket(enum ipa_ip_type eIP,
-				uint8_t *pBuffer,
-				size_t &nMaxSize);
-
-	static bool ComparePackets(Byte *pPacket1,
-			    int pPacket1Size,
-			    Byte *pPacket2,
-			    int pPacket2Size);
-
-	static bool CompareEthervsRNDISPacket(Byte *pIPPacket,
-				size_t ipPacketSize,
-			    Byte *pRNDISPacket,
-			    size_t rndisPacketSize);
-
-	static bool CompareIPvsRNDISPacket(Byte *pIPPacket,
-			    int ipPacketSize,
-			    Byte *pRNDISPacket,
-			    size_t rndisPacketSize);
-};
 
 class RNDISAggregationSanityTest: public RNDISAggregationTestFixture {
 public:
@@ -790,169 +764,8 @@ public:
 
 	/////////////////////////////////////////////////////////////////////////////////
 };
-bool RNDISAggregationHelper::LoadEtherPacket(enum ipa_ip_type eIP,
-			    uint8_t *pBuffer,
-			    size_t &nMaxSize)
-{
-	if (nMaxSize < sizeof(struct ethhdr)) {
-		LOG_MSG_ERROR("Buffer to small\n");
-		return false;
-	}
-
-	size_t nMaxSizeForDefaultPacket = nMaxSize - sizeof(struct ethhdr);
-
-	if (!LoadDefaultPacket(eIP, pBuffer + sizeof(struct ethhdr), nMaxSizeForDefaultPacket)) {
-		LOG_MSG_ERROR("LoadDefaultPacket() failed\n");
-		return false;
-	}
-
-	nMaxSize = nMaxSizeForDefaultPacket + sizeof(struct ethhdr);
-	struct ethhdr *pEtherHeader = (struct ethhdr*)pBuffer;
-
-	memcpy(pEtherHeader, RNDISAggregationTestFixture::m_EtherHeader, sizeof(struct ethhdr));
-
-	print_buff(pBuffer, nMaxSize);
-	return true;
 
 
-}
-
-bool RNDISAggregationHelper::LoadRNDISPacket(enum ipa_ip_type eIP,
-			    uint8_t *pBuffer,
-			    size_t &nMaxSize)
-{
-	if (nMaxSize < sizeof(struct RndisHeader)) {
-		LOG_MSG_ERROR("Buffer to small\n");
-		return false;
-	}
-
-	size_t nMaxSizeForDefaultPacket = nMaxSize - sizeof(struct RndisHeader);
-
-	if (!LoadEtherPacket(eIP, pBuffer + sizeof(struct RndisHeader), nMaxSizeForDefaultPacket)) {
-		LOG_MSG_ERROR("LoadDefaultPacket() failed\n");
-		return false;
-	}
-
-	nMaxSize = nMaxSizeForDefaultPacket + sizeof(struct RndisHeader);
-	struct RndisHeader *pRndisHeader = (struct RndisHeader*)pBuffer;
-
-	memset(pRndisHeader, 0, sizeof(struct RndisHeader));
-	pRndisHeader->MessageType = 0x01;
-	pRndisHeader->MessageLength = nMaxSize;
-	pRndisHeader->DataOffset = 0x24;
-	pRndisHeader->DataLength = nMaxSizeForDefaultPacket;
-
-	print_buff(pBuffer, nMaxSize);
-	return true;
-
-
-}
-bool RNDISAggregationHelper::CompareIPvsRNDISPacket(Byte *pIPPacket,
-						     int ipPacketSize,
-						     Byte *pRNDISPacket,
-						     size_t rndisPacketSize)
-{
-	struct RndisHeader *pRndisHeader = (struct RndisHeader*)pRNDISPacket;
-
-	if (pRndisHeader->MessageType != 0x01) {
-		LOG_MSG_ERROR("Wrong  MessageType 0x%8x\n", pRndisHeader->MessageType);
-		return false;
-	}
-
-	if (pRndisHeader->MessageLength != rndisPacketSize) {
-		LOG_MSG_ERROR("Packet sizes do not match 0x%8x expected 0x%8x\n",
-			pRndisHeader->MessageLength, rndisPacketSize);
-		return false;
-	}
-
-	// Create Ethernet packet from the IP packet and compare it to thr RNDIS payload
-	size_t EtherPacketSize = ipPacketSize + sizeof(struct ethhdr);
-	Byte* pEtherPacket = (Byte *) malloc(EtherPacketSize);
-	if (pEtherPacket == NULL) {
-		LOG_MSG_ERROR("Memory allocation failure");
-		return false;
-	}
-	memcpy(pEtherPacket, RNDISAggregationTestFixture::m_EtherHeader, sizeof(struct ethhdr));
-	memcpy(pEtherPacket + sizeof(struct ethhdr), pIPPacket, ipPacketSize);
-
-	if (pRndisHeader->DataLength != EtherPacketSize) {
-		LOG_MSG_ERROR("Packet sizes do not match 0x%8x expected 0x%8x\n",
-			pRndisHeader->DataLength, EtherPacketSize);
-		Free(pEtherPacket);
-		return false;
-	}
-
-	if(!ComparePackets((Byte*)&pRndisHeader->DataOffset + pRndisHeader->DataOffset,
-		EtherPacketSize, pEtherPacket, EtherPacketSize)) {
-			LOG_MSG_ERROR("Packets do not match\n");
-			Free(pEtherPacket);
-			return false;
-	}
-
-	Free(pEtherPacket);
-	return true;
-}
-
-bool RNDISAggregationHelper::CompareEthervsRNDISPacket(Byte *pIPPacket,
-					size_t ipPacketSize,
-				   Byte *pRNDISPacket,
-				   size_t rndisPacketSize)
-{
-	struct RndisHeader *pRndisHeader = (struct RndisHeader*)pRNDISPacket;
-
-	if (pRndisHeader->MessageType != 0x01) {
-		LOG_MSG_ERROR("Wrong  MessageType 0x%8x\n", pRndisHeader->MessageType);
-		return false;
-	}
-
-	if (pRndisHeader->MessageLength != rndisPacketSize) {
-		LOG_MSG_ERROR("Packet sizes do not match 0x%8x expected 0x%8x\n",
-			pRndisHeader->MessageLength, rndisPacketSize);
-		return false;
-	}
-
-	if (pRndisHeader->DataLength != ipPacketSize)
-	{
-		LOG_MSG_ERROR("Packet sizes do not match 0x%8x expected 0x%8x\n",
-			pRndisHeader->DataLength, ipPacketSize);
-		return false;
-	}
-
-	return ComparePackets((Byte*)&pRndisHeader->DataOffset + pRndisHeader->DataOffset,
-			     ipPacketSize, pIPPacket, ipPacketSize);
-}
-
-
-bool RNDISAggregationHelper::ComparePackets(Byte *pPacket,
-					    int packetSize,
-					    Byte *pExpectedPacket,
-					    int expectedPacketSize)
-{
-	bool res = true;
-
-	if (packetSize != expectedPacketSize) {
-		LOG_MSG_ERROR("Packet sizes do not match\n");
-		res = false;
-	}
-
-	for (int i = 0; i < packetSize; i++)
-	{
-		if (pPacket[i] != pExpectedPacket[i]) {
-			LOG_MSG_ERROR("Byte %d not match 0x%2x != 0x%2x\n", i, pPacket[i], pExpectedPacket[i]);
-			res = false;
-		}
-	}
-
-	if (!res) {
-		LOG_MSG_ERROR("Packet:\n");
-		print_buff(pPacket, packetSize);
-		LOG_MSG_ERROR("Expected Packet:\n");
-		print_buff(pExpectedPacket, expectedPacketSize);
-	}
-
-	return res;
-
-}
 
 static RNDISAggregationSanityTest aRNDISAggregationSanityTest;
 static RNDISAggregationDeaggregation1PacketTest aRNDISAggregationDeaggregation1PacketTest;

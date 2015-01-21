@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -45,28 +45,6 @@
 #include "Filtering.h"
 #include "IPAFilteringTable.h"
 #define MAX_PACKET_SIZE 1024
-
-
-#pragma pack(push)  /* push current alignment to stack */
-#pragma pack(1)     /* set alignment to 1 byte boundary */
-struct RndisHeader {
-	uint32_t MessageType;
-	uint32_t MessageLength;
-	uint32_t DataOffset;
-	uint32_t DataLength;
-	uint32_t OOBDataOffset;
-	uint32_t OOBDataLength;
-	uint32_t OOBNumber;
-	uint32_t PacketInfoOffset;
-	uint32_t PacketInfoLength;
-	uint64_t Reserved;
-};
-
-struct RndisEtherHeader {
-	struct RndisHeader rndisHeader;
-	struct ethhdr etherHeader;
-};
-#pragma pack(pop)   /* restore original alignment from stack */
 
 /*This class will be the base class of RNDIS Aggregation tests.
  *Any method other than the test case itself can be
@@ -123,8 +101,6 @@ public:
 	static RoutingDriverWrapper m_Routing;
 	static Filtering m_Filtering;
 	static HeaderInsertion m_HeaderInsertion;
-
-	static const Byte m_EtherHeader[14];
 
 protected:
 	enum ipa_ip_type m_eIP;
