@@ -23,6 +23,7 @@
 #include <soc/qcom/glink_rpm_xprt.h>
 #include <soc/qcom/smsm.h>
 #include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/tracer_pkt.h>
 #include "glink_loopback_client.h"
 #include "glink_mock_xprt.h"
 #include "glink_test_common.h"
@@ -36,6 +37,9 @@ module_param_named(iterations, ut_iterations,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 static int ut_vector_buf_count = 1;
 module_param_named(vector_buf_count, ut_vector_buf_count,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+static int ut_tracer_pkt_size = 128;
+module_param_named(tracer_pkt_size, ut_tracer_pkt_size,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 /* Begin - Module parameters to configure multi-threaded test parameters */
@@ -1930,6 +1934,78 @@ static int ut_loopback_stress_test(struct seq_file *s,
 	GLINK_UT_INFO("%s: END\n", __func__);
 	return 0;
 
+}
+
+/**
+ * ut_loopback_tp - Tracer Packet unit test
+ *
+ * @s: pointer to output file
+ * @handle: handle returned by glink_open() for loopback control channel
+ * @data_handle: handle returned by glink_open() for loopback data channel
+ *
+ * This function is used to send repeated tracer packets over the data channel.
+ */
+static int ut_loopback_tp(struct seq_file *s,
+				void *cntl_handle, void **data_handle)
+{
+	struct req pkt;
+	int ret, i;
+	int len = ut_tracer_pkt_size;
+	void *data;
+	struct loopback_channel *lpb_ch =
+		(struct loopback_channel *)*data_handle;
+
+	GLINK_UT_INFO("%s: start for iterations[%d]\n", __func__,
+			ut_iterations);
+
+	pkt.payload.q_rx_int_conf.random_delay = 0;
+	pkt.payload.q_rx_int_conf.delay_ms = 0;
+	pkt.payload.q_rx_int_conf.num_intents = ut_iterations;
+	pkt.payload.q_rx_int_conf.intent_size = len;
+	strlcpy(pkt.payload.q_rx_int_conf.ch_name,
+			lpb_ch->open_cfg.name,
+			strlen(lpb_ch->open_cfg.name) + 1);
+	pkt.payload.q_rx_int_conf.name_len =
+			strlen(lpb_ch->open_cfg.name);
+	ret = glink_loopback_send_request(cntl_handle, &pkt,
+					  QUEUE_RX_INTENT_CONFIG, true);
+	if (ret) {
+		GLINK_UT_ERR("%s: glink_loopback_send_request failed\n",
+				__func__);
+		return ret;
+	}
+
+	data = kzalloc(len, GFP_KERNEL);
+	if (!data) {
+		GLINK_UT_ERR("%s: Tracer Packet Allocation failed\n",
+				__func__);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < ut_iterations; i++) {
+		tracer_pkt_init(data, (size_t)len, 0xFFFF, 0xFFFFFFFF,
+				&i, sizeof(i));
+		if (i == 0)
+			ret = glink_loopback_tx_tp(*data_handle,
+					(void *)data,
+					len, true, true, lpb_ch->rx_reuse);
+		else
+			ret = glink_loopback_tx_tp(*data_handle,
+					(void *)data,
+					len, false, false, lpb_ch->rx_reuse);
+		if (ret) {
+			GLINK_UT_ERR(
+				"%s:%s:%s %s: glink_loopback_tx failed\n",
+				lpb_ch->open_cfg.transport,
+				lpb_ch->open_cfg.edge,
+				lpb_ch->open_cfg.name, __func__);
+			return ret;
+		}
+		glink_loopback_hex_dump_tp(s, data, len);
+	}
+
+	GLINK_UT_INFO("%s: END\n", __func__);
+	return 0;
 }
 
 /**
@@ -5379,6 +5455,10 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 		glink_ut_rss_debug_create("ft_ssr_bypass",
 					xprt_name, edge_name, NULL,
 					glink_ft_ssr_bypass);
+		glink_ut_rss_debug_create("ut0_tracer_pkt", xprt_name,
+					edge_name,
+					ut_loopback_tp,
+					glink_ut_local_basic_core);
 		glink_ut_rss_debug_create("ut1_smem_open_close",
 					xprt_name, edge_name,
 					ut_loopback_open_close_test,
@@ -5443,6 +5523,10 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 		glink_ut_rss_debug_create("ut0_sigs", xprt_name,
 					edge_name,
 					ut_loopback_sigs,
+					glink_ut_local_basic_core);
+		glink_ut_rss_debug_create("ut0_tracer_pkt", xprt_name,
+					edge_name,
+					ut_loopback_tp,
 					glink_ut_local_basic_core);
 		glink_ut_rss_debug_create("ut1_open_close", xprt_name,
 					edge_name,

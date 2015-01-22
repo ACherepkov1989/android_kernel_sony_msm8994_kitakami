@@ -323,4 +323,34 @@ void glink_loopback_client_exit(void);
  */
 int glink_loopback_tx_nowait(void *handle, void *data, size_t size,
 		      bool req_intent, struct mt_cb_data *cb_data);
+
+/**
+ * glink_loopback_tx_tp() - Send the tracer packet on loopback channel
+ * @handle:	Handle returned by glink_loopback_open()
+ * @data:	Buffer for the trace packet
+ * @size:	Size of the tracer packet buffer
+ * @req_intent:	Remote intent request flag
+ * @first_tx:	First tx since channel was opened
+ * @rx_reuse:	Reuse the RX intents
+ *
+ * This function sends tracer packet on the loopback channel, queues an RX
+ * intent to receive the loopback data, and waits until the loopback data is
+ * received or a timeout is reached.
+ *
+ * Return: 0 on success, standard error codes otherwise
+ */
+int glink_loopback_tx_tp(void *handle, void *data, size_t size, bool req_intent,
+			 bool first_tx, bool rx_reuse);
+
+/**
+ * glink_loopback_hex_dump_tp() - Hex dump of the tracer packet into debugfs
+ * @s: Sequential file handle to debugfs
+ * @data: Pointer to the tracer packet
+ * @data_len: Length of the tracer packet
+ *
+ * This function dumps the tracer packet into the debugfs file handle associated
+ * with the test.
+ */
+void glink_loopback_hex_dump_tp(struct seq_file *s, void *data,
+				size_t data_len);
 #endif
