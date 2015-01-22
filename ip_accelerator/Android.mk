@@ -59,7 +59,11 @@ LOCAL_SRC_FILES   := \
 		TLPAggregationTestFixture.cpp \
 		TLPAggregationTests.cpp \
 		USBIntegration.cpp \
-		USBIntegrationFixture.cpp
+		USBIntegrationFixture.cpp \
+		HeaderProcessingContextTestFixture.cpp \
+		HeaderProcessingContextTests.cpp \
+		FilteringEthernetBridgingTestFixture.cpp \
+		FilteringEthernetBridgingTests.cpp
 
 LOCAL_SHARED_LIBRARIES := \
 		libstlport \

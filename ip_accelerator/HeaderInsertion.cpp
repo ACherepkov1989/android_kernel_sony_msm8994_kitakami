@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,6 +38,7 @@
  * made through this inode.
  */
 static const char* DEVICE_NAME = "/dev/ipa";
+
 #define LOG_IOCTL_RETURN_VALUE(nRetVal) \
 		printf("%s()- %s\n", __func__, \
 		(-1 == nRetVal) ? "Fail" : "Success");
@@ -48,8 +49,8 @@ HeaderInsertion::HeaderInsertion()
 	if (-1 == m_fd)
 	{
 		printf(
-		"Failed to open %s in HeaderInsertion test application constructor.\n"
-		, DEVICE_NAME);
+			"Failed to open %s in HeaderInsertion test application constructor.\n",
+			DEVICE_NAME);
 	}
 }
 
@@ -82,6 +83,34 @@ bool HeaderInsertion::DeleteHeader(struct ipa_ioc_del_hdr *pHeaderTableToDelete)
 	nRetVal = ioctl(m_fd, IPA_IOC_DEL_HDR , pHeaderTableToDelete);
 	LOG_IOCTL_RETURN_VALUE(nRetVal);
 	return (-1 != nRetVal);
+}
+
+bool HeaderInsertion::AddProcCtx(struct ipa_ioc_add_hdr_proc_ctx *procCtxTable)
+{
+	int retval = 0;
+
+	retval = ioctl(m_fd, IPA_IOC_ADD_HDR_PROC_CTX, procCtxTable);
+	if (retval) {
+		printf("%s(), failed adding ProcCtx rule table %p\n", __FUNCTION__, procCtxTable);
+		return false;
+	}
+
+	printf("%s(), Added ProcCtx rule to table %p\n", __FUNCTION__, procCtxTable);
+	return true;
+}
+
+bool HeaderInsertion::DeleteProcCtx(struct ipa_ioc_del_hdr_proc_ctx *procCtxTable)
+{
+	int retval = 0;
+
+	retval = ioctl(m_fd, IPA_IOC_DEL_HDR_PROC_CTX, procCtxTable);
+	if (retval) {
+		printf("%s(), failed deleting ProcCtx rule in table %p\n", __FUNCTION__, procCtxTable);
+		return false;
+	}
+
+	printf("%s(), Deleted ProcCtx rule in table %p\n", __FUNCTION__, procCtxTable);
+	return true;
 }
 
 bool HeaderInsertion::Commit()

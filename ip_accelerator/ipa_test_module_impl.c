@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,7 +37,6 @@
 #define IPA_ON_R3PC
 #endif
 
-
 /** Module name string */
 #define DRV_NAME "ipa_test"
 #define DRV_VERSION "3.1"
@@ -64,6 +63,10 @@
 #define IPA_TEST_DMUX_HEADER_LENGTH           8
 #define IPA_TEST_META_DATA_IS_VALID           1
 #define IPA_TEST_DMUX_HEADER_META_DATA_OFFSET 4
+
+#define IPA_TEST_WLAN_HDR_LEN 4
+
+#define IPA_TEST_META_DATA_OFFSET_NONE        0
 
 #define IPA_TEST_HDI_802_HEADER_LENGTH             22
 #define IPA_TEST_HDI_802_LENGTH_FIELD_OFFSET       11
@@ -379,7 +382,7 @@ static ssize_t channel_read(struct file *filp, char __user *buf,
 	pr_debug(DRV_NAME ":%s() size to read = %zu\n", __func__, count);
 
 	res = wait_xfer_completion(false, &channel_dev->ep.xfer_done,
-				   channel_dev->ep.sps, 1, 3, 5);
+				   channel_dev->ep.sps, 1, 10, 5);
 	if (res) {
 		pr_err(DRV_NAME ":%s() transfer not completed.\n", __func__);
 		return 0;
@@ -1450,13 +1453,15 @@ int configure_system_2(void)
 	/* Setup BAM-DMA pipes */
 	to_ipa_devs[0]->dma_ep.chan.src_pipe_index    = 4;
 	to_ipa_devs[0]->dma_ep.chan.dest_pipe_index   = 5;
+	to_ipa_devs[1]->dma_ep.chan.src_pipe_index    = 6;
+	to_ipa_devs[1]->dma_ep.chan.dest_pipe_index   = 7;
 
-	from_ipa_devs[0]->dma_ep.chan.src_pipe_index  = 6;
-	from_ipa_devs[0]->dma_ep.chan.dest_pipe_index = 7;
-	from_ipa_devs[1]->dma_ep.chan.src_pipe_index  = 8;
-	from_ipa_devs[1]->dma_ep.chan.dest_pipe_index = 9;
-	from_ipa_devs[2]->dma_ep.chan.src_pipe_index  = 10;
-	from_ipa_devs[2]->dma_ep.chan.dest_pipe_index = 11;
+	from_ipa_devs[0]->dma_ep.chan.src_pipe_index  = 8;
+	from_ipa_devs[0]->dma_ep.chan.dest_pipe_index = 9;
+	from_ipa_devs[1]->dma_ep.chan.src_pipe_index  = 10;
+	from_ipa_devs[1]->dma_ep.chan.dest_pipe_index = 11;
+	from_ipa_devs[2]->dma_ep.chan.src_pipe_index  = 12;
+	from_ipa_devs[2]->dma_ep.chan.dest_pipe_index = 13;
 #endif
 
 #ifndef IPA_ON_R3PC
@@ -1574,8 +1579,6 @@ int configure_system_2(void)
 	res = connect_apps_to_bamdma(&to_ipa_devs[0]->ep,
 			to_ipa_devs[0]->dma_ep.chan.src_pipe_index,
 			&to_ipa_devs[0]->desc_fifo);
-	if (res)
-		goto fail;
 
 #else
 	memset(&sys_in, 0, sizeof(sys_in));
@@ -1591,9 +1594,52 @@ int configure_system_2(void)
 				  &to_ipa_devs[0]->desc_fifo,
 				  ipa_bam_hdl);
 
+#endif
+
 	if (res)
 		goto fail;
+
+	/* Connect Tx BAM-DMA -> IPA */
+	/* Prepare an endpoint configuration structure */
+	res = configure_ipa_endpoint(&ipa_ep_cfg, IPA_BASIC);
+	if (res)
+		goto fail;
+
+	/* configure header removal on Tx */
+	ipa_ep_cfg.hdr.hdr_len = ETH_HLEN;
+
+#ifndef IPA_ON_R3PC
+	/* Connect using the endpoint configuration created */
+	res = connect_bamdma_to_ipa(&to_ipa_devs[1]->dma_ep,
+			&ipa_ep_cfg,
+			IPA_CLIENT_TEST2_PROD, NULL, NULL);
+	if (res)
+		goto fail;
+
+	/* Connect A5 MEM --> Tx BAM-DMA */
+	res = connect_apps_to_bamdma(&to_ipa_devs[1]->ep,
+			to_ipa_devs[1]->dma_ep.chan.src_pipe_index,
+			&to_ipa_devs[1]->desc_fifo);
+
+#else
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
+	sys_in.ipa_ep_cfg = ipa_ep_cfg;
+	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+			&to_ipa_devs[1]->ipa_client_hdl))
+		goto fail;
+
+	/* Connect A5 MEM --> Tx IPA */
+	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
+				  ipa_pipe_num,
+				  &to_ipa_devs[1]->desc_fifo,
+				  ipa_bam_hdl);
+
 #endif
+
+	if (res)
+		goto fail;
+
 fail:
 	/* cleanup and tear down goes here */
 	return res;
@@ -1725,7 +1771,6 @@ int configure_system_3(void)
 
 	/* Connect Tx BAM-DMA -> IPA */
 	/* Prepare an endpoint configuration structure */
-	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
 	res = configure_ipa_endpoint(&ipa_ep_cfg, IPA_BASIC);
 	if (res)
 		goto fail;
@@ -5181,6 +5226,221 @@ fail:
 	return res;
 }
 
+/*
+ Configures the system with one input to IPA and 2 outputs.
+ /dev/to_ipa_0 -> MEM -> BAM-DMA -> IPA |-> BAM-DMA
+ -> MEM -> /dev/from_ipa_0
+|-> BAM-DMA -> MEM -> /dev/from_ipa_1
+*/
+int configure_system_20(void)
+{
+	int res = 0;
+	int index = 0;
+	struct ipa_ep_cfg ipa_ep_cfg;
+
+#ifdef IPA_ON_R3PC
+	struct ipa_sys_connect_params sys_in;
+	unsigned long ipa_bam_hdl;
+	u32 ipa_pipe_num;
+#endif
+
+	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
+
+#ifndef IPA_ON_R3PC
+	/* Setup BAM-DMA pipes */
+	to_ipa_devs[0]->dma_ep.chan.src_pipe_index    = 4;
+	to_ipa_devs[0]->dma_ep.chan.dest_pipe_index   = 5;
+	to_ipa_devs[1]->dma_ep.chan.src_pipe_index    = 6;
+	to_ipa_devs[1]->dma_ep.chan.dest_pipe_index   = 7;
+
+	from_ipa_devs[0]->dma_ep.chan.src_pipe_index  = 8;
+	from_ipa_devs[0]->dma_ep.chan.dest_pipe_index = 9;
+	from_ipa_devs[1]->dma_ep.chan.src_pipe_index  = 10;
+	from_ipa_devs[1]->dma_ep.chan.dest_pipe_index = 11;
+#endif
+
+#ifndef IPA_ON_R3PC
+	/* Connect 0 Tx BAM-DMA --> AP MEM */
+	res = connect_bamdma_to_apps(&from_ipa_devs[index]->ep,
+		from_ipa_devs[index]->dma_ep.chan.dest_pipe_index,
+		&from_ipa_devs[index]->desc_fifo,
+		&from_ipa_devs[index]->rx_event);
+#else
+	/* Connect first Rx IPA --> AP MEM */
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_TEST2_CONS;
+	if (ipa_sys_setup(&sys_in,
+		&ipa_bam_hdl, &ipa_pipe_num,
+		&from_ipa_devs[index]->ipa_client_hdl))
+		goto fail;
+
+	res = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
+		ipa_pipe_num,
+		&from_ipa_devs[index]->desc_fifo,
+		&from_ipa_devs[index]->rx_event,
+		ipa_bam_hdl);
+#endif
+	if (res)
+		goto fail;
+
+#ifndef IPA_ON_R3PC
+	/* Connect IPA -> 0 Rx BAM-DMA */
+	res = connect_ipa_to_bamdma(&from_ipa_devs[0]->dma_ep,
+		IPA_CLIENT_TEST2_CONS,
+		NULL,/*ipa_ep_cfg*/
+		from_ipa_devs[index]->dma_ep.chan.src_pipe_index,
+		NULL, NULL);
+	if (res)
+		goto fail;
+#endif
+
+	index++;
+
+	/* Connect IPA -> 1 Tx BAM-DMA */
+	/* RNDIS Aggregation with ETH2 header */
+	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
+	ipa_ep_cfg.aggr.aggr_en = IPA_ENABLE_AGGR;
+	ipa_ep_cfg.aggr.aggr = IPA_GENERIC;
+	ipa_ep_cfg.aggr.aggr_byte_limit = 1;
+	ipa_ep_cfg.aggr.aggr_time_limit = 0;
+	ipa_ep_cfg.hdr.hdr_ofst_pkt_size_valid = true;
+	ipa_ep_cfg.hdr.hdr_ofst_pkt_size = 12;
+	ipa_ep_cfg.hdr.hdr_additional_const_len = 14;
+	ipa_ep_cfg.hdr.hdr_len = 58;
+	ipa_ep_cfg.hdr_ext.hdr_little_endian = true;
+	ipa_ep_cfg.hdr_ext.hdr_total_len_or_pad_valid = true;
+	ipa_ep_cfg.hdr_ext.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN;
+	ipa_ep_cfg.hdr_ext.hdr_total_len_or_pad_offset = 4;
+
+#ifndef IPA_ON_R3PC
+	/* Connect 1 Tx BAM-DMA --> AP MEM */
+	res = connect_ipa_to_bamdma(
+		&from_ipa_devs[index]->dma_ep,
+		IPA_CLIENT_TEST3_CONS,
+		&ipa_ep_cfg,
+		from_ipa_devs[index]->dma_ep.chan.src_pipe_index,
+		NULL,
+		NULL);
+#else
+	/* Connect 1 Tx IPA --> AP MEM */
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_TEST3_CONS;
+	sys_in.ipa_ep_cfg = ipa_ep_cfg;
+	if (ipa_sys_setup(
+		&sys_in,
+		&ipa_bam_hdl,
+		&ipa_pipe_num,
+		&from_ipa_devs[index]->ipa_client_hdl))
+		goto fail;
+
+	res = connect_ipa_to_apps(
+		&from_ipa_devs[index]->ep,
+		ipa_pipe_num,
+		&from_ipa_devs[index]->desc_fifo,
+		&from_ipa_devs[index]->rx_event,
+		ipa_bam_hdl);
+#endif
+	if (res)
+		goto fail;
+
+	/* Connect Rx BAM-DMA -> IPA */
+	/* Prepare an endpoint configuration structure */
+	res = configure_ipa_endpoint(&ipa_ep_cfg, IPA_BASIC);
+	if (res)
+		goto fail;
+
+	/* configure RNDIS+ETH2 header removal on Rx */
+	/* configure RNDIS de-aggregation on Rx */
+	ipa_ep_cfg.aggr.aggr_en = IPA_ENABLE_DEAGGR;
+	ipa_ep_cfg.aggr.aggr = IPA_GENERIC;
+	ipa_ep_cfg.deaggr.deaggr_hdr_len = 44; /* RNDIS hdr */
+	ipa_ep_cfg.deaggr.packet_offset_valid = true;
+	ipa_ep_cfg.deaggr.packet_offset_location = 8;
+	ipa_ep_cfg.hdr.hdr_len = 14; /* Ethernet header */
+	ipa_ep_cfg.hdr.hdr_ofst_pkt_size = 12;
+	ipa_ep_cfg.hdr.hdr_remove_additional = false;
+	ipa_ep_cfg.hdr_ext.hdr_little_endian = 1;
+	ipa_ep_cfg.hdr_ext.hdr_total_len_or_pad_valid = 1;
+	ipa_ep_cfg.hdr_ext.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN;
+	ipa_ep_cfg.hdr_ext.hdr_payload_len_inc_padding = 0;
+	ipa_ep_cfg.hdr_ext.hdr_total_len_or_pad_offset = 4;
+
+#ifndef IPA_ON_R3PC
+	/* Connect using the endpoint configuration created */
+	res = connect_bamdma_to_ipa(&to_ipa_devs[0]->dma_ep,
+			&ipa_ep_cfg, IPA_CLIENT_TEST_PROD, NULL, NULL);
+	if (res)
+		goto fail;
+
+	/* Connect AP MEM --> Tx BAM-DMA */
+	res = connect_apps_to_bamdma(&to_ipa_devs[0]->ep,
+			to_ipa_devs[0]->dma_ep.chan.src_pipe_index,
+			&to_ipa_devs[0]->desc_fifo);
+
+#else
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_TEST_PROD;
+	sys_in.ipa_ep_cfg = ipa_ep_cfg;
+	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+			&to_ipa_devs[0]->ipa_client_hdl))
+		goto fail;
+
+	/* Connect AP MEM --> Tx IPA */
+	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
+				  ipa_pipe_num,
+				  &to_ipa_devs[0]->desc_fifo,
+				  ipa_bam_hdl);
+
+#endif
+
+if (res)
+	goto fail;
+
+	/* Connect Tx BAM-DMA -> IPA */
+	/* Prepare an endpoint configuration structure */
+	res = configure_ipa_endpoint(&ipa_ep_cfg, IPA_BASIC);
+	if (res)
+		goto fail;
+
+	/* configure ETH2 header removal on Tx */
+	ipa_ep_cfg.hdr.hdr_len = ETH_HLEN + IPA_TEST_WLAN_HDR_LEN;
+
+#ifndef IPA_ON_R3PC
+	/* Connect using the endpoint configuration created */
+	res = connect_bamdma_to_ipa(&to_ipa_devs[1]->dma_ep,
+			&ipa_ep_cfg,
+			IPA_CLIENT_TEST2_PROD, NULL, NULL);
+	if (res)
+		goto fail;
+
+	/* Connect A5 MEM --> Tx BAM-DMA */
+	res = connect_apps_to_bamdma(&to_ipa_devs[1]->ep,
+			to_ipa_devs[1]->dma_ep.chan.src_pipe_index,
+			&to_ipa_devs[1]->desc_fifo);
+
+#else
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = IPA_CLIENT_TEST2_PROD;
+	sys_in.ipa_ep_cfg = ipa_ep_cfg;
+	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+			&to_ipa_devs[1]->ipa_client_hdl))
+		goto fail;
+
+	/* Connect AP MEM --> Tx IPA */
+	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
+				  ipa_pipe_num,
+				  &to_ipa_devs[1]->desc_fifo,
+				  ipa_bam_hdl);
+
+#endif
+
+	if (res)
+		goto fail;
+
+fail:
+	/* cleanup and tear down goes here */
+	return res;
+}
 
 static char **str_split(char *str, const char *delim)
 {
@@ -5352,32 +5612,39 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 	case 2:
 		index = 0;
 		ret = create_channel_device(index,
-						"to_ipa", &to_ipa_devs[index],
+					    "to_ipa", &to_ipa_devs[index],
 					    TX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
 			ret = -ENODEV;
 			goto bail;
 		}
-		ipa_test->
-				tx_channels[ipa_test->num_tx_channels++] =
-						to_ipa_devs[index];
-
+		ipa_test->tx_channels[ipa_test->num_tx_channels++] =
+			to_ipa_devs[index];
 		ret = create_channel_device(index, "from_ipa",
-						&from_ipa_devs[index],
+					    &from_ipa_devs[index],
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
 			ret = -ENODEV;
 			goto bail;
 		}
-		ipa_test->
-				rx_channels[ipa_test->num_rx_channels++] =
-						from_ipa_devs[index];
+		ipa_test->rx_channels[ipa_test->num_rx_channels++] =
+			from_ipa_devs[index];
 
 		index++;
+		ret = create_channel_device(index,
+					    "to_ipa", &to_ipa_devs[index],
+					    TX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->tx_channels[ipa_test->num_tx_channels++] =
+			to_ipa_devs[index];
 		ret = create_channel_device(index, "from_ipa",
-						&from_ipa_devs[index],
+					    &from_ipa_devs[index],
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME
@@ -5385,22 +5652,20 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 			ret = -ENODEV;
 			goto bail;
 		}
-		ipa_test->
-				rx_channels[ipa_test->num_rx_channels++] =
-						from_ipa_devs[index];
+		ipa_test->rx_channels[ipa_test->num_rx_channels++] =
+			from_ipa_devs[index];
 
 		index++;
 		ret = create_channel_device(index, "from_ipa",
-						&from_ipa_devs[index],
+					    &from_ipa_devs[index],
 					    RX_SZ);
 		if (ret) {
 			pr_err(DRV_NAME ":Channel device creation error.\n");
 			ret = -ENODEV;
 			goto bail;
 		}
-		ipa_test->
-				rx_channels[ipa_test->num_rx_channels++] =
-						from_ipa_devs[index];
+		ipa_test->rx_channels[ipa_test->num_rx_channels++] =
+			from_ipa_devs[index];
 
 		ret = configure_system_2();
 		if (ret) {
@@ -6409,6 +6674,72 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 		}
 		break;
 
+	case 20:
+
+		/* Create producer channel 0 */
+		index = 0;
+		ret = create_channel_device(index,
+			"to_ipa", &to_ipa_devs[index],
+			TX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->
+			tx_channels[ipa_test->num_tx_channels++] =
+			to_ipa_devs[index];
+
+
+		/* Create producer channel 1 */
+		index++;
+		ret = create_channel_device(index,
+			"to_ipa", &to_ipa_devs[index],
+			TX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->
+			tx_channels[ipa_test->num_tx_channels++] =
+			to_ipa_devs[index];
+
+		/* Create consumer channel 0 */
+		index = 0;
+		ret = create_channel_device(index, "from_ipa",
+			&from_ipa_devs[index],
+			RX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->
+			rx_channels[ipa_test->num_rx_channels++] =
+			from_ipa_devs[index];
+
+		/* Create consumer channel 1 */
+		index++;
+		ret = create_channel_device(index, "from_ipa",
+			&from_ipa_devs[index],
+			RX_SZ);
+		if (ret) {
+			pr_err(DRV_NAME ":Channel device creation error.\n");
+			ret = -ENODEV;
+			goto bail;
+		}
+		ipa_test->
+			rx_channels[ipa_test->num_rx_channels++] =
+			from_ipa_devs[index];
+
+		ret = configure_system_20();
+		if (ret) {
+			pr_err(DRV_NAME ":System configuration failed.");
+			ret = -ENODEV;
+			goto bail;
+		}
+		break;
 
 	default:
 		pr_err("Unsupported configuration index.\n");
@@ -6428,8 +6759,8 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 	pr_debug(DRV_NAME ":System configured !\n");
 
 	/* Set the current configuration index */
-	ipa_test->current_configuration_idx
-			= ipa_test->configuration_idx;
+	ipa_test->current_configuration_idx	=
+		ipa_test->configuration_idx;
 
 	ret = size;
 

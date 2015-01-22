@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -44,7 +44,7 @@
 
 extern Logger g_Logger;
 
-static uint8_t IPv4Packet[] = {
+static uint8_t IPv4Packet[IP4_PACKET_SIZE] = {
 		0x45, 0x00, 0x00, 0x2e,
 		0x00, 0x00, 0x40, 0x00,
 		0xff, 0x06, 0xf5, 0xfd,// Protocol = 06 (TCP)
@@ -107,9 +107,114 @@ static uint8_t IPv6PacketFragExtHdr[] = {
 		0xda, 0x7a, 0xda, 0x7a  // payload
 };
 
+static const uint8_t Eth2IPv4Packet[] =
+{
+	// ETH2 - 14 bytes
+	0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x11, // ETH2 DST
+	0x22, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, // ETH2 SRC
+	0x08, 0x00,		// ETH2 TYPE IPv4 - ETH_P_IP 0x0800
 
+	// IPv4
+	0x45, 0x00, 0x00, 0x2e,
+	0x00, 0x00, 0x40, 0x00,
+	0xff, 0x06, 0xf5, 0xfd, // Protocol = 06 (TCP)
+	0xc0, 0xa8, 0x02, 0x13, // IPv4 SRC Addr 192.168.2.19
+	0xc0, 0xa8, 0x02, 0x68, // IPv4 DST Addr 192.168.2.104
+	0x04, 0x57, 0x08, 0xae,
+	0x00, 0x00, 0x30, 0x34,
+	0x00, 0x00, 0x00, 0x50,
+	0x50, 0xc1, 0x40, 0x00,
+	0xab, 0xc9, 0x00, 0x00,
+	0x00
+};
 
-bool LoadDefaultPacket(enum ipa_ip_type eIP, enum ipv6_ext_hdr_type extHdrType, uint8_t *pBuffer, size_t &nMaxSize)
+static const uint8_t Eth2IPv6Packet[] =
+{
+	// ETH2 - 14 bytes
+	0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x11, // ETH2 DST
+	0x22, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, // ETH2 SRC
+	0x86, 0xdd,		// ETH2 TYPE IPv6 - ETH_P_IPV6 x86DD
+
+	// IPv6
+	0x60, 0x00, 0x00, 0x00,
+	0x02, 0x12, 0x11, 0x01,
+	0xfe, 0x80, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0xd9, 0xf9, 0xce, 0x5e,
+	0x02, 0xec, 0x32, 0x99,
+	0xff, 0x02, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x0c
+};
+
+static const uint8_t WLANEth2IPv4Packet[] =
+{
+	// WLAN
+	0xa1, 0xb2, 0xc3, 0xd4,			// WLAN hdr
+
+	// ETH2 - 14 bytes
+	0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x11,	// ETH2 DST
+	0x22, 0xee, 0xdd, 0xcc, 0xbb, 0xaa,	// ETH2 SRC
+	0x08, 0x00,			// ETH2 TYPE IPv4 - ETH_P_IP 0x0800
+
+	// IPv4
+	0x45, 0x00, 0x00, 0x2e,
+	0x00, 0x00, 0x40, 0x00,
+	0xff, 0x06, 0xf5, 0xfd,	// Protocol = 06 (TCP)
+	0xc0, 0xa8, 0x02, 0x13,	// IPv4 SRC Addr 192.168.2.19
+	0xc0, 0xa8, 0x02, 0x68,	// IPv4 DST Addr 192.168.2.104
+	0x04, 0x57, 0x08, 0xae,
+	0x00, 0x00, 0x30, 0x34,
+	0x00, 0x00, 0x00, 0x50,
+	0x50, 0xc1, 0x40, 0x00,
+	0xab, 0xc9, 0x00, 0x00,
+	0x00
+};
+
+static const uint8_t WLAN802_3IPv4Packet[] =
+{
+	// WLAN
+	0xa1, 0xb2, 0xc3, 0xd4,			// WLAN hdr
+
+	// 802_3 - 26 bytes
+	0xa5, 0xb6, 0xc7, 0xd8, // ROME proprietary header
+	0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0x33,	// 802_3 DST
+	0x44, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6,	// 802_3 SRC
+	0x00, IP4_PACKET_SIZE,			// 802_3 length
+	0x04, 0x15, 0x26, 0x37, 0x48, 0x59,	// LLC/SNAP
+	0x08, 0x00,				// Ethrtype - 0x0800
+
+	// IPv4
+	0x45, 0x00, 0x00, 0x2e,
+	0x00, 0x00, 0x40, 0x00,
+	0xff, 0x06, 0xf5, 0xfd,	// Protocol = 06 (TCP)
+	0xc0, 0xa8, 0x02, 0x13,	// IPv4 SRC Addr 192.168.2.19
+	0xc0, 0xa8, 0x02, 0x68,	// IPv4 DST Addr 192.168.2.104
+	0x04, 0x57, 0x08, 0xae,
+	0x00, 0x00, 0x30, 0x34,
+	0x00, 0x00, 0x00, 0x50,
+	0x50, 0xc1, 0x40, 0x00,
+	0xab, 0xc9, 0x00, 0x00,
+	0x00
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/**
+*@brief Function loads a default IPv4 / IPv6 Packet
+*
+*@param [in] eIP - Type of Packet to load (IPA_IP_v4 / IPA_IP_v6)
+*@param [in] pBuffer - pointer to the destination buffer
+*@param [in,out] nMaxSize - The size of the buffer.*Upon function return,
+*	the total number of bytes copied will be stored in this parameter.
+*@return boolean indicating whether the operation completed successfully or not.
+*@details Function loads a default IPv4 / IPv6 packet into pBuffer.
+*/
+bool LoadDefaultPacket(
+	enum ipa_ip_type eIP,
+	enum ipv6_ext_hdr_type extHdrType,
+	uint8_t *pBuffer,
+	size_t &nMaxSize)
 {
 	if (IPA_IP_v4 == eIP) {
 		if (nMaxSize < sizeof(IPv4Packet))
@@ -149,6 +254,100 @@ bool LoadDefaultPacket(enum ipa_ip_type eIP, enum ipv6_ext_hdr_type extHdrType, 
 bool LoadDefaultPacket(enum ipa_ip_type eIP, uint8_t *pBuffer, size_t &nMaxSize)
 {
 	return LoadDefaultPacket(eIP, NONE, pBuffer, nMaxSize);
+}
+
+bool LoadDefaultEth2Packet(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize)
+{
+	if (IPA_IP_v4 == eIP) {
+		if (nMaxSize < sizeof(Eth2IPv4Packet))
+		{
+			LOG_MSG_ERROR(
+				"Buffer is smaller than %d, "
+				"no data was copied.",
+				sizeof(Eth2IPv4Packet));
+			return false;
+		}
+		memcpy(pBuffer,Eth2IPv4Packet,
+			sizeof(Eth2IPv4Packet));
+		nMaxSize = sizeof(Eth2IPv4Packet);
+	}
+	else
+	{
+		if (nMaxSize < sizeof(Eth2IPv6Packet))
+		{
+			LOG_MSG_ERROR(
+				"Buffer is smaller than %d, "
+				"no data was copied.",
+				sizeof(Eth2IPv6Packet));
+			return false;
+		}
+		memcpy(pBuffer,Eth2IPv6Packet,
+			sizeof(Eth2IPv6Packet));
+		nMaxSize = sizeof(Eth2IPv6Packet);
+	}
+
+	return true;
+}
+
+bool LoadDefaultWLANEth2Packet(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize)
+{
+	if (IPA_IP_v4 == eIP) {
+		if (nMaxSize < sizeof(WLANEth2IPv4Packet))
+		{
+			LOG_MSG_ERROR(
+				"Buffer is smaller than %d, "
+				"no data was copied.",
+				sizeof(WLANEth2IPv4Packet));
+			return false;
+		}
+		memcpy(pBuffer,WLANEth2IPv4Packet,
+			sizeof(WLANEth2IPv4Packet));
+		nMaxSize = sizeof(WLANEth2IPv4Packet);
+	}
+	else
+	{
+		LOG_MSG_ERROR("%s isn't implemented "
+			"for IPv6 - do it yourself :-)",
+			__FUNCTION__);
+		return false;
+	}
+
+	return true;
+}
+
+bool LoadDefaultWLAN802_32Packet(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize)
+{
+	if (IPA_IP_v4 == eIP) {
+		if (nMaxSize < sizeof(WLAN802_3IPv4Packet))
+		{
+			LOG_MSG_ERROR(
+				"Buffer is smaller than %d, "
+				"no data was copied.",
+				sizeof(WLAN802_3IPv4Packet));
+			return false;
+		}
+		memcpy(pBuffer,WLAN802_3IPv4Packet,
+			sizeof(WLAN802_3IPv4Packet));
+		nMaxSize = sizeof(WLAN802_3IPv4Packet);
+	}
+	else
+	{
+		LOG_MSG_ERROR("%s isn't implemented"
+			" for IPv6 - do it yourself :-)",
+			__FUNCTION__);
+		return false;
+	}
+
+	return true;
 }
 
 bool SendReceiveAndCompare(InterfaceAbstraction *pSink, uint8_t* pSendBuffer, size_t nSendBuffSize,
@@ -335,24 +534,22 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	int ret;
 	char *pSendBuffer;
 	char str[10];
-	int bufferLen;
 
-	if (params)
-		bufferLen = strlen(params) + 10;
+	if(params != NULL)
+		pSendBuffer = new char[strlen(params) + 10];
 	else
-		bufferLen = 10;
+		pSendBuffer = new char[10];
 
-	pSendBuffer = new char[bufferLen];
 	if (NULL == pSendBuffer)
 	{
-		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]", bufferLen);
+		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]",strlen(params) + 10);
 		return -1;
 	}
 
-	if (params)
-		snprintf(pSendBuffer, bufferLen, "%d %s", testConfiguration, params);
+	if(params != NULL)
+		sprintf(pSendBuffer, "%d %s", testConfiguration, params);
 	else
-		snprintf(pSendBuffer, bufferLen, "%d", testConfiguration);
+		sprintf(pSendBuffer, "%d", testConfiguration);
 
 	ret = write(fd, pSendBuffer, sizeof(pSendBuffer) );
 	if (ret < 0) {
@@ -363,7 +560,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	// Wait until the system is fully configured
 
 	// Convert testConfiguration to string
-	snprintf(testConfigurationStr, 10, "%d", testConfiguration);
+	sprintf(testConfigurationStr, "%d", testConfiguration);
 
 	// Read the configuration index from the device node
 	ret = read(fd, str, sizeof(str));
@@ -385,7 +582,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 		}
 	}
 bail:
-	delete(pSendBuffer);
+	delete[] pSendBuffer;
 	return ret;
 }
 
@@ -514,3 +711,465 @@ void print_buff(void *data, size_t size)
 	}
 }
 
+void add_buff(uint8_t *data, size_t size, uint8_t val)
+{
+	for (int i = 0; i < static_cast<int>(size); i++)
+		data[i]+=val;
+}
+
+const Byte Eth2Helper::m_ETH2_IP4_HDR[ETH_HLEN] =
+{
+	0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6,	// ETH2 DST
+	0xA7, 0xA8, 0xA9, 0xB0, 0xB1, 0xB2,	// ETH2 SRC
+	0x08, 0x00,	// ETH2 TYPE IPv4 - ETH_P_IP 0x0800
+};
+
+bool Eth2Helper::LoadEth2IP4Header(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	if (bufferSize < ETH_HLEN)
+	{
+		LOG_MSG_ERROR("Buffer too small\n");
+		return false;
+	}
+
+	memcpy(pBuffer, m_ETH2_IP4_HDR, ETH_HLEN);
+
+	*pLen = ETH_HLEN;
+
+	return true;
+}
+
+bool Eth2Helper::LoadEth2IP6Header(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	if (bufferSize < ETH_HLEN)
+	{
+		LOG_MSG_ERROR("Buffer too small\n");
+		return false;
+	}
+
+	// copy eth2 ip4 header
+	memcpy(pBuffer, m_ETH2_IP4_HDR, ETH_HLEN);
+
+	// change ethtype to ip6
+	pBuffer[ETH2_ETH_TYPE_OFFSET] = 0x86;
+	pBuffer[ETH2_ETH_TYPE_OFFSET+1] = 0xdd;
+
+	*pLen = ETH_HLEN;
+
+	return true;
+}
+
+bool Eth2Helper::LoadEth2IP4Packet(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	size_t cnt = 0;
+	size_t len = 0;
+
+	if (!LoadEth2IP4Header(pBuffer, bufferSize, &cnt))
+		return false;
+
+	len = bufferSize - cnt;
+
+	if (!LoadDefaultPacket(IPA_IP_v4, pBuffer + cnt, len))
+		return false;
+
+	*pLen = len + cnt;
+
+	return true;
+}
+
+bool Eth2Helper::LoadEth2IP6Packet(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	size_t cnt = 0;
+	size_t len = 0;
+
+	if (!LoadEth2IP6Header(pBuffer, bufferSize, &cnt))
+		return false;
+
+	len = bufferSize - cnt;
+
+	if (!LoadDefaultPacket(IPA_IP_v6, pBuffer + cnt, len))
+		return false;
+
+	*pLen = len + cnt;
+
+	return true;
+}
+
+const Byte WlanHelper::m_WLAN_HDR[WLAN_HDR_SIZE] =
+{
+	// WLAN hdr - 4 bytes
+	0x01, 0x02, 0x03, 0x04
+};
+
+bool WlanHelper::LoadWlanHeader(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	if (bufferSize < WLAN_HDR_SIZE)
+	{
+		LOG_MSG_ERROR("Buffer too small\n");
+		return false;
+	}
+
+	memcpy(pBuffer, m_WLAN_HDR, WLAN_HDR_SIZE);
+
+	*pLen = WLAN_HDR_SIZE;
+
+	return true;
+}
+
+bool WlanHelper::LoadWlanEth2IP4Header(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	size_t cnt = 0;
+	size_t len = 0;
+
+	if (!LoadWlanHeader(pBuffer, bufferSize, &cnt))
+		return false;
+
+	if (!Eth2Helper::LoadEth2IP4Header(
+		pBuffer + cnt,
+		bufferSize - cnt,
+		&len))
+		return false;
+
+	*pLen = len + cnt;
+
+	return true;
+}
+
+bool WlanHelper::LoadWlanEth2IP6Header(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	size_t cnt = 0;
+	size_t len = 0;
+
+	if (!LoadWlanHeader(pBuffer, bufferSize, &cnt))
+		return false;
+
+	if (!Eth2Helper::LoadEth2IP6Header(
+		pBuffer + cnt,
+		bufferSize - cnt,
+		&len))
+		return false;
+
+	*pLen = len + cnt;
+
+	return true;
+}
+
+bool WlanHelper::LoadWlanEth2IP4Packet(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t *pLen)
+{
+	size_t cnt = 0;
+	size_t len = 0;
+
+	if (!LoadWlanHeader(pBuffer, bufferSize, &cnt))
+		return false;
+
+	if (!Eth2Helper::LoadEth2IP4Packet(
+		pBuffer + cnt,
+		bufferSize - cnt,
+		&len))
+		return false;
+
+	*pLen = len + cnt;
+
+	return true;
+}
+
+bool PadByLength(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t len,
+	uint8_t padValue)
+{
+	if (bufferSize < len)
+	{
+		LOG_MSG_ERROR("bufferSize < len.\n");
+		return false;
+	}
+
+	memset(pBuffer, padValue, len);
+
+	return true;
+}
+
+bool WlanHelper::LoadWlanEth2IP4PacketByLength(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	size_t len,
+	uint8_t padValue)
+{
+	size_t cnt = 0;
+
+	if (!LoadWlanEth2IP4Packet(pBuffer, bufferSize, &cnt))
+		return false;
+
+	if (!PadByLength(pBuffer + cnt, bufferSize - cnt, len - cnt, padValue))
+		return false;
+
+	return true;
+}
+
+bool RNDISAggregationHelper::LoadRNDISHeader(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	uint32_t messageLength,
+	size_t *pLen)
+{
+	if (bufferSize < RNDIS_HDR_SIZE)
+	{
+		LOG_MSG_ERROR("Buffer too small\n");
+		return false;
+	}
+
+	struct RndisHeader *pRndisHeader =
+		reinterpret_cast<struct RndisHeader*>(pBuffer);
+
+	memset(pRndisHeader, 0, sizeof(struct RndisHeader));
+	pRndisHeader->MessageType = 0x01;
+	pRndisHeader->DataOffset = 0x24;
+
+	if (messageLength > RNDIS_HDR_SIZE)
+	{
+		pRndisHeader->MessageLength = messageLength;
+		pRndisHeader->DataLength = messageLength - RNDIS_HDR_SIZE;
+	}
+	else
+	{
+		// This handles a case where we use the header
+		// in IPA headers table
+		// IPA needs to set these values
+		pRndisHeader->MessageLength = 0;
+		pRndisHeader->DataLength = 0;
+	}
+
+	*pLen = RNDIS_HDR_SIZE;
+
+	return true;
+}
+
+bool RNDISAggregationHelper::LoadRNDISEth2IP4Header(
+	uint8_t *pBuffer,
+	size_t bufferSize,
+	uint32_t messageLength,
+	size_t *pLen)
+{
+	size_t cnt = 0;
+	size_t len = 0;
+
+	if (!LoadRNDISHeader(pBuffer, bufferSize, messageLength, &cnt))
+		return 0;
+
+	if (!Eth2Helper::LoadEth2IP4Header(pBuffer + cnt, bufferSize - cnt, &len))
+		return false;
+
+	*pLen = cnt + len;
+
+	return true;
+}
+
+bool RNDISAggregationHelper::LoadRNDISPacket(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize)
+{
+	if (nMaxSize < sizeof(struct RndisHeader))
+	{
+		LOG_MSG_ERROR("Buffer too small\n");
+		return false;
+	}
+
+	size_t nMaxSizeForDefaultPacket = nMaxSize - sizeof(struct RndisHeader);
+
+	if (!LoadEtherPacket(eIP, pBuffer + sizeof(struct RndisHeader),
+		nMaxSizeForDefaultPacket))
+	{
+		LOG_MSG_ERROR("LoadEtherPacket() failed\n");
+		return false;
+	}
+
+	nMaxSize = nMaxSizeForDefaultPacket + sizeof(struct RndisHeader);
+	struct RndisHeader *pRndisHeader = (struct RndisHeader*)pBuffer;
+
+	memset(pRndisHeader, 0, sizeof(struct RndisHeader));
+	pRndisHeader->MessageType = 0x01;
+	pRndisHeader->MessageLength = nMaxSize;
+	pRndisHeader->DataOffset = 0x24;
+	pRndisHeader->DataLength = nMaxSizeForDefaultPacket;
+	return true;
+}
+
+bool RNDISAggregationHelper::LoadEtherPacket(
+	enum ipa_ip_type eIP,
+	uint8_t *pBuffer,
+	size_t &nMaxSize)
+{
+	if (nMaxSize < sizeof(struct ethhdr))
+	{
+		LOG_MSG_ERROR("Buffer too small\n");
+		return false;
+	}
+
+	size_t nMaxSizeForDefaultPacket = nMaxSize - sizeof(struct ethhdr);
+
+	if (!LoadDefaultPacket(eIP, pBuffer + sizeof(struct ethhdr),
+		nMaxSizeForDefaultPacket))
+	{
+		LOG_MSG_ERROR("LoadDefaultPacket() failed\n");
+		return false;
+	}
+
+	nMaxSize = nMaxSizeForDefaultPacket + sizeof(struct ethhdr);
+	struct ethhdr *pEtherHeader = (struct ethhdr*)pBuffer;
+
+	memcpy(pEtherHeader, Eth2Helper::m_ETH2_IP4_HDR, sizeof(struct ethhdr));
+
+	print_buff(pBuffer, nMaxSize);
+	return true;
+
+
+}
+
+bool RNDISAggregationHelper::CompareIPvsRNDISPacket(
+	Byte *pIPPacket,
+	int ipPacketSize,
+	Byte *pRNDISPacket,
+	size_t rndisPacketSize)
+{
+	struct RndisHeader *pRndisHeader = (struct RndisHeader*)pRNDISPacket;
+
+	if (pRndisHeader->MessageType != 0x01)
+	{
+		LOG_MSG_ERROR("Wrong  MessageType 0x%8x\n",
+			pRndisHeader->MessageType);
+		return false;
+	}
+
+	if (pRndisHeader->MessageLength != rndisPacketSize)
+	{
+		LOG_MSG_ERROR(
+			"Packet sizes do not match 0x%8x expected 0x%8x\n",
+			pRndisHeader->MessageLength, rndisPacketSize);
+		return false;
+	}
+
+	// Create Ethernet packet from the IP packet and compare it to RNDIS payload
+	size_t EtherPacketSize = ipPacketSize + sizeof(struct ethhdr);
+	Byte* pEtherPacket = (Byte *) malloc(EtherPacketSize);
+	memcpy(pEtherPacket, Eth2Helper::m_ETH2_IP4_HDR, sizeof(struct ethhdr));
+	memcpy(pEtherPacket + sizeof(struct ethhdr), pIPPacket, ipPacketSize);
+
+	if (pRndisHeader->DataLength != EtherPacketSize)
+	{
+		LOG_MSG_ERROR(
+			"Packet sizes do not match 0x%8x expected 0x%8x\n",
+			pRndisHeader->DataLength, EtherPacketSize);
+		Free(pEtherPacket);
+		return false;
+	}
+
+	if(!ComparePackets(
+		(Byte*)&pRndisHeader->DataOffset + pRndisHeader->DataOffset,
+		EtherPacketSize, pEtherPacket, EtherPacketSize))
+	{
+		LOG_MSG_ERROR("Packets do not match\n");
+		Free(pEtherPacket);
+		return false;
+	}
+
+	Free(pEtherPacket);
+	return true;
+}
+
+bool RNDISAggregationHelper::CompareEthervsRNDISPacket(
+	Byte *pIPPacket,
+	size_t ipPacketSize,
+	Byte *pRNDISPacket,
+	size_t rndisPacketSize)
+{
+	struct RndisHeader *pRndisHeader = (struct RndisHeader*)pRNDISPacket;
+
+	if (pRndisHeader->MessageType != 0x01)
+	{
+		LOG_MSG_ERROR("Wrong  MessageType 0x%8x\n",
+			pRndisHeader->MessageType);
+		return false;
+	}
+
+	if (pRndisHeader->MessageLength != rndisPacketSize)
+	{
+		LOG_MSG_ERROR(
+			"Packet sizes do not match 0x%8x expected 0x%8x\n",
+			pRndisHeader->MessageLength, rndisPacketSize);
+		return false;
+	}
+
+	if (pRndisHeader->DataLength != ipPacketSize)
+	{
+		LOG_MSG_ERROR(
+			"Packet sizes do not match 0x%8x expected 0x%8x\n",
+			pRndisHeader->DataLength, ipPacketSize);
+		return false;
+	}
+
+	return ComparePackets(
+		(Byte*)&pRndisHeader->DataOffset + pRndisHeader->DataOffset,
+		ipPacketSize, pIPPacket, ipPacketSize);
+}
+
+bool RNDISAggregationHelper::ComparePackets(
+	Byte *pPacket,
+	int packetSize,
+	Byte *pExpectedPacket,
+	int expectedPacketSize)
+{
+	bool res = true;
+
+	if (packetSize != expectedPacketSize)
+	{
+		LOG_MSG_ERROR("Packet sizes do not match\n");
+		res = false;
+	}
+
+	for (int i = 0; i < packetSize; i++)
+	{
+		if (pPacket[i] != pExpectedPacket[i])
+		{
+			LOG_MSG_ERROR(
+				"Byte %d not match 0x%2x != 0x%2x\n",
+				i, pPacket[i], pExpectedPacket[i]);
+			res = false;
+		}
+	}
+
+	if (!res)
+	{
+		LOG_MSG_ERROR("Packet:\n");
+		print_buff(pPacket, packetSize);
+		LOG_MSG_ERROR("Expected Packet:\n");
+		print_buff(pExpectedPacket, expectedPacketSize);
+	}
+
+	return res;
+}
