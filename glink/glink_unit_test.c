@@ -1637,6 +1637,76 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 }
 
 /**
+ * glink_test_transport_teardown - Test transport teardown functionality
+ * @s: pointer to output file
+ *
+ * This function tests the transport teardown functionality. The test uses the
+ * glink_wait_link_down() API to tell when the remote subsystem has finished
+ * its link tear-down. Once this has occurred, the test completes the tear-down
+ * from the local side using glink_ssr(). This simulates the LK/RPM handoff use
+ * case, in which LK is communicating with RPM before Apps boots. For Apps to
+ * boot, the link between LK and RPM must be torn down first.
+ */
+static void glink_ft_transport_teardown(struct seq_file *s)
+{
+	int failed = 0;
+	int ret = 0;
+	int sequence_number;
+	unsigned long timeout;
+	struct glink_dbgfs_data *dfs_d;
+	struct glink_ut_dbgfs *ut_dfs_d;
+	struct ut_notify_data cb_data;
+	struct subsys_info *ss_info;
+	struct do_cleanup_msg *do_cleanup = NULL;
+	void *handle = NULL;
+
+	dfs_d = s->private;
+	ut_dfs_d = dfs_d->priv_data;
+
+	GLINK_STATUS(s, "Running %s\n", __func__);
+	do {
+		cb_data_init(&cb_data);
+
+		ss_info = get_info_for_edge(ut_dfs_d->edge_name);
+		UT_ASSERT_PTR(ss_info, !=, NULL);
+		handle = ss_info->handle;
+		sequence_number = glink_ssr_get_seq_num();
+
+		do_cleanup = kzalloc(sizeof(*do_cleanup), GFP_KERNEL);
+		UT_ASSERT_PTR(do_cleanup, !=, NULL);
+		do_cleanup->version = 0;
+		do_cleanup->command = GLINK_SSR_DO_CLEANUP;
+		do_cleanup->seq_num = sequence_number;
+		do_cleanup->name_len = strlen("apss");
+		strlcpy(do_cleanup->name, "apss",
+				do_cleanup->name_len + 1);
+
+		ret = glink_tx(handle, (void *)&cb_data, (void *)do_cleanup,
+				sizeof(*do_cleanup), true);
+		UT_ASSERT_INT(ret, ==, 0);
+
+		timeout = jiffies + (1 * HZ);
+		while (!glink_wait_link_down(handle)) {
+			if (time_after(jiffies, timeout)) {
+				GLINK_UT_ERR("%s: %s\n", __func__,
+				"waiting more than 1 sec. for indices == 0");
+				failed = true;
+				break;
+			}
+		}
+		UT_ASSERT_BOOL(failed, !=, true);
+
+		glink_ssr(ss_info->edge);
+		GLINK_STATUS(s, "\tOK\n");
+	} while (0);
+
+	if (do_cleanup)
+		kfree(do_cleanup);
+	if (failed)
+		GLINK_STATUS(s, "\tFailed\n");
+}
+
+/**
  * glink_ut_smem_ssr - WCNSS SSR test
  * @s: pointer to output file
  *
@@ -5192,6 +5262,10 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 					xprt_name, edge_name,
 					ut_loopback_stress_test,
 					glink_ut_local_basic_core);
+		glink_ut_rss_debug_create("ft_transport_teardown",
+					xprt_name, edge_name,
+					NULL,
+					glink_ft_transport_teardown);
 	} else if (!strcmp(xprt_name, "smd_trans")
 			&& !(strcmp(edge_name, "mpss"))) {
 		/*below test cases are designed to work only with MPSS */
