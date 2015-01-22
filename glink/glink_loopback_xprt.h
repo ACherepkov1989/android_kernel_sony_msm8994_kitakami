@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -155,6 +155,7 @@ struct glink_loopback_xprt_cmd {
 			uint32_t riid;
 			uint32_t size;
 			uint32_t size_remaining;
+			bool tracer_pkt;
 			void *iovec;
 			void * (*vbuf_provider)(void *iovec, size_t offset,
 				size_t *size);

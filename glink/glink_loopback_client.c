@@ -14,8 +14,10 @@
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <soc/qcom/tracer_pkt.h>
 #include "glink_loopback_client.h"
 #include "glink_private.h"
+#include "glink_test_common.h"
 
 static atomic_t request_id = ATOMIC_INIT(0);
 struct ut_notify_data data_cb_data;
@@ -433,6 +435,31 @@ void glink_loopback_notify_rxv_cb(void *handle, const void *priv,
 }
 
 /**
+ * glink_loopback_notify_rx_tp_cb() - Receive tracer packet callback
+ * @handle:	Handle returned by glink_loopback_open()
+ * @priv:	The loopback channel
+ * @pkt_priv:	An rx_done_completion structure
+ * @ptr:	Pointer to the tracer packet
+ * @size:	Size of the tracer packet
+ */
+void glink_loopback_notify_rx_tp_cb(void *handle, const void *priv,
+		const void *pkt_priv, const void *ptr, size_t size)
+{
+	struct loopback_channel *lpb_ch = (struct loopback_channel *)priv;
+
+	tracer_pkt_log_event((void *)ptr, LOOPBACK_CLNT_RX);
+	GLINK_LL_CLNT_INFO("%s:%s:%s %s: priv[%p] data[%p] size[%zu]\n",
+			lpb_ch->open_cfg.transport,
+			lpb_ch->open_cfg.edge,
+			lpb_ch->open_cfg.name,
+			__func__, pkt_priv, (char *)ptr, size);
+	lpb_ch->cb_data.size = size;
+	lpb_ch->cb_data.rx_notify = true;
+	lpb_ch->cb_data.rx_data = (void *)ptr;
+	complete(&lpb_ch->cb_data.cb_completion);
+}
+
+/**
  * glink_loopback_notify_tx_done_cb() - Callback used to notify the client when
  *					TX data has finished transmitting
  * @handle:	Handle returned by glink_loopback_open()
@@ -570,6 +597,7 @@ void *glink_loopback_open(const char *transport, const char *edge,
 		lpb_ch->open_cfg.notify_rxv = glink_loopback_notify_rxv_cb;
 	if (rx_type == LINEAR_RX_NOWAIT)
 		lpb_ch->open_cfg.notify_rx = glink_loopback_notify_rx_nowait_cb;
+	lpb_ch->open_cfg.notify_rx_tracer_pkt = glink_loopback_notify_rx_tp_cb;
 	lpb_ch->open_cfg.notify_tx_done = glink_loopback_notify_tx_done_cb;
 	lpb_ch->open_cfg.notify_state = glink_loopback_notify_state_cb;
 	lpb_ch->open_cfg.notify_rx_intent_req =
@@ -748,6 +776,77 @@ int glink_loopback_tx(void *handle, void *data, size_t size, bool req_intent,
 					__func__);
 		}
 	}
+	glink_rx_done(lpb_ch->handle, lpb_ch->cb_data.rx_data, rx_reuse);
+	return ret;
+}
+
+/**
+ * glink_loopback_tx_tp() - Send the tracer packet on loopback channel
+ * @handle:	Handle returned by glink_loopback_open()
+ * @data:	Buffer for the trace packet
+ * @size:	Size of the tracer packet buffer
+ * @req_intent:	Remote intent request flag
+ * @first_tx:	First tx since channel was opened
+ * @rx_reuse:	Reuse the RX intents
+ *
+ * This function sends tracer packet on the loopback channel, queues an RX
+ * intent to receive the loopback data, and waits until the loopback data is
+ * received or a timeout is reached.
+ *
+ * Return: 0 on success, standard error codes otherwise
+ */
+int glink_loopback_tx_tp(void *handle, void *data, size_t size, bool req_intent,
+			 bool first_tx, bool rx_reuse)
+{
+	int ret;
+	struct loopback_channel *lpb_ch = (struct loopback_channel *)handle;
+	uint32_t tx_flags = req_intent ? GLINK_TX_REQ_INTENT : 0;
+
+	tx_flags |= GLINK_TX_TRACER_PKT;
+	GLINK_LL_CLNT_INFO("%s:%s:%s %s: %s\n", lpb_ch->open_cfg.transport,
+			lpb_ch->open_cfg.edge, lpb_ch->open_cfg.name,
+			__func__, "Queueing rx_intent for loopback data");
+	tracer_pkt_log_event(data, LOOPBACK_CLNT_TX);
+	if (!rx_reuse || (rx_reuse && first_tx)) {
+		ret = glink_queue_rx_intent(lpb_ch->handle, (void *)lpb_ch,
+									size);
+		if (ret) {
+			GLINK_LL_CLNT_ERR("%s:%s:%s %s: %s ret[%d]\n",
+				lpb_ch->open_cfg.transport,
+				lpb_ch->open_cfg.edge, lpb_ch->open_cfg.name,
+				__func__, "glink_queue_rx_intent failed", ret);
+			return ret;
+		}
+	}
+
+	cb_data_reset(&lpb_ch->cb_data);
+	GLINK_LL_CLNT_INFO("%s:%s:%s %s: Sending data[%p] size[%zu]\n",
+			lpb_ch->open_cfg.transport,
+			lpb_ch->open_cfg.edge,
+			lpb_ch->open_cfg.name,
+			__func__, data, size);
+	ret = glink_tx(lpb_ch->handle, (void *)data, (void *)data, size,
+			tx_flags);
+	if (ret) {
+		GLINK_LL_CLNT_ERR("%s:%s:%s %s: glink_tx failed ret[%d]\n",
+				lpb_ch->open_cfg.transport,
+				lpb_ch->open_cfg.edge,
+				lpb_ch->open_cfg.name,
+				__func__, ret);
+		return ret;
+	}
+
+	ret = wait_for_completion_timeout(&lpb_ch->cb_data.cb_completion,
+			WAIT_TIMEOUT);
+	if (ret == 0 || lpb_ch->cb_data.size != size) {
+		GLINK_LL_CLNT_ERR("%s:%s:%s %s: %s\n",
+			lpb_ch->open_cfg.transport, lpb_ch->open_cfg.edge,
+			lpb_ch->open_cfg.name, __func__,
+			"data Rx TIMED out or Not exact data");
+		return -ETIMEDOUT;
+	}
+	ret = 0;
+	memcpy(data, lpb_ch->cb_data.rx_data, size);
 	glink_rx_done(lpb_ch->handle, lpb_ch->cb_data.rx_data, rx_reuse);
 	return ret;
 }
@@ -969,6 +1068,37 @@ void glink_loopback_client_init(void)
 				__func__);
 		return;
 	}
+}
+
+/**
+ * glink_loopback_hex_dump_tp() - Hex dump of the tracer packet into debugfs
+ * @s: Sequential file handle to debugfs
+ * @data: Pointer to the tracer packet
+ * @data_len: Length of the tracer packet
+ *
+ * This function dumps the tracer packet into the debugfs file handle associated
+ * with the test.
+ */
+void glink_loopback_hex_dump_tp(struct seq_file *s, void *data,
+				size_t data_len)
+{
+	char *hex_dump_buf;
+	size_t hex_dump_buf_size;
+	int ret;
+
+	hex_dump_buf_size = tracer_pkt_calc_hex_dump_size(data, data_len);
+	if (hex_dump_buf_size <= 0)
+		return;
+
+	hex_dump_buf = kzalloc(hex_dump_buf_size, GFP_KERNEL);
+	if (!hex_dump_buf)
+		return;
+
+	ret = tracer_pkt_hex_dump(hex_dump_buf, hex_dump_buf_size,
+				  data, data_len);
+	if (ret == 0)
+		seq_printf(s, "%s\n", hex_dump_buf);
+	kfree(hex_dump_buf);
 }
 
 /**

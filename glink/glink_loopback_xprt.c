@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +18,8 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <soc/qcom/smem.h>
+#include <soc/qcom/glink.h>
+#include <soc/qcom/tracer_pkt.h>
 #include "glink_core_if.h"
 #include "glink_loopback_xprt.h"
 #include "glink_private.h"
@@ -534,6 +536,9 @@ static int handle_data_cmd(struct glink_loopback_xprt_cmd *cmd)
 	GLX_INFO_PERF("rcid: %u %s: start RX L[%u]:%u data[%p] size[%u]\n",
 		cmd->data.lcid, __func__, cmd->data.riid, cmd->data.size,
 		cmd->data.data, cmd->data.size);
+	if (cmd->data.tracer_pkt)
+		tracer_pkt_log_event((void *)(cmd->data.data),
+				     GLINK_XPRT_RX);
 	rx_intent_ptr = loopback_xprt.if_ptr.glink_core_if_ptr->rx_get_pkt_ctx(
 		&loopback_xprt.if_ptr, cmd->data.lcid, cmd->data.riid);
 
@@ -543,6 +548,7 @@ static int handle_data_cmd(struct glink_loopback_xprt_cmd *cmd)
 		    cmd->data.lcid, __func__, cmd->data.riid, cmd->data.size,
 		    cmd->data.size_remaining);
 	}
+	rx_intent_ptr->tracer_pkt = cmd->data.tracer_pkt;
 	rx_intent_ptr->data = (void *)cmd->data.data;
 	rx_intent_ptr->iovec = cmd->data.iovec;
 	rx_intent_ptr->pkt_size = cmd->data.size;
@@ -711,7 +717,7 @@ static uint32_t set_version(struct glink_transport_if *if_ptr, uint32_t version,
 
 	queue_work(loopback_xprt_ptr->ll_wq, &loopback_xprt_ptr->ll_cmd_work);
 
-	return 0;
+	return GCAP_TRACER_PKT;
 }
 
 /**
@@ -1027,6 +1033,52 @@ static int tx(struct glink_transport_if *if_ptr, uint32_t lcid,
 }
 
 /**
+ * tx_cmd_tracer_pkt() - Send a tracer packet
+ * @if_ptr:	Pointer to interface instance
+ * @lcid:	Local channel ID
+ * @pctx:	Packet TX context
+ *
+ * Return: 0 on success, standard error codes otherwise
+ */
+static int tx_cmd_tracer_pkt(struct glink_transport_if *if_ptr, uint32_t lcid,
+		struct glink_core_tx_pkt *pctx)
+{
+	struct glink_loopback_xprt *loopback_xprt_ptr =
+			(struct glink_loopback_xprt *)if_ptr;
+	struct glink_loopback_xprt_cmd *cmd =
+		kzalloc(sizeof(struct glink_loopback_xprt_cmd), GFP_KERNEL);
+	if (!cmd) {
+		GLX_ERR("%s: No memory for allocation\n", __func__);
+		return -ENOMEM;
+	}
+
+	GLX_INFO_PERF("lcid: %u %s: R[%u]:%u data[%p] size[%u]\n",
+		lcid, __func__, pctx->riid, pctx->size, pctx->data, pctx->size);
+	cmd->type = DATA;
+	cmd->data.lcid = lcid;
+	cmd->data.tracer_pkt = true;
+	cmd->data.data = (const char *)pctx->data;
+	cmd->data.iovec = pctx->iovec;
+	cmd->data.riid = pctx->riid;
+	cmd->data.size = pctx->size;
+	pctx->size_remaining -= pctx->size;
+	cmd->data.size_remaining = pctx->size_remaining;
+	cmd->data.vbuf_provider = pctx->vprovider;
+	cmd->data.pbuf_provider = pctx->pprovider;
+	tracer_pkt_log_event((void *)(pctx->data), GLINK_XPRT_TX);
+	mutex_lock(&loopback_xprt_ptr->tx_cmds_lock);
+	simulate_smem_loopback((void *)cmd, sizeof(*cmd));
+	simulate_smem_loopback((void *)cmd->data.data, (size_t)cmd->data.size);
+	list_add_tail(&cmd->element, &loopback_xprt_ptr->tx_cmds);
+	mutex_unlock(&loopback_xprt_ptr->tx_cmds_lock);
+	queue_work(loopback_xprt_ptr->ll_wq, &loopback_xprt_ptr->ll_cmd_work);
+	GLX_INFO_PERF(
+		"lcid: %u %s: end (Success) TX R[%u]:%u data[%p] size[%u]\n",
+		lcid, __func__, pctx->riid, pctx->size, pctx->data, pctx->size);
+	return 0;
+}
+
+/**
  * tx_cmd_remote_rx_intent_req_ack() - Transmit the ack for remote
  *				RX intent request
  * @if_ptr:	Pointer to transport interface
@@ -1231,6 +1283,7 @@ static int init_and_register_loopback_xprt_if(void)
 					tx_cmd_remote_rx_intent_req_ack;
 	loopback_xprt.if_ptr.tx_cmd_set_sigs = tx_cmd_set_sigs;
 	loopback_xprt.if_ptr.tx = tx;
+	loopback_xprt.if_ptr.tx_cmd_tracer_pkt = tx_cmd_tracer_pkt;
 
 	/* initialize transport */
 	loopback_xprt.if_ptr.glink_core_if_ptr = NULL;
