@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1245,7 +1245,7 @@ static int file_exists(const char const *fname)
 	"  -a         Do the adversarial test (same as -l)\n"		\
 	"  -b         Do basic sanity tests\n"				\
 	"  -z         Size (in bytes) of buffer for basic sanity tests\n" \
-	"             (default=1048576 (1MB))\n"			\
+	"             (default=65536 (64KB))\n"			\
 	"  -e         Do Ion heap profiling.\n"				\
 	"  -i file    Input `alloc profile' for heap profiling (-e)\n"	\
 	"             (Runs a general default profile if omitted).\n"	\
@@ -1286,7 +1286,7 @@ int ion_pre_alloc_size = ION_PRE_ALLOC_SIZE_DEFAULT;
 int main(int argc, char *argv[])
 {
 	int rc = 0, i, opt;
-	unsigned long basic_sanity_size = SZ_1M;
+	unsigned long basic_sanity_size = SZ_64K;
 	bool do_basic_sanity_tests = false;
 	bool do_heap_profiling = false;
 	bool do_kernel_alloc_profiling = false;
