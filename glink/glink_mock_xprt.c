@@ -323,7 +323,9 @@ static int tx_cmd_ch_open(struct glink_transport_if *if_ptr, uint32_t lcid,
 	cmd->type = LOCAL_OPEN;
 	cmd->local_open.lcid = lcid;
 	strlcpy(cmd->local_open.name, name, sizeof(cmd->local_open.name));
-	GLINK_MOCK_DBG("%s[%u:] %s: LOCAL_OPEN\n", name, lcid, __func__);
+	cmd->local_open.req_xprt = req_xprt;
+	GLINK_MOCK_DBG("%s[%u:%u:] %s: LOCAL_OPEN\n", name, lcid, req_xprt,
+			__func__);
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
@@ -392,7 +394,9 @@ static void tx_cmd_ch_remote_open_ack(struct glink_transport_if *if_ptr,
 
 	cmd->type = REMOTE_OPEN_ACK;
 	cmd->remote_open_ack.rcid = rcid;
-	GLINK_MOCK_DBG("rcid: %u %s: REMOTE_OPEN_ACK\n", rcid, __func__);
+	cmd->remote_open_ack.xprt_resp = xprt_resp;
+	GLINK_MOCK_DBG("rcid: %u:%u %s: REMOTE_OPEN_ACK\n", rcid, xprt_resp,
+			__func__);
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
