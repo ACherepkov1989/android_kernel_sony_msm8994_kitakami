@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -696,7 +696,110 @@ private:
 	uint8_t m_aHeadertoAdd1[MAX_HEADER_SIZE],m_aHeadertoAdd2[MAX_HEADER_SIZE],m_aHeadertoAdd3[MAX_HEADER_SIZE];
 	size_t m_nHeadertoAddSize1,m_nHeadertoAddSize2,m_nHeadertoAddSize3;
 };
+
+class IPAHeaderInsertionTest004: public IPAHeaderInsertionTestFixture {
+public:
+	IPAHeaderInsertionTest004() {
+		m_name = "IPAHeaderInsertionTest004";
+		m_description =
+		"Header Insertion Test 004 - Test header insertion with bad len values.";
+		Register(*this);
+		uint8_t aRMNetHeader[6] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+		m_nHeadertoAddSize = sizeof(aRMNetHeader);
+		memcpy(m_aHeadertoAdd, aRMNetHeader, m_nHeadertoAddSize);
+	}
+
+	virtual bool AddRules() {
+		// Not adding any rules here.
+		return true;
+	} // AddRules()
+
+	virtual bool ModifyPackets() {
+		// This test doesn't modify the original IP Packet.
+		return true;
+	} // ModifyPacktes ()
+
+	bool AddSingleHeaderAndCheck(uint8_t len) {
+		m_eIP = IPA_IP_v4;
+		bool bRetVal = true;
+		struct ipa_ioc_get_hdr sRetHeader;
+		memset(&sRetHeader, 0, sizeof(sRetHeader));
+		strcpy (sRetHeader.name, "Generic\0");
+
+		LOG_MSG_STACK("Entering Function");
+		// Create Header:
+		// Allocate Memory, populate it, and add in to the Header Insertion.
+		struct ipa_ioc_add_hdr * pHeaderDescriptor = NULL;
+		pHeaderDescriptor = (struct ipa_ioc_add_hdr *) calloc(1,
+				sizeof(struct ipa_ioc_add_hdr)
+						+ 1 * sizeof(struct ipa_hdr_add));
+		if (!pHeaderDescriptor) {
+			LOG_MSG_ERROR("calloc failed to allocate pHeaderDescriptor");
+			bRetVal = false;
+			goto bail;
+		}
+		pHeaderDescriptor->commit = true;
+		pHeaderDescriptor->num_hdrs = 1;
+		strcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name);
+		memcpy(pHeaderDescriptor->hdr[0].hdr, m_aHeadertoAdd,
+				m_nHeadertoAddSize); //Header's Data
+		pHeaderDescriptor->hdr[0].hdr_len = len;
+		pHeaderDescriptor->hdr[0].hdr_hdl = -1; //Return Value
+		pHeaderDescriptor->hdr[0].is_partial = false;
+		pHeaderDescriptor->hdr[0].status = -1; // Return Parameter
+		strcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name);
+
+		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
+		{
+			LOG_MSG_ERROR("m_HeaderInsertion.AddHeader(pHeaderDescriptor) Failed.");
+			bRetVal = false;
+			goto bail;
+		}
+
+		if (!m_HeaderInsertion.GetHeaderHandle(&sRetHeader))
+		{
+			LOG_MSG_ERROR(" Failed");
+			bRetVal = false;
+			goto bail;
+		}
+
+	bail:
+		Free(pHeaderDescriptor);
+		LOG_MSG_STACK(
+				"Leaving Function (Returning %s)", bRetVal?"True":"False");
+		return bRetVal;
+	} // AddSingleHeaderAndCheck()
+
+	virtual bool TestLogic() {
+
+		// Try to add headers with invalid values.
+		// Valid values are between 1 to IPA_HDR_MAX_SIZE (64).
+		// We expect the below functions to fail.
+		if (AddSingleHeaderAndCheck(0)) {
+			LOG_MSG_ERROR("This is unexpected, this can't succeed");
+			return false;
+		}
+
+		if (AddSingleHeaderAndCheck(MAX_HEADER_SIZE + 1)) {
+			LOG_MSG_ERROR("This is unexpected, this can't succeed");
+			return false;
+		}
+
+		// Add one header which is OK
+		if (!AddSingleHeaderAndCheck(m_nHeadertoAddSize)) {
+			LOG_MSG_ERROR("This is unexpected, this can't succeed");
+			return false;
+		}
+		return true;
+	}
+
+private:
+	uint8_t m_aHeadertoAdd[MAX_HEADER_SIZE];
+	size_t m_nHeadertoAddSize;
+};
+
 static IPAHeaderInsertionTest001 ipaHeaderInsertionTest001;
 static IPAHeaderInsertionTest002 ipaHeaderInsertionTest002;
 static IPAHeaderInsertionTest003 ipaHeaderInsertionTest003;
+static IPAHeaderInsertionTest004 ipaHeaderInsertionTest004;
 
