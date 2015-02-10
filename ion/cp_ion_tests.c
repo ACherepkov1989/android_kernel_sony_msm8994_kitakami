@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -48,16 +48,16 @@
 #define ARRAY_SIZE(arr)	(sizeof(arr) / sizeof((arr)[0]))
 
 static struct ion_test_data mm_heap_test = {
-	.align = 0x100000,
+	.align = 0x1000,
 	.size = 0x100000,
-	.heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
-	.flags = ION_FLAG_SECURE,
+	.heap_id_mask = ION_HEAP(ION_SECURE_HEAP_ID),
+	.flags = ION_FLAG_SECURE | ION_FLAG_CP_PIXEL,
 	.heap_type_req = SECURE_DMA,
 };
 static struct ion_test_data adv_mm_heap_test = {
-	.align = 0x100000,
+	.align = 0x1000,
 	.size = 0x100000,
-	.heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
+	.heap_id_mask = ION_HEAP(ION_SECURE_HEAP_ID),
 	.heap_type_req = SECURE_DMA,
 	.flags = 0,
 };
