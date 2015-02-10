@@ -2803,18 +2803,23 @@ void smd_trans_notify_rx(void *handle, const void *priv, const void *pkt_priv,
 			 const void *ptr, size_t size)
 {
 	struct smd_trans_notify *n = (struct smd_trans_notify *)priv;
+	bool do_completion = false;
+
 	if (!n) {
 		GLINK_UT_ERR("%s: smd_trans_notify not found\n", __func__);
 		return;
 	}
 
 	if ((!pkt_priv && size) || !memcmp(pkt_priv, ptr, size))
-		complete(&n->rx_completion);
+		do_completion = true;
 	else
 		GLINK_UT_ERR(
 			"%s: received data did not match sent\n", __func__);
 
 	glink_rx_done(handle, ptr, n->rx_reuse);
+
+	if (do_completion)
+		complete(&n->rx_completion);
 }
 
 /**
