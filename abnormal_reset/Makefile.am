@@ -1,23 +1,24 @@
-#
-# Rules for building kernel-tests should go in this file.
-#
-tsensor_resetdir           = $(prefix)/abnormal_reset
+abnormal_resetdir = $(prefix)/abnormal_reset
+KERNEL_FLAGS ?= ARCH=arm
 
-# See the automake manual for full details of this syntax.
-tsensor_reset_PROGRAMS     = tsensor_reset_mod
+dist_abnormal_reset_SCRIPTS  = abnormal_reset_test.sh
 
-# Uncomment this if your script needs to install the 'common' setup
-# script from android.
-tsensor_reset_mod_SCRIPTS += ../test_env_setup.sh
+module = tsensor_reset_mod.ko
+kmake  = $(MAKE) $(KERNEL_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
-#-----------------------------------------------------------------------------
-# Below this line is automake boilerplate.  Casual users should not need
-# to go below this line.
-PWD := $(shell pwd)
+$(module):
+	$(kmake) modules
 
-all-local:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+all-local: $(module)
 
-install-exec-local:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) INSTALL_MOD_PATH=$(DESTDIR)$(prefix) modules_install
-	depmod $(shell cat $(KERNELDIR)/include/config/kernel.release 2> /dev/null) -b $(DESTDIR)$(prefix)
+install-exec-local: $(module)
+	$(kmake) INSTALL_MOD_PATH=$(DESTDIR)$(prefix)/modules modules_install
+
+dist_abnormal_reset_DATA = README.txt
+
+# "make distclean" will always run clean-local in this directory,
+# regardless of the KERNELMODULES conditional. Therefore, ensure
+# KERNEL_DIR exists before running clean. Further, don't fail even
+# if there is a problem.
+clean-local:
+	-test ! -d "$(KERNEL_DIR)" || $(kmake) clean
