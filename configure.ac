@@ -115,6 +115,9 @@ ENABLE_KERNEL_TEST([ipi],[include the ipi test (default=yes)])
 # page-nom
 ENABLE_KERNEL_TEST([page-nom],[include the page-nom test (default=yes)])
 
+# modsign
+ENABLE_KERNEL_TEST([modsign],[include the modsign test (default=yes)])
+
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
@@ -135,5 +138,6 @@ AC_CONFIG_FILES([
 	swp/Makefile
 	ipi/Makefile
 	page-nom/Makefile
+	modsign/Makefile
 	])
 AC_OUTPUT
