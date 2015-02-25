@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +19,18 @@
 extern int glink_loopback_xprt_init(void);
 extern void glink_loopback_xprt_exit(void);
 extern void glink_loopback_xprt_link_up(void);
+
+/**
+ * enum mock_layers - Different mock transport instances based on priority
+ * @MOCK_LOW:	Lowest priority instance
+ * @MOCK:	Medium priority instance
+ * @MOCK_HIGH:	Highest priority instance
+ */
+enum mock_layers {
+	MOCK_LOW,
+	MOCK,
+	MOCK_HIGH,
+};
 
 #define GLINK_STATUS(seq_filep, x...) do { \
 	SEQ_PRINTFV(seq_filep, x); \
