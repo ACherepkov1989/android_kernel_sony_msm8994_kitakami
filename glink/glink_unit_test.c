@@ -172,7 +172,7 @@ struct mt_test_info_struct {
 };
 
 static int do_mock_negotiation(struct seq_file *s, uint32_t version,
-		uint32_t features);
+		uint32_t features, int pr_index);
 
 static int glink_ut1_local_mt_send_config_reqs(struct seq_file *s, void
 		*cntl_handle, const char *name);
@@ -303,11 +303,11 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open Glink channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -326,7 +326,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -340,7 +340,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		local_rcid = tx_cmd->remote_open_ack.rcid;
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
@@ -353,7 +353,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 					RMT_RX_INTENT_REQ_SIZE);
 
 		UT_ASSERT_INT(1, ==, cb_data.intent_cb_ntfy);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_RX_INTENT_ACK, ==, tx_cmd->type);
 		kfree(tx_cmd);
@@ -361,7 +361,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 		if (cb_data.send_intent) {
 			glink_queue_rx_intent(handle, (void *)&cb_data,
 				RMT_RX_INTENT_REQ_SIZE);
-			intent = mock_xprt_get_intent();
+			intent = mock_xprt_get_intent(mock_ptr);
 			UT_ASSERT_PTR(NULL, !=, intent);
 			UT_ASSERT_INT(intent->size, ==,
 						RMT_RX_INTENT_REQ_SIZE);
@@ -374,7 +374,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 							local_rcid, 0);
 
 		UT_ASSERT_INT(1, ==, cb_data.intent_cb_ntfy);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_RX_INTENT_ACK, ==, tx_cmd->type);
 		kfree(tx_cmd);
@@ -383,7 +383,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 		/* Close the Glink Channel */
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -396,7 +396,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -445,13 +445,13 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		create_singlethread_workqueue("ut_intent_req");
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open Glink channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -470,7 +470,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -484,7 +484,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -515,7 +515,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		UT_ASSERT_INT(
 			(int)wait_for_completion_timeout(&event, HZ / 2), >, 0);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(RX_INTENT_REQ, ==, tx_cmd->type);
 		kfree(tx_cmd);
@@ -534,7 +534,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		UT_ASSERT_INT(
 			(int)wait_for_completion_timeout(&event, HZ / 2), >, 0);
 
-		tx_data = mock_xprt_get_tx_data();
+		tx_data = mock_xprt_get_tx_data(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_data);
 		UT_ASSERT_STRING_COMPARE(testdata, tx_data->data);
 		kfree(tx_data);
@@ -548,7 +548,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		/* Close the G-Link Channel */
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -560,7 +560,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -570,7 +570,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 		GLINK_STATUS(s, "\tOK\n");
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		GLINK_STATUS(s, "\tFailed\n");
 		if (handle != NULL) {
@@ -591,18 +591,18 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
  * Return: 0 is negotiation successful, != 0 otherwise
  */
 static int do_mock_negotiation(struct seq_file *s, uint32_t version,
-		uint32_t features)
+		uint32_t features, int pr_index)
 {
 	int failed = 0;
 	struct glink_mock_xprt *mock_ptr;
 	struct glink_mock_cmd *tx_cmd;
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(pr_index);
 
 		/* Bring-up transport and do local negotiation */
 		mock_ptr->if_ptr.glink_core_if_ptr->link_up(&mock_ptr->if_ptr);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x5, ==, tx_cmd->version.version);
@@ -611,7 +611,7 @@ static int do_mock_negotiation(struct seq_file *s, uint32_t version,
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version_ack(
 				&mock_ptr->if_ptr, version, features);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION, ==, tx_cmd->type);
 		UT_ASSERT_INT(version, ==, tx_cmd->version.version);
@@ -623,13 +623,13 @@ static int do_mock_negotiation(struct seq_file *s, uint32_t version,
 		/* do remote negotiation */
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version(
 				&mock_ptr->if_ptr, version, features);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION_ACK, ==, tx_cmd->type);
 		kfree(tx_cmd);
 
 		/* confirm negotiation is now complete */
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(SET_VERSION, ==, tx_cmd->type);
 		UT_ASSERT_INT(version, ==, tx_cmd->version.version);
@@ -641,14 +641,16 @@ static int do_mock_negotiation(struct seq_file *s, uint32_t version,
 }
 
 /**
- * glink_ut0_mock_basic - Basic sanity test using local loopback.
- *
+ * glink_ut0_mock_basic_core - Core function for basic mock tests
  * @s: pointer to output file
+ * @pr_index:	Mock priority index
+ * @xprt_name:	Mock transport name
  *
- * This test simulates open, read, write and close of glink_channel
- * when remote processor does not exits.
+ * This test simulates open, read, write and close of a G-Link channel
+ * when the remote processor does not exist.
  */
-static void glink_ut0_mock_basic(struct seq_file *s)
+static void glink_ut0_mock_basic_core(struct seq_file *s, unsigned pr_index,
+		char *xprt_name)
 {
 	int failed = 0;
 	int ret;
@@ -662,20 +664,19 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 	struct ut_notify_data cb_data;
 	struct completion event;
 
-	GLINK_STATUS(s, "Running %s\n", __func__);
-
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(pr_index);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0,
+					pr_index));
 
 		/* Open the channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
-		open_cfg.transport = "mock";
+		open_cfg.transport = xprt_name;
 		open_cfg.edge = "local";
 		open_cfg.name = "loopback";
 
@@ -688,7 +689,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -701,7 +702,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -714,7 +715,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 		/* 1. first sent intent for testdata length */
 		glink_queue_rx_intent(handle, (void *)&cb_data,
 				strlen(testdata));
-		intent = mock_xprt_get_intent();
+		intent = mock_xprt_get_intent(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, intent);
 		UT_ASSERT_INT(strlen(testdata), ==, intent->size);
 
@@ -747,7 +748,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 		UT_ASSERT_INT(
 			(int)wait_for_completion_timeout(&event, HZ / 2), >, 0);
 
-		tx_data = mock_xprt_get_tx_data();
+		tx_data = mock_xprt_get_tx_data(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_data);
 		UT_ASSERT_STRING_COMPARE(testdata, tx_data->data);
 		/*
@@ -760,7 +761,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -772,7 +773,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -783,7 +784,7 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 		GLINK_STATUS(s, "\tOK\n");
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		GLINK_STATUS(s, "\tFailed\n");
 		if (handle != NULL) {
@@ -791,6 +792,48 @@ static void glink_ut0_mock_basic(struct seq_file *s)
 			handle = NULL;
 		}
 	}
+}
+
+/**
+ * glink_ut0_mock_basic - Basic sanity test using local loopback.
+ *
+ * @s: pointer to output file
+ *
+ * This test simulates open, read, write and close of glink_channel
+ * when remote processor does not exits.
+ */
+static void glink_ut0_mock_basic(struct seq_file *s)
+{
+	GLINK_STATUS(s, "Running %s\n", __func__);
+	glink_ut0_mock_basic_core(s, MOCK, "mock");
+}
+
+/**
+ * glink_ut0_mock_high_basic - Basic sanity test using local loopback.
+ *
+ * @s: pointer to output file
+ *
+ * This test simulates open, read, write and close of glink_channel
+ * when remote processor does not exits.
+ */
+static void glink_ut0_mock_high_basic(struct seq_file *s)
+{
+	GLINK_STATUS(s, "Running %s\n", __func__);
+	glink_ut0_mock_basic_core(s, MOCK_HIGH, "mock_high");
+}
+
+/**
+ * glink_ut0_mock_low_basic - Basic sanity test using local loopback.
+ *
+ * @s: pointer to output file
+ *
+ * This test simulates open, read, write and close of glink_channel
+ * when remote processor does not exits.
+ */
+static void glink_ut0_mock_low_basic(struct seq_file *s)
+{
+	GLINK_STATUS(s, "Running %s\n", __func__);
+	glink_ut0_mock_basic_core(s, MOCK_LOW, "mock_low");
 }
 
 void ut_ch_close_work_func(struct work_struct *work)
@@ -836,14 +879,14 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
 		ch_close_wq = create_singlethread_workqueue("ssr_ch_close_q");
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		open_cfg.transport = "mock";
 		open_cfg.edge = "local";
@@ -858,7 +901,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -872,7 +915,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -880,7 +923,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 
 		glink_queue_rx_intent(handle, (void *)&cb_data,
 				strlen(testdata));
-		intent = mock_xprt_get_intent();
+		intent = mock_xprt_get_intent(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, intent);
 		UT_ASSERT_INT(strlen(testdata), ==, intent->size);
 
@@ -907,7 +950,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		UT_ASSERT_INT(
 			(int)wait_for_completion_timeout(&event, HZ / 2), >, 0);
 
-		tx_data = mock_xprt_get_tx_data();
+		tx_data = mock_xprt_get_tx_data(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_data);
 		UT_ASSERT_STRING_COMPARE(testdata, tx_data->data);
 
@@ -931,7 +974,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		GLINK_STATUS(s, "\tOK\n");
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		GLINK_STATUS(s, "\tFailed\n");
 		if (handle != NULL) {
@@ -963,13 +1006,13 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open the channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -986,7 +1029,7 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -1000,7 +1043,7 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1010,7 +1053,7 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 		/* close channel */
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -1022,7 +1065,7 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1032,7 +1075,7 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 		GLINK_STATUS(s, "\tOK\n");
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		GLINK_STATUS(s, "\tFailed\n");
 		if (handle != NULL) {
@@ -1065,13 +1108,13 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open the channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -1088,7 +1131,7 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -1102,7 +1145,7 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1112,7 +1155,7 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		/* close channel */
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -1120,7 +1163,7 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1134,7 +1177,7 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		GLINK_STATUS(s, "\tOK\n");
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		GLINK_STATUS(s, "\tFailed\n");
 		if (handle != NULL) {
@@ -1167,13 +1210,13 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open the channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -1190,7 +1233,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -1204,7 +1247,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1237,7 +1280,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 		UT_ASSERT_INT(
 			(int)wait_for_completion_timeout(&event, HZ / 2), >, 0);
 
-		tx_data = mock_xprt_get_tx_data();
+		tx_data = mock_xprt_get_tx_data(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_data);
 		UT_ASSERT_STRING_COMPARE(testdata, tx_data->data);
 		/*
@@ -1250,7 +1293,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -1263,7 +1306,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1273,7 +1316,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 		GLINK_STATUS(s, "\tOK\n");
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		GLINK_STATUS(s, "\tFailed\n");
 		if (handle != NULL) {
@@ -1307,11 +1350,11 @@ static void glink_ut1_mock_size_greater_than(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open the channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -1328,7 +1371,7 @@ static void glink_ut1_mock_size_greater_than(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -1342,7 +1385,7 @@ static void glink_ut1_mock_size_greater_than(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1367,7 +1410,7 @@ static void glink_ut1_mock_size_greater_than(struct seq_file *s)
 		/* Close channel */
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -1380,7 +1423,7 @@ static void glink_ut1_mock_size_greater_than(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1425,11 +1468,11 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 		cb_data_init(&cb_data);
 
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		/* Open the channel */
 		memset(&open_cfg, 0, sizeof(struct glink_open_config));
@@ -1446,7 +1489,7 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 		handle = glink_open(&open_cfg);
 		UT_ASSERT_ERR_PTR(handle);
 
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
@@ -1460,7 +1503,7 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
 					&mock_ptr->if_ptr, 1, "loopback",
 					MOCK_XPRT_ID);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1486,7 +1529,7 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 		/* 1. first, send intent for testdata length */
 		glink_queue_rx_intent(handle, (void *)&cb_data,
 				strlen(testdata));
-		intent = mock_xprt_get_intent();
+		intent = mock_xprt_get_intent(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, intent);
 		UT_ASSERT_INT(strlen(testdata), ==, intent->size);
 		/* 2. simulate remote write of more data than we asked for */
@@ -1507,7 +1550,7 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 		/* Close channel */
 		ret = glink_close(handle);
 		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
@@ -1520,7 +1563,7 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
@@ -1558,12 +1601,12 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 
 	GLINK_STATUS(s, "Running %s\n", __func__);
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
 
 		/* Bring-up transport and do local negotiation */
 		mock_ptr->if_ptr.glink_core_if_ptr->link_up(&mock_ptr->if_ptr);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x5, ==, tx_cmd->version.version);
@@ -1577,7 +1620,7 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version(
 				&mock_ptr->if_ptr,
 				0x6, 0x66);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x6, >=, tx_cmd->version.version);
@@ -1589,7 +1632,7 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version(
 				&mock_ptr->if_ptr,
 				0x2, 0x33);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x2, ==, tx_cmd->version.version);
@@ -1601,7 +1644,7 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version(
 				&mock_ptr->if_ptr,
 				0x2, 0x22);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x2, ==, tx_cmd->version.version);
@@ -1611,7 +1654,7 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version_ack(
 				&mock_ptr->if_ptr,
 				0x2, 0x22);
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(VERSION, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x2, ==, tx_cmd->version.version);
@@ -1622,7 +1665,7 @@ static void glink_ut0_mock_remote_negotiation(struct seq_file *s)
 				&mock_ptr->if_ptr,
 				0x2, 0x22);
 		/* confirm negotiation is now complete */
-		tx_cmd = mock_xprt_get_next_cmd();
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
 		UT_ASSERT_PTR(NULL, !=, tx_cmd);
 		UT_ASSERT_INT(SET_VERSION, ==, tx_cmd->type);
 		UT_ASSERT_INT(0x2, ==, tx_cmd->version.version);
@@ -4677,9 +4720,9 @@ static void glink_ut1_mock_channel_locking_test_1_thread(struct seq_file *s)
 
 	GLINK_STATUS(s, "Running %s\n", __func__);
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		channel_test_thread_1_info.s = s;
 		channel_test_thread_1_info.channel_id = 1;
@@ -4723,9 +4766,9 @@ static void glink_ut1_mock_channel_locking_test_3_threads(struct seq_file *s)
 
 	GLINK_STATUS(s, "Running %s\n", __func__);
 	do {
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
-		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
 		channel_test_thread_1_info.s = s;
 		channel_test_thread_1_info.channel_id = 1;
@@ -4997,7 +5040,7 @@ static void channel_test_thread_worker(struct work_struct *work)
 		 * re-initialized in the glink_ut_mock_channel_locking_test()
 		 * function before this work was scheduled to run.
 		 */
-		mock_ptr = mock_xprt_get();
+		mock_ptr = mock_xprt_get(MOCK);
 
 		init_completion(&event);
 		cb_data_reset(&cb_data);
@@ -5020,7 +5063,8 @@ static void channel_test_thread_worker(struct work_struct *work)
 		UT_ASSERT_ERR_PTR_MT(handle);
 
 		channel_id = glink_get_channel_id_for_handle(handle);
-		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event);
+		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event,
+				mock_ptr);
 
 		UT_ASSERT_PTR_MT(NULL, !=, tx_cmd);
 		UT_ASSERT_INT_MT(LOCAL_OPEN, ==, tx_cmd->type);
@@ -5037,7 +5081,8 @@ static void channel_test_thread_worker(struct work_struct *work)
 					&mock_ptr->if_ptr, channel_id,
 					channel_name, MOCK_XPRT_ID);
 
-		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event);
+		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event,
+				mock_ptr);
 
 		UT_ASSERT_PTR_MT(NULL, !=, tx_cmd);
 		UT_ASSERT_INT_MT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
@@ -5052,7 +5097,7 @@ static void channel_test_thread_worker(struct work_struct *work)
 			glink_queue_rx_intent(handle, (void *)&cb_data,
 					strlen(testdata));
 			intent = mock_xprt_get_intent_by_cid(channel_id,
-					&event);
+					&event, mock_ptr);
 			received_intent_id = intent->liid;
 
 			UT_ASSERT_PTR_MT(NULL, !=, intent);
@@ -5098,8 +5143,7 @@ static void channel_test_thread_worker(struct work_struct *work)
 					break;
 				}
 				tx_data = mock_xprt_get_tx_data_by_cid(
-						channel_id,
-						&event);
+						channel_id, &event, mock_ptr);
 				completion_iter_count++;
 			}
 
@@ -5125,7 +5169,8 @@ static void channel_test_thread_worker(struct work_struct *work)
 
 		ret = glink_close(handle);
 		UT_ASSERT_INT_MT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event);
+		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event,
+				mock_ptr);
 		UT_ASSERT_PTR_MT(NULL, !=, tx_cmd);
 		UT_ASSERT_INT_MT(LOCAL_CLOSE, ==, tx_cmd->type);
 		UT_ASSERT_INT_MT(channel_id, ==, tx_cmd->local_close.lcid);
@@ -5138,7 +5183,8 @@ static void channel_test_thread_worker(struct work_struct *work)
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, channel_id);
-		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event);
+		tx_cmd = mock_xprt_get_next_cmd_by_cid(channel_id, &event,
+				mock_ptr);
 		UT_ASSERT_PTR_MT(NULL, !=, tx_cmd);
 		UT_ASSERT_INT_MT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT_MT(channel_id, ==, tx_cmd->remote_open_ack.rcid);
@@ -5150,7 +5196,7 @@ static void channel_test_thread_worker(struct work_struct *work)
 			current->pid, channel_id);
 	} while (0);
 
-	unregister_completion(&event);
+	unregister_completion(&event, mock_ptr);
 	if (failed) {
 		if (handle != NULL) {
 			glink_close(handle);
@@ -5407,6 +5453,16 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 					xprt_name, edge_name,
 					NULL,
 					glink_ut0_mock_ssr);
+	} else if (!strcmp(xprt_name, "mock_low")) {
+		glink_ut_rss_debug_create("ut0_low_basic",
+					xprt_name, edge_name,
+					NULL,
+					glink_ut0_mock_low_basic);
+	} else if (!strcmp(xprt_name, "mock_high")) {
+		glink_ut_rss_debug_create("ut0_high_basic",
+					xprt_name, edge_name,
+					NULL,
+					glink_ut0_mock_high_basic);
 	}
 	kfree(dfs_work);
 }
@@ -5451,7 +5507,9 @@ static int __init glink_init(void)
 	/* Initialize mutex for multithreaded locking test */
 	mutex_init(&multithread_test_mutex_lha0);
 	glink_mock_xprt_init();
-	do_mock_negotiation(NULL, 0x1, 0x0);
+	do_mock_negotiation(NULL, 0x1, 0x0, MOCK_LOW);
+	do_mock_negotiation(NULL, 0x1, 0x0, MOCK);
+	do_mock_negotiation(NULL, 0x1, 0x0, MOCK_HIGH);
 	glink_loopback_xprt_init();
 	glink_loopback_client_init();
 	glink_ut_link_state_notif_handle = glink_register_link_state_cb(

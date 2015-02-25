@@ -29,6 +29,13 @@ enum {
 	MOCK_PERF = 1U << 2,
 };
 
+#define NUM_MOCK_XPRTS 3
+static const char *mock_xprt_names[NUM_MOCK_XPRTS] = {
+	"mock_low",
+	"mock",
+	"mock_high",
+};
+
 static unsigned glink_mock_debug_mask;
 module_param_named(mock_debug_mask, glink_mock_debug_mask,
 		   uint, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -78,13 +85,13 @@ EXPORT_SYMBOL(glink_get_mock_debug_mask);
  * defined in this module and returned at the user's request. It is
  * to be used a normal transport in a test environment.
  */
-static struct glink_mock_xprt if_impl;
+static struct glink_mock_xprt if_impl_array[NUM_MOCK_XPRTS];
 
 static uint32_t negotiate_features_v1(struct glink_transport_if *if_ptr,
 		const struct glink_core_version *version_ptr,
 		uint32_t features);
-static void do_complete_all(void);
-static void do_reinit_completion(void);
+static void do_complete_all(struct glink_mock_xprt *mock_ptr);
+static void do_reinit_completion(struct glink_mock_xprt *mock_ptr);
 
 /* Versions data structure, used in version negotiation. */
 static struct glink_core_version versions[] = {
@@ -133,7 +140,7 @@ static void reset(struct glink_mock_xprt *mock)
 	unsigned long flags;
 
 	spin_lock_irqsave(&mock->mock_xprt_lists_lock_lha0, flags);
-	do_reinit_completion();
+	do_reinit_completion(mock);
 
 	if (!list_empty(&mock->completions))
 		GLINK_MOCK_ERR("%s: Error: %s\n",
@@ -177,7 +184,7 @@ static void reset(struct glink_mock_xprt *mock)
  */
 static int ssr(struct glink_transport_if *if_ptr)
 {
-	if_impl.if_ptr.glink_core_if_ptr->link_down(&if_impl.if_ptr);
+	if_ptr->glink_core_if_ptr->link_down(if_ptr);
 	return 0;
 }
 
@@ -210,7 +217,7 @@ static void tx_cmd_version(struct glink_transport_if *if_ptr,
 	cmd->version.version = version;
 	cmd->version.features = features;
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 }
 
@@ -241,7 +248,7 @@ static void tx_cmd_version_ack(struct glink_transport_if *if_ptr, uint32_t
 	cmd->version.version = version;
 	cmd->version.features = features;
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 }
 
@@ -282,7 +289,7 @@ static uint32_t set_version(struct glink_transport_if *if_ptr, uint32_t version,
 			version, features);
 
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return 0;
@@ -320,7 +327,7 @@ static int tx_cmd_ch_open(struct glink_transport_if *if_ptr, uint32_t lcid,
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return 0;
@@ -354,7 +361,7 @@ static int tx_cmd_ch_close(struct glink_transport_if *if_ptr, uint32_t lcid)
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return 0;
@@ -389,7 +396,7 @@ static void tx_cmd_ch_remote_open_ack(struct glink_transport_if *if_ptr,
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 }
 
@@ -421,7 +428,7 @@ static void tx_cmd_ch_remote_close_ack(struct glink_transport_if *if_ptr,
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 }
 
@@ -593,7 +600,7 @@ static int tx(struct glink_transport_if *if_ptr, uint32_t lcid,
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&data->element, &mock_ptr->tx_data);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return 0;
@@ -632,7 +639,7 @@ static int tx_cmd_remote_rx_intent_req_ack(struct glink_transport_if *if_ptr,
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return 0;
@@ -671,7 +678,7 @@ static int tx_cmd_rx_intent_req(struct glink_transport_if *if_ptr,
 
 	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	list_add_tail(&cmd->element, &mock_ptr->tx_cmds);
-	do_complete_all();
+	do_complete_all(mock_ptr);
 	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return 0;
@@ -680,83 +687,99 @@ static int tx_cmd_rx_intent_req(struct glink_transport_if *if_ptr,
 
 /**
  * mock_xprt_init() - Initialize the mock object
+ * @pr_index:	Priority index indicating which mock transport instance to use
  *
  * Initialize a mock object with the functions defined in this module, to be
  * exposed to other modules for testing.
  */
-void mock_xprt_init(void)
+void mock_xprt_init(unsigned pr_index)
 {
 	struct glink_core_transport_cfg cfg;
 	int ret;
 
-	spin_lock_init(&if_impl.mock_xprt_lists_lock_lha0);
+	BUG_ON(pr_index >= ARRAY_SIZE(if_impl_array));
+	spin_lock_init(&if_impl_array[pr_index].mock_xprt_lists_lock_lha0);
 
-	init_lists(&if_impl);
-	if_impl.if_ptr.ssr = ssr;
-	if_impl.if_ptr.tx = tx;
-	if_impl.if_ptr.tx_cmd_version = tx_cmd_version;
-	if_impl.if_ptr.tx_cmd_version_ack = tx_cmd_version_ack;
-	if_impl.if_ptr.set_version = set_version;
-	if_impl.if_ptr.tx_cmd_ch_open = tx_cmd_ch_open;
-	if_impl.if_ptr.tx_cmd_ch_close = tx_cmd_ch_close;
-	if_impl.if_ptr.tx_cmd_ch_remote_open_ack = tx_cmd_ch_remote_open_ack;
-	if_impl.if_ptr.tx_cmd_ch_remote_close_ack = tx_cmd_ch_remote_close_ack;
-	if_impl.if_ptr.allocate_rx_intent = allocate_rx_intent;
-	if_impl.if_ptr.deallocate_rx_intent = deallocate_rx_intent;
-	if_impl.if_ptr.reuse_rx_intent = reuse_rx_intent;
-	if_impl.if_ptr.tx_cmd_local_rx_intent = tx_cmd_local_rx_intent;
-	if_impl.if_ptr.tx_cmd_local_rx_done = tx_cmd_local_rx_done;
-	if_impl.if_ptr.tx_cmd_rx_intent_req = tx_cmd_rx_intent_req;
-	if_impl.if_ptr.tx_cmd_remote_rx_intent_req_ack =
+	init_lists(&if_impl_array[pr_index]);
+	if_impl_array[pr_index].if_ptr.ssr = ssr;
+	if_impl_array[pr_index].if_ptr.tx = tx;
+	if_impl_array[pr_index].if_ptr.tx_cmd_version = tx_cmd_version;
+	if_impl_array[pr_index].if_ptr.tx_cmd_version_ack = tx_cmd_version_ack;
+	if_impl_array[pr_index].if_ptr.set_version = set_version;
+	if_impl_array[pr_index].if_ptr.tx_cmd_ch_open = tx_cmd_ch_open;
+	if_impl_array[pr_index].if_ptr.tx_cmd_ch_close = tx_cmd_ch_close;
+	if_impl_array[pr_index].if_ptr.tx_cmd_ch_remote_open_ack =
+		tx_cmd_ch_remote_open_ack;
+	if_impl_array[pr_index].if_ptr.tx_cmd_ch_remote_close_ack =
+		tx_cmd_ch_remote_close_ack;
+	if_impl_array[pr_index].if_ptr.allocate_rx_intent = allocate_rx_intent;
+	if_impl_array[pr_index].if_ptr.deallocate_rx_intent =
+		deallocate_rx_intent;
+	if_impl_array[pr_index].if_ptr.reuse_rx_intent = reuse_rx_intent;
+	if_impl_array[pr_index].if_ptr.tx_cmd_local_rx_intent =
+		tx_cmd_local_rx_intent;
+	if_impl_array[pr_index].if_ptr.tx_cmd_local_rx_done =
+		tx_cmd_local_rx_done;
+	if_impl_array[pr_index].if_ptr.tx_cmd_rx_intent_req =
+		tx_cmd_rx_intent_req;
+	if_impl_array[pr_index].if_ptr.tx_cmd_remote_rx_intent_req_ack =
 					tx_cmd_remote_rx_intent_req_ack;
 
-	if_impl.reset = reset;
-	if_impl.if_ptr.glink_core_if_ptr = NULL;
+	if_impl_array[pr_index].reset = reset;
+	if_impl_array[pr_index].if_ptr.glink_core_if_ptr = NULL;
+	if_impl_array[pr_index].pr_index = pr_index;
 
-	cfg.name = "mock";
+	cfg.name = mock_xprt_names[pr_index];
 	cfg.edge = "local";
 	cfg.versions = versions;
 	cfg.versions_entries = ARRAY_SIZE(versions);
 	cfg.max_cid = UINT32_MAX;
 	cfg.max_iid = UINT32_MAX;
 
-	ret = glink_core_register_transport(&if_impl.if_ptr, &cfg);
+	ret = glink_core_register_transport(&if_impl_array[pr_index].if_ptr,
+			&cfg);
 	if (ret)
-		pr_err("%s: Unable to register transport %d\n", __func__, ret);
+		pr_err("%s: Unable to register transport: %s ret: %d\n",
+				__func__, cfg.name, ret);
 }
 
 /**
  * mock_xprt_reinit() - Reinitialize the mock object
+ * @pr_index:	Priority index indicating which mock transport instance to use
  *
  * Reinitialize a mock object with the functions defined in this module, to be
  * exposed to other modules for testing. This function is called during
  * reset; it does not reinitialize completions or lists.
  */
-void mock_xprt_reinit(void)
+void mock_xprt_reinit(unsigned pr_index)
 {
 	struct glink_core_transport_cfg cfg;
 	int ret;
 
-	cfg.name = "mock";
+	BUG_ON(pr_index >= ARRAY_SIZE(if_impl_array));
+	cfg.name = mock_xprt_names[pr_index];
 	cfg.edge = "local";
 	cfg.versions = versions;
 	cfg.versions_entries = ARRAY_SIZE(versions);
 	cfg.max_cid = UINT32_MAX;
 	cfg.max_iid = UINT32_MAX;
-	ret = glink_core_register_transport(&if_impl.if_ptr, &cfg);
+	ret = glink_core_register_transport(&if_impl_array[pr_index].if_ptr,
+			&cfg);
 	if (ret)
 		pr_err("%s: Unable to register transport %d\n", __func__, ret);
 }
 
 /**
  * mock_xprt_get() - Provided to expose the mock transport to other modules
+ * @pr_index:	Priority index indicating which mock transport instance to use
  *
  * Return: An initialized mock transport
  */
-struct glink_mock_xprt *mock_xprt_get(void)
+struct glink_mock_xprt *mock_xprt_get(unsigned pr_index)
 {
-	return &if_impl;
-};
+	BUG_ON(pr_index >= ARRAY_SIZE(if_impl_array));
+	return &if_impl_array[pr_index];
+}
 
 /**
  * mock_xprt_reset() - Reset the mock transport to default
@@ -778,61 +801,63 @@ void mock_xprt_reset(struct glink_mock_xprt *xprt_ptr)
 	 * above.
 	 */
 	GLINK_MOCK_INFO("%s: Re-initializing transport...\n", __func__);
-	mock_xprt_reinit();
+	mock_xprt_reinit(xprt_ptr->pr_index);
 }
 
 /**
  * mock_xprt_get_next_cmd() - Gets (and removes) the next command
+ * @mock_ptr:	The mock transport instance
  *
  * Client must call kfree() when they are done with the node to prevent memory
  * leaks.
  *
  * Return: Pointer to the next command or NULL if none
  */
-struct glink_mock_cmd *mock_xprt_get_next_cmd(void)
+struct glink_mock_cmd *mock_xprt_get_next_cmd(struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_mock_cmd *cmd = NULL;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
-	if (!list_empty(&if_impl.tx_cmds)) {
-		cmd = list_first_entry(&if_impl.tx_cmds, struct glink_mock_cmd,
-			element);
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0,
+			flags);
+	if (!list_empty(&mock_ptr->tx_cmds)) {
+		cmd = list_first_entry(&mock_ptr->tx_cmds, struct glink_mock_cmd,
+				element);
 		list_del(&cmd->element);
 	}
-	do_reinit_completion();
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	do_reinit_completion(mock_ptr);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return cmd;
 }
 
 /**
  * mock_xprt_get_next_cmd_by_cid() - Gets (and removes) the next command
- * @ch_id:	The channel ID used to lookup the command
- * @event:	Event completion, used in unit tests, which is reset in this
- *		function
+ * @ch_id:		The channel ID used to lookup the command
+ * @event:		Event completion, used in unit tests, which is reset in this
+ *				function
+ * @mock_ptr:	The mock transport instance
  *
  * Returned pointer must be freed by caller to prevent memory leaks.
  *
  * Return: Pointer to the next command or NULL if none
  */
 struct glink_mock_cmd *mock_xprt_get_next_cmd_by_cid(uint32_t ch_id,
-		struct completion *event)
+		struct completion *event, struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_mock_cmd *cmd;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	reinit_completion(event);
-	if (list_empty(&if_impl.tx_cmds)) {
-		spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0,
-				flags);
+	if (list_empty(&mock_ptr->tx_cmds)) {
+		spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 		GLINK_ERR("%s: tx_cmds list is empty! thread: %d\n", __func__,
 				current->pid);
 		return NULL;
 	}
 
-	list_for_each_entry(cmd, &if_impl.tx_cmds, element) {
+	list_for_each_entry(cmd, &mock_ptr->tx_cmds, element) {
 		uint32_t cmd_ch_id = 0;
 
 		switch (cmd->type) {
@@ -867,13 +892,11 @@ struct glink_mock_cmd *mock_xprt_get_next_cmd_by_cid(uint32_t ch_id,
 
 		if (cmd_ch_id && cmd_ch_id == ch_id) {
 			list_del(&cmd->element);
-			spin_unlock_irqrestore(
-					&if_impl.mock_xprt_lists_lock_lha0,
-					flags);
+			spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 			return cmd;
 		}
 	}
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	GLINK_ERR("%s: tx_cmds list - no match found! thread: %d\n", __func__,
 			current->pid);
 	return NULL;
@@ -881,24 +904,26 @@ struct glink_mock_cmd *mock_xprt_get_next_cmd_by_cid(uint32_t ch_id,
 
 /**
  * mock_xprt_get_intent() - Gets (and removes) the intent
+ * @mock_ptr:	The mock transport instance
  *
  * Client must call kfree() when they are done with the node to prevent memory
  * leaks.
  *
  * Return: Pointer to the next intent or NULL if none
  */
-struct glink_mock_rx_intent *mock_xprt_get_intent(void)
+struct glink_mock_rx_intent *mock_xprt_get_intent(
+		struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_mock_rx_intent *intent = NULL;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
-	if (!list_empty(&if_impl.rx_intents)) {
-		intent = list_first_entry(&if_impl.rx_intents,
-					struct glink_mock_rx_intent, element);
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
+	if (!list_empty(&mock_ptr->rx_intents)) {
+		intent = list_first_entry(&mock_ptr->rx_intents,
+				struct glink_mock_rx_intent, element);
 		list_del(&intent->element);
 	}
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 
 	return intent;
 }
@@ -906,9 +931,10 @@ struct glink_mock_rx_intent *mock_xprt_get_intent(void)
 /**
  * mock_xprt_get_intent_by_cid() - Gets (and removes) the intent with the given
  *				channel ID
- * @ch_id:	The channel ID used to lookup the intent
- * @event:	Event completion, used in unit tests, which is reset in this
- *		function
+ * @ch_id:		The channel ID used to lookup the intent
+ * @event:		Event completion, used in unit tests, which is reset in this
+ *				function
+ * @mock_ptr:	The mock transport instance
  *
  * Client must call kfree() when they are done with the node to prevent memory
  * leaks.
@@ -916,31 +942,28 @@ struct glink_mock_rx_intent *mock_xprt_get_intent(void)
  * Return: Pointer to the next intent or NULL if none
  */
 struct glink_mock_rx_intent *mock_xprt_get_intent_by_cid(uint32_t ch_id,
-		struct completion *event)
+		struct completion *event, struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_mock_rx_intent *intent;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	reinit_completion(event);
-	if (list_empty(&if_impl.rx_intents)) {
+	if (list_empty(&mock_ptr->rx_intents)) {
 		GLINK_MOCK_DBG("%s: intents list is empty! thread %d\n",
 		__func__, current->pid);
-		spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0,
-				flags);
+		spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 		return NULL;
 	}
 
-	list_for_each_entry(intent, &if_impl.rx_intents, element) {
+	list_for_each_entry(intent, &mock_ptr->rx_intents, element) {
 		if (intent->lcid == ch_id) {
 			list_del(&intent->element);
-			spin_unlock_irqrestore(
-					&if_impl.mock_xprt_lists_lock_lha0,
-					flags);
+			spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 			return intent;
 		}
 	}
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	GLINK_ERR("%s: intents list - no match found! thread: %d\n", __func__,
 			current->pid);
 	return NULL;
@@ -948,27 +971,29 @@ struct glink_mock_rx_intent *mock_xprt_get_intent_by_cid(uint32_t ch_id,
 
 /**
  * mock_xprt_get_tx_data() - Gets (and removes) the data pkt from tx_data list
+ * @mock_ptr:	The mock transport instance
  *
  * Client must call kfree() when they are done with the node to prevent memory
  * leaks.
  *
  * Return: Pointer to the next data pkt or NULL if none
  */
-struct glink_mock_tx_data *mock_xprt_get_tx_data(void)
+struct glink_mock_tx_data *mock_xprt_get_tx_data(
+		struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_mock_tx_data *data = NULL;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
-	if (!list_empty(&if_impl.tx_data)) {
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
+	if (!list_empty(&mock_ptr->tx_data)) {
 		GLINK_MOCK_DBG("%s\n", __func__);
-		data = list_first_entry(&if_impl.tx_data,
-					struct glink_mock_tx_data, element);
+		data = list_first_entry(&mock_ptr->tx_data, struct glink_mock_tx_data,
+				element);
 		list_del(&data->element);
 	}
 
-	do_reinit_completion();
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	do_reinit_completion(mock_ptr);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	GLINK_MOCK_DBG("%s data[%p]\n", __func__, data);
 	return data;
 }
@@ -979,6 +1004,7 @@ struct glink_mock_tx_data *mock_xprt_get_tx_data(void)
  * @ch_id:	The channel ID used to lookup the data packet
  * @event:	Event completion, used in unit tests, which is reset in this
  *		function
+ * @mock_ptr:	The mock transport instance
  *
  * Client must call kfree() when they are done with the node to prevent memory
  * leaks.
@@ -986,64 +1012,61 @@ struct glink_mock_tx_data *mock_xprt_get_tx_data(void)
  * Return: Pointer to the next data pkt or NULL if none
  */
 struct glink_mock_tx_data *mock_xprt_get_tx_data_by_cid(uint32_t ch_id,
-		struct completion *event)
+		struct completion *event, struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_mock_tx_data *data;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	reinit_completion(event);
-	if (list_empty(&if_impl.tx_data)) {
-		spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0,
-				flags);
+	if (list_empty(&mock_ptr->tx_data)) {
+		spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 		GLINK_MOCK_DBG("%s: tx_data list empty! thread: %d\n", __func__,
 				current->pid);
 		return NULL;
 	}
 
-	list_for_each_entry(data, &if_impl.tx_data, element) {
+	list_for_each_entry(data, &mock_ptr->tx_data, element) {
 		if (data->lcid == ch_id) {
 			list_del(&data->element);
-			spin_unlock_irqrestore(
-					&if_impl.mock_xprt_lists_lock_lha0,
-					flags);
+			spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 			return data;
 		}
 	}
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 	GLINK_MOCK_DBG("%s: tx_data list - no match found! thread: %d\n",
-	__func__, current->pid);
+			__func__, current->pid);
 	return NULL;
 }
 
 /**
  * do_complete_all() - Iterates through completions list and calls
  *		complete_all() on each completion
+ * @mock_ptr:	The mock transport instance
  *
  * This function should only be called with mock_xprt_lists_lock_lha0 locked.
  */
-static void do_complete_all(void)
+static void do_complete_all(struct glink_mock_xprt *mock_ptr)
 {
 	struct glink_completion_item *local_item;
 
-	list_for_each_entry(local_item, &if_impl.completions, item) {
+	list_for_each_entry(local_item, &mock_ptr->completions, item)
 		complete_all(local_item->completion_ptr);
-	}
 }
 
 /**
  * do_reinit_completion() - Iterates through completions list and resets each
  *			completion by calling reinit_completion()
+ * @mock_ptr:	The mock transport instance
  *
  * This function should only be called with mock_xprt_lists_lock_lha0 locked.
  */
-static void do_reinit_completion(void)
+static void do_reinit_completion(struct glink_mock_xprt *mock_ptr)
 {
 	struct glink_completion_item *local_item;
 
-	list_for_each_entry(local_item, &if_impl.completions, item) {
+	list_for_each_entry(local_item, &mock_ptr->completions, item)
 		reinit_completion(local_item->completion_ptr);
-	}
 }
 
 /**
@@ -1075,36 +1098,44 @@ void register_completion(struct glink_transport_if *if_ptr,
  * unregister_completion() - Removes a completion from the mock xprt completions
  *			list
  * @completion:	The completion to remove from the list
+ * @mock_ptr:	The mock transport instance
  */
-void unregister_completion(struct completion *completion)
+void unregister_completion(struct completion *completion,
+		struct glink_mock_xprt *mock_ptr)
 {
 	unsigned long flags;
 	struct glink_completion_item *local_item;
 
-	spin_lock_irqsave(&if_impl.mock_xprt_lists_lock_lha0, flags);
-	list_for_each_entry(local_item, &if_impl.completions, item) {
+	spin_lock_irqsave(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
+	list_for_each_entry(local_item, &mock_ptr->completions, item) {
 		if (local_item->completion_ptr == completion) {
 			list_del(&local_item->item);
 			kfree(local_item);
-			spin_unlock_irqrestore(
-					&if_impl.mock_xprt_lists_lock_lha0,
-					flags);
+			spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 			return;
 		}
 	}
-	spin_unlock_irqrestore(&if_impl.mock_xprt_lists_lock_lha0, flags);
+	spin_unlock_irqrestore(&mock_ptr->mock_xprt_lists_lock_lha0, flags);
 }
 
 int glink_mock_xprt_init(void)
 {
-	mock_xprt_init();
+	unsigned pr_index;
+
+	for (pr_index = 0; pr_index < ARRAY_SIZE(if_impl_array); ++pr_index)
+		mock_xprt_init(pr_index);
 	return 0;
 }
 
 void glink_mock_xprt_exit(void)
 {
-	if_impl.if_ptr.glink_core_if_ptr->link_down(&if_impl.if_ptr);
-	reset(&if_impl);
-	glink_core_unregister_transport(&if_impl.if_ptr);
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(if_impl_array); ++i) {
+		if_impl_array[i].if_ptr.glink_core_if_ptr->link_down(
+				&if_impl_array[i].if_ptr);
+		reset(&if_impl_array[i]);
+		glink_core_unregister_transport(&if_impl_array[i].if_ptr);
+	}
 	pr_err("%s: Exiting\n", __func__);
 }
