@@ -164,7 +164,7 @@ public:
 		m_consumer.Close();
 		m_consumer2.Close();
 		m_defaultConsumer.Close();
-		GenericConfigureScenarioDestory();
+
 		return true;
 	} /* Teardown() */
 

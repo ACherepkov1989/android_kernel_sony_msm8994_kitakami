@@ -24,6 +24,13 @@
 #define IPA_TEST_CONFIG_MARKER 0x57
 #define IPA_TEST_CHANNEL_CONFIG_MARKER 0x83
 
+/*
+ * This is the configuration number that is saved for Generic configuration
+ * we need it in order to allow coexistence of Generic
+ * configured tests with old fashion tests
+ */
+#define GENERIC_TEST_CONFIGURATION_IDX 37788239
+
 struct ipa_test_config_header
 {
 	char head_marker; /* IPA_TEST_CONFIG_MARKER */

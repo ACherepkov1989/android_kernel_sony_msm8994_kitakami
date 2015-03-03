@@ -650,11 +650,179 @@ void ConfigureScenario(int testConfiguration, const char* params)
 	close(fd);
 }//func
 
+void clean_old_stashed_config()
+{
+	if (current_configuration == NULL)
+		return;
+
+	for (int i = 0 ; i < current_configuration->from_ipa_channels_num ; i++) {
+		delete((struct test_ipa_ep_cfg*)
+				current_configuration->from_ipa_channel_config[i]->cfg);
+		delete((struct test_ipa_ep_cfg*)
+				current_configuration->from_ipa_channel_config[i]);
+	}
+
+	for (int i = 0 ; i < current_configuration->to_ipa_channels_num ; i++) {
+		delete((struct test_ipa_ep_cfg*)
+				current_configuration->to_ipa_channel_config[i]->cfg);
+		delete((struct test_ipa_ep_cfg*)
+				current_configuration->to_ipa_channel_config[i]);
+	}
+	delete(current_configuration);
+	current_configuration = NULL;
+}
+
+
+void stash_new_configuration(struct ipa_test_config_header *header)
+{
+	clean_old_stashed_config();
+
+	/*
+	 * We will start by shallow copying each level, and afterwards,
+	 * override the pointers
+	 */
+	try {
+		current_configuration = new ipa_test_config_header();
+		*current_configuration = *header;
+
+		current_configuration->from_ipa_channel_config =
+			new ipa_channel_config*[header->from_ipa_channels_num]();
+
+		current_configuration->to_ipa_channel_config =
+			new ipa_channel_config*[header->to_ipa_channels_num]();
+
+		for (int i = 0 ; i < current_configuration->from_ipa_channels_num ; i++) {
+			current_configuration->from_ipa_channel_config[i] =
+				new ipa_channel_config;
+			*current_configuration->from_ipa_channel_config[i] =
+				*header->from_ipa_channel_config[i];
+			current_configuration->from_ipa_channel_config[i]->cfg =
+				new test_ipa_ep_cfg();
+			memcpy(current_configuration->from_ipa_channel_config[i]->cfg,
+				header->from_ipa_channel_config[i]->cfg,
+				header->from_ipa_channel_config[i]->config_size);
+		}
+
+		for (int i = 0 ; i < current_configuration->to_ipa_channels_num ; i++) {
+			current_configuration->to_ipa_channel_config[i] =
+				new ipa_channel_config;
+			*current_configuration->to_ipa_channel_config[i] =
+				*header->to_ipa_channel_config[i];
+			current_configuration->to_ipa_channel_config[i]->cfg = new test_ipa_ep_cfg();
+			memcpy(current_configuration->to_ipa_channel_config[i]->cfg,
+				header->to_ipa_channel_config[i]->cfg,
+				header->to_ipa_channel_config[i]->config_size);
+		}
+	} catch (exception& e) {
+		g_Logger.AddMessage(LOG_ERROR ,"Exception in %s(), %s\n",
+				__FUNCTION__,
+				e.what());
+	}
+}
+
+bool is_prev_configuration_generic()
+{
+	int fd;
+	char str[10] = {0};
+	int retval;
+	int current_conf_num;
+
+	fd = open(CONFIGURATION_NODE_PATH, O_RDWR);
+	if (fd < 0) {
+		g_Logger.AddMessage(LOG_ERROR ,"%s Could not open configuration device node.\n", __FUNCTION__);
+		exit(0);
+	}
+
+	retval = read(fd, str, sizeof(str));
+	if (retval < 0) {
+		g_Logger.AddMessage(LOG_ERROR ,"%s Read operation failed.\n", __FUNCTION__);
+		return true;
+	}
+	current_conf_num = atoi(str);
+
+	if (current_conf_num == GENERIC_TEST_CONFIGURATION_IDX)
+		return true;
+
+	return false;
+}
+
+
+static bool is_reconfigure_required(struct ipa_test_config_header *header)
+{
+	// Is reconfiguration not required flag (current conf is cool)
+	bool flag = true;
+
+	if (is_prev_configuration_generic() == false) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"prev configuration didn't use generic configuration\n");
+		return true;
+	}
+
+	if (current_configuration == NULL) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"no prev generic configuration found in the test app data-base\n");
+		return true;
+	}
+
+	flag &= (header->from_ipa_channels_num ==
+			current_configuration->from_ipa_channels_num);
+	flag &= (header->to_ipa_channels_num ==
+			current_configuration->to_ipa_channels_num);
+
+	if (flag == false) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"not same number of pipes\n");
+		return true;
+	}
+
+	for (int i = 0 ; i < header->from_ipa_channels_num ; i++) {
+		flag &= (header->from_ipa_channel_config[i]->client ==
+				current_configuration->from_ipa_channel_config[i]->client);
+		flag &= (header->from_ipa_channel_config[i]->index ==
+				current_configuration->from_ipa_channel_config[i]->index);
+		flag &= !memcmp(header->from_ipa_channel_config[i]->cfg,
+				current_configuration->from_ipa_channel_config[i]->cfg,
+				header->from_ipa_channel_config[i]->config_size);
+	}
+
+	if (flag == false) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"\"from\" endpoint configuration is different from prev\n");
+		return true;
+	}
+
+	for (int i = 0 ; i < header->to_ipa_channels_num ; i++) {
+		flag &= (header->to_ipa_channel_config[i]->client ==
+				current_configuration->to_ipa_channel_config[i]->client);
+		flag &= (header->to_ipa_channel_config[i]->index ==
+				current_configuration->to_ipa_channel_config[i]->index);
+		flag &= !memcmp(header->to_ipa_channel_config[i]->cfg,
+				current_configuration->to_ipa_channel_config[i]->cfg,
+				header->to_ipa_channel_config[i]->config_size);
+	}
+
+	if (flag == false) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"\"to\" endpoint configuration is different from prev\n");
+		return true;
+	}
+
+	return false;
+}
+
 int GenericConfigureScenario(struct ipa_test_config_header *header)
 {
 	int fd;
 	int retval;
 
+	if (is_reconfigure_required(header) == false) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"No need to reconfigure, we are all good :)\n");
+		return true;
+	} else {
+		g_Logger.AddMessage(LOG_DEVELOPMENT ,
+			"Need to run configuration again\n");
+	}
 	g_Logger.AddMessage(LOG_DEVELOPMENT, "configuration has started, parameters:\n");
 	g_Logger.AddMessage(LOG_DEVELOPMENT, "header->head_marker=0x%x\n", header->head_marker);
 	g_Logger.AddMessage(LOG_DEVELOPMENT, "header->from_ipa_channels_num=%d\n", header->from_ipa_channels_num);
