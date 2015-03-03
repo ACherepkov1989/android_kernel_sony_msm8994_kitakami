@@ -130,10 +130,12 @@ struct glink_mock_cmd {
 		struct {
 			uint32_t lcid;
 			char name[GLINK_NAME_SIZE];
+			uint16_t req_xprt;
 		} local_open;
 
 		struct {
 			uint32_t rcid;
+			uint16_t xprt_resp;
 		} remote_open_ack;
 
 		struct {
