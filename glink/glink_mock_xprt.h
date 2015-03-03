@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@ unsigned glink_get_mock_debug_mask(void);
 /**
  * struct glink_mock_xprt - Structure representing the mock transport
  * @if_ptr:			Pointer passed in from the core
+ * @pr_index:		Priority index of the mock transport
  * @mock_xprt_lists_lock_lha0:	Spinlock to protect mock xprt lists
  * @completions:		List of completions
  * @rx_intents:			List of RX intents
@@ -35,6 +36,7 @@ unsigned glink_get_mock_debug_mask(void);
  */
 struct glink_mock_xprt {
 	struct glink_transport_if if_ptr;
+	unsigned pr_index;
 	spinlock_t mock_xprt_lists_lock_lha0;
 	struct list_head completions;
 	struct list_head rx_intents;
@@ -167,18 +169,21 @@ struct glink_mock_cmd {
 int glink_mock_xprt_init(void);
 void glink_mock_xprt_exit(void);
 
-struct glink_mock_xprt *mock_xprt_get(void);
-struct glink_mock_cmd *mock_xprt_get_next_cmd(void);
-struct glink_mock_rx_intent *mock_xprt_get_intent(void);
-struct glink_mock_tx_data *mock_xprt_get_tx_data(void);
+struct glink_mock_xprt *mock_xprt_get(unsigned pr_index);
+struct glink_mock_cmd *mock_xprt_get_next_cmd(struct glink_mock_xprt *mock_ptr);
+struct glink_mock_rx_intent *mock_xprt_get_intent(
+		struct glink_mock_xprt *mock_ptr);
+struct glink_mock_tx_data *mock_xprt_get_tx_data(
+		struct glink_mock_xprt *mock_ptr);
 struct glink_mock_cmd *mock_xprt_get_next_cmd_by_cid(uint32_t ch_id,
-		struct completion *event);
+		struct completion *event, struct glink_mock_xprt *mock_ptr);
 struct glink_mock_rx_intent *mock_xprt_get_intent_by_cid(uint32_t ch_id,
-		struct completion *event);
+		struct completion *event, struct glink_mock_xprt *mock_ptr);
 struct glink_mock_tx_data *mock_xprt_get_tx_data_by_cid(uint32_t ch_id,
-		struct completion *event);
+		struct completion *event, struct glink_mock_xprt *mock_ptr);
 void mock_xprt_reset(struct glink_mock_xprt *ptr);
 void register_completion(struct glink_transport_if *if_ptr,
 		struct completion *completion);
-void unregister_completion(struct completion *completion);
+void unregister_completion(struct completion *completion,
+		struct glink_mock_xprt *mock_ptr);
 #endif /* GLINK_MOCK_XPRT_H */
