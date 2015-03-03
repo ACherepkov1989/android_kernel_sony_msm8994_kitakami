@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -39,18 +39,56 @@ PipeTestFixture::PipeTestFixture()
 	Register(*this);
 }
 
+static int SetupKernelModule(void)
+{
+	int retval;
+	struct ipa_channel_config from_ipa_0 = {0};
+	struct test_ipa_ep_cfg from_ipa_0_cfg;
+	struct ipa_channel_config to_ipa_0 = {0};
+	struct test_ipa_ep_cfg to_ipa_0_cfg;
+	struct ipa_test_config_header header = {0};
+
+	/* From ipa configurations - 1 pipes */
+	memset(&from_ipa_0_cfg, 0 , sizeof(from_ipa_0_cfg));
+	configure_channel(&from_ipa_0,
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST1_CONS,
+			(void *)&from_ipa_0_cfg,
+			sizeof(from_ipa_0_cfg));
+	header.from_ipa_channel_config[0] = &from_ipa_0;
+
+	/* To ipa configurations - 1 pipes */
+	memset(&to_ipa_0_cfg, 0 , sizeof(to_ipa_0_cfg));
+	to_ipa_0_cfg.mode.mode = IPA_DMA;
+	to_ipa_0_cfg.mode.dst = IPA_CLIENT_TEST1_CONS;
+	configure_channel(&to_ipa_0,
+			header.to_ipa_channels_num++,
+			IPA_CLIENT_TEST1_PROD,
+			(void *)&to_ipa_0_cfg,
+			sizeof(to_ipa_0_cfg));
+	header.to_ipa_channel_config[0] = &to_ipa_0;
+
+	header.head_marker = IPA_TEST_CONFIG_MARKER;
+	header.tail_marker = IPA_TEST_CONFIG_MARKER;
+
+	retval = GenericConfigureScenario(&header);
+
+	return retval;
+}
+
 bool PipeTestFixture::Setup()
 {
 	bool bRetVal = true;
 
-	/*Set the configuration to support USB->IPA and IPA->USB pipes.*/
-	ConfigureScenario(1);
+	if (SetupKernelModule() == false)
+		return false;
 
 	/*Initialize the pipe for all the tests -
 	 * this will open the inode which represents the pipe.
 	 */
 	bRetVal &= m_IpaToUsbPipe.Init();
 	bRetVal &= m_UsbToIpaPipe.Init();
+
 	return bRetVal;
 }
 
@@ -59,5 +97,7 @@ bool PipeTestFixture::Teardown()
 	/*The Destroy method will close the inode.*/
 	m_IpaToUsbPipe.Destroy();
 	m_UsbToIpaPipe.Destroy();
+	GenericConfigureScenarioDestory();
+
 	return true;
 }
