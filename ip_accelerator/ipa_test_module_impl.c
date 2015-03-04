@@ -26,10 +26,12 @@
 #include <linux/uaccess.h>
 #include <linux/msm-sps.h>		/* SPS API*/
 #include <linux/ipa.h>
+#include <linux/sched.h>
 #include <linux/skbuff.h>	/* sk_buff */
 #include <linux/kfifo.h>  /* Kernel FIFO Implementation */
 #include <linux/delay.h> /* msleep() */
 #include <linux/string.h>
+#include <linux/printk.h>
 #include "ipa_rm_ut.h"
 #include "ipa_test_module.h"
 
@@ -1561,12 +1563,6 @@ int configure_system_2(void)
 	if (res)
 		goto fail;
 #endif
-
-	/* Connect Tx BAM-DMA -> IPA */
-	/* Prepare an endpoint configuration structure */
-	res = configure_ipa_endpoint(&ipa_ep_cfg, IPA_BASIC);
-	if (res)
-		goto fail;
 
 #ifndef IPA_ON_R3PC
 	/* Connect using the endpoint configuration created */
@@ -6770,13 +6766,13 @@ bail:
 	return ret;
 }
 
-static ssize_t ipa_test_read(
-				struct file *filp,
-				char __user *buf,
-				size_t count, loff_t *f_pos)
+static ssize_t ipa_test_read(struct file *filp,
+		char __user *buf,
+		size_t count, loff_t *f_pos)
 {
 	int res, len;
 	char str[10];
+
 	if (0 != *f_pos) {
 		*f_pos = 0;
 		return 0;
@@ -6805,29 +6801,419 @@ static ssize_t ipa_test_read(
 
 static struct class *ipa_test_class;
 
-static long ipa_test_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+//TODO make only one configuration function
+static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_user)
 {
-	enum ipa_hw_type retval;
+	int retval;
+	struct ipa_channel_config to_ipa_channel_config = {0};
+	struct ipa_sys_connect_params sys_in;
+	unsigned long ipa_bam_hdl;
+	u32 ipa_pipe_num;
+	int index;
+
+	pr_debug("copying from 0x%p %u bytes\n",
+		to_ipa_user,
+		sizeof(struct ipa_channel_config));
+	retval = copy_from_user(
+		&to_ipa_channel_config,
+		to_ipa_user,
+		sizeof(struct ipa_channel_config));
+	if (retval) {
+		pr_err("fail to copy from user - to_ipa_user\n");
+		return -1;
+	}
+
+	index = to_ipa_channel_config.index;
+
+	pr_debug("to_ipa head_marker value is 0x%x\n",
+		to_ipa_channel_config.head_marker);
+
+	pr_debug("to_ipa config_size value is %zu\n",
+		to_ipa_channel_config.config_size);
+
+	pr_debug("to_ipa index value is %d\n",
+		index);
+
+	pr_debug("client=%d\n",
+		to_ipa_channel_config.client);
+
+	pr_debug("to_ipa tail_marker value is 0x%x\n",
+		to_ipa_channel_config.tail_marker);
+
+	if (to_ipa_channel_config.head_marker !=
+		IPA_TEST_CHANNEL_CONFIG_MARKER) {
+		pr_err("bad head_marker - possible memory corruption\n");
+		return -EFAULT;
+	}
+
+	if (to_ipa_channel_config.tail_marker !=
+		IPA_TEST_CHANNEL_CONFIG_MARKER) {
+		pr_err("bad tail_marker - possible memory corruption\n");
+		return -EFAULT;
+	}
+
+	if (to_ipa_channel_config.config_size != sizeof(struct ipa_ep_cfg)) {
+		pr_err("bad config size (%d.vs.%d) update test struct?\n",
+			to_ipa_channel_config.config_size,
+			sizeof(struct ipa_ep_cfg));
+		return -EFAULT;
+	}
+
+	/* Channel from which the userspace shall communicate to this pipe */
+	retval = create_channel_device(index, "to_ipa",
+				&to_ipa_devs[index], TX_SZ);
+	if (retval) {
+		pr_err("channel device creation error\n");
+		return -1;
+	}
+	ipa_test->tx_channels[ipa_test->num_tx_channels++] =
+				to_ipa_devs[index];
+
+	/* Connect IPA --> Apps */
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = to_ipa_channel_config.client;
+	pr_debug("copying from 0x%p\n", to_ipa_channel_config.cfg);
+	retval = copy_from_user(
+		&sys_in.ipa_ep_cfg,
+		to_ipa_channel_config.cfg,
+		to_ipa_channel_config.config_size);
+	if (retval) {
+		pr_err("fail to copy cfg - from_ipa_user\n");
+		return -1;
+	}
+	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+			&to_ipa_devs[index]->ipa_client_hdl)) {
+		pr_err("setup sys pipe failed\n");
+		return -1;
+	}
+
+	/* Connect A5 MEM --> Tx IPA */
+	retval = connect_apps_to_ipa(&to_ipa_devs[index]->ep,
+				ipa_pipe_num,
+				&to_ipa_devs[index]->desc_fifo,
+				ipa_bam_hdl);
+	if (retval) {
+		pr_err("fail to connect ipa to apps\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ipa_user)
+{
+	int retval;
+	struct ipa_channel_config from_ipa_channel_config = {0};
+	struct ipa_sys_connect_params sys_in;
+	unsigned long ipa_bam_hdl;
+	u32 ipa_pipe_num;
+	int index;
+
+	pr_debug("copying from 0x%p %d bytes\n",
+		from_ipa_user,
+		sizeof(struct ipa_channel_config));
+	retval = copy_from_user(
+		&from_ipa_channel_config,
+		from_ipa_user,
+		sizeof(struct ipa_channel_config));
+	if (retval) {
+		pr_err("fail to copy from user - from_ipa_user (%d.vs.%d)\n",
+			retval, sizeof(from_ipa_user));
+		return -1;
+	}
+
+	index = from_ipa_channel_config.index;
+
+	pr_debug("from_ipa head_marker value is 0x%x\n",
+		from_ipa_channel_config.head_marker);
+
+	pr_debug("from_ipa config_size value is %zu\n",
+		from_ipa_channel_config.config_size);
+
+	pr_debug("from_ipa index value is %d\n",
+		index);
+
+	pr_debug("client=%d\n",
+		from_ipa_channel_config.client);
+
+	pr_debug("from_ipa tail_marker value is 0x%x\n",
+		from_ipa_channel_config.tail_marker);
+
+	if (from_ipa_channel_config.head_marker !=
+		IPA_TEST_CHANNEL_CONFIG_MARKER) {
+		pr_err("bad head_marker - possible memory corruption\n");
+		return -EFAULT;
+	}
+
+	if (from_ipa_channel_config.tail_marker !=
+		IPA_TEST_CHANNEL_CONFIG_MARKER) {
+		pr_err("bad tail_marker - possible memory corruption\n");
+		return -EFAULT;
+	}
+
+	if (from_ipa_channel_config.config_size != sizeof(struct ipa_ep_cfg)) {
+		pr_err("bad config size (%zu.vs.%zu) update test struct?\n",
+			from_ipa_channel_config.config_size,
+			sizeof(struct ipa_ep_cfg));
+		return -EFAULT;
+	}
+
+	/* Channel from which the userspace shall communicate to this pipe */
+	retval = create_channel_device(index, "from_ipa",
+			&from_ipa_devs[index], RX_SZ);
+	if (retval) {
+		pr_err("channel device creation error\n");
+		return -1;
+	}
+	ipa_test->rx_channels[ipa_test->num_rx_channels++] =
+			from_ipa_devs[index];
+
+	/* Connect IPA --> Apps */
+	pr_debug("copying from 0x%p\n", from_ipa_channel_config.cfg);
+	retval = copy_from_user(
+		&sys_in.ipa_ep_cfg,
+		from_ipa_channel_config.cfg,
+		from_ipa_channel_config.config_size);
+	if (retval) {
+		pr_err("fail to copy cfg - from_ipa_user\n");
+		return -1;
+	}
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = from_ipa_channel_config.client;
+	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+			&from_ipa_devs[index]->ipa_client_hdl)) {
+			pr_err("setup sys pipe failed\n");
+			return -1;
+	}
+
+	retval = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
+				ipa_pipe_num,
+				&from_ipa_devs[index]->desc_fifo,
+				&from_ipa_devs[index]->rx_event,
+				ipa_bam_hdl);
+	if (retval) {
+		pr_err("fail to connect ipa to apps\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int configure_test_scenario(
+		struct ipa_test_config_header *ipa_test_config_header,
+		struct ipa_channel_config **from_ipa_channel_config_array,
+		struct ipa_channel_config **to_ipa_channel_config_array)
+{
+	int retval;
+	int i;
+
+	if (ipa_test->num_tx_channels > 0 || ipa_test->num_rx_channels >0) {
+		pr_debug("cleanning previous configuration before new one\n");
+		destroy_channel_devices();
+	} else {
+		pr_debug("system is clean, starting new configuration");
+	}
+
+	pr_debug("starting scenario configuration\n");
+
+	pr_debug("head_marker value is 0x%x\n",
+		ipa_test_config_header->head_marker);
+
+	pr_debug("from_ipa_channels_num=%d\n\n",
+		ipa_test_config_header->from_ipa_channels_num);
+
+	pr_debug("to_ipa_channels_num=%d\n\n",
+		ipa_test_config_header->to_ipa_channels_num);
+
+	pr_debug("tail_marker value is 0x%x\n",
+		ipa_test_config_header->tail_marker);
+
+	if (ipa_test_config_header->head_marker != IPA_TEST_CONFIG_MARKER) {
+		pr_err("bad header marker - possible memory corruption\n");
+		return -EFAULT;
+	}
+
+	if (ipa_test_config_header->tail_marker != IPA_TEST_CONFIG_MARKER) {
+		pr_err("bad tail marker - possible memory corruption\n");
+		return -EFAULT;
+	}
+
+	for (i = 0 ; i < ipa_test_config_header->from_ipa_channels_num ; i++) {
+		pr_debug("starting configuration of from_ipa_%d\n", i);
+		retval = configure_app_from_ipa_path(
+			from_ipa_channel_config_array[i]);
+		if (retval) {
+			pr_err("fail to configure from_ipa_%d", i);
+			goto fail;
+		}
+	}
+
+	retval = insert_descriptors_into_rx_endpoints(RX_BUFF_SIZE);
+	if (retval) {
+		pr_err("RX descriptors failed\n");
+		goto fail;
+	}
+	pr_debug("RX descriptors were added to RX pipes\n");
+
+	for (i = 0 ; i < ipa_test_config_header->to_ipa_channels_num ; i++) {
+		retval = configure_app_to_ipa_path(
+			to_ipa_channel_config_array[i]);
+		if (retval) {
+			pr_err("fail to configure to_ipa_%d", i);
+			goto fail;
+		}
+	}
+
+	/*
+	 * This value is arbitrary, it is used in
+	 * order to be able to cleanup
+	 */
+	ipa_test->current_configuration_idx = 57;
+
+	pr_debug("finished scenario configuration\n");
+
+	return 0;
+fail:
+	destroy_channel_devices();
+
+	return retval;
+}
+
+static int handle_configuration_ioctl(unsigned long ioctl_arg)
+{
+	int retval;
+	int needed_bytes;
+	struct ipa_test_config_header test_header;
+	struct ipa_channel_config **from_ipa_channel_config_array;
+	struct ipa_channel_config **to_ipa_channel_config_array;
+
+	/* header copy */
+	pr_debug("copying from 0x%p\n", (u8 *)ioctl_arg);
+	retval = copy_from_user(&test_header,
+			(u8 *)ioctl_arg,
+			sizeof(test_header));
+	if (retval) {
+		pr_err("failing copying header from user\n");
+		return retval;
+	}
+
+	/* allocate place for the configuration array for "from" */
+	needed_bytes = test_header.from_ipa_channels_num*
+		sizeof(*test_header.from_ipa_channel_config);
+
+	from_ipa_channel_config_array = kzalloc(needed_bytes, GFP_KERNEL);
+	if (!from_ipa_channel_config_array) {
+		pr_err("fail mem alloc for from_ipa\n");
+		retval = -ENOMEM;
+		goto fail_from_alloc;
+	}
+
+	/* copy the configuration array for "from" */
+	pr_debug("copying from 0x%p\n", test_header.from_ipa_channel_config);
+	retval = copy_from_user(from_ipa_channel_config_array,
+			test_header.from_ipa_channel_config,
+			needed_bytes);
+	if (retval) {
+		pr_err("failing copying to_ipa from user\n");
+		goto fail_copy_from;
+	}
+
+	/* allocate place for the configuration array for "from" */
+	needed_bytes = test_header.to_ipa_channels_num*
+		sizeof(*test_header.to_ipa_channel_config);
+
+	to_ipa_channel_config_array = kzalloc(needed_bytes, GFP_KERNEL);
+	if (!to_ipa_channel_config_array) {
+		pr_err("fail mem alloc for to_ipa\n");
+		goto fail_to_alloc;
+	}
+
+	/* copy the configuration array for "to" */
+	pr_debug("copying from 0x%p\n", test_header.to_ipa_channel_config);
+	retval = copy_from_user(to_ipa_channel_config_array,
+			test_header.to_ipa_channel_config,
+			needed_bytes);
+	if (retval) {
+		pr_err("failing copying to_ipa from user\n");
+		goto fail_copy_to;
+	}
+
+	retval = configure_test_scenario(
+			&test_header,
+			from_ipa_channel_config_array,
+			to_ipa_channel_config_array);
+	if (retval) {
+		pr_err("fail to configure the system\n");
+	}
+
+fail_copy_to:
+	kfree(to_ipa_channel_config_array);
+fail_to_alloc:
+fail_copy_from:
+	kfree(from_ipa_channel_config_array);
+fail_from_alloc:
+	return retval;
+
+}
+
+int handle_clean_ioctl(void)
+{
+	pr_debug("cleanning previous configuration\n");
+	destroy_channel_devices();
+
+	return 0;
+}
+
+
+static long ipa_test_ioctl(struct file *filp,
+	unsigned int cmd, unsigned long arg)
+{
+	int retval;
 
 	pr_debug("cmd=%x nr=%d\n", cmd, _IOC_NR(cmd));
 	if (_IOC_TYPE(cmd) != IPA_TEST_IOC_MAGIC)
 		return -ENOTTY;
 
 	switch (cmd) {
+	case IPA_TEST_IOC_CONFIGURE:
+		retval = handle_configuration_ioctl(arg);
+		break;
+
+	case IPA_TEST_IOC_CLEAN:
+		retval = handle_clean_ioctl();
+		break;
+
 	case IPA_TEST_IOC_GET_HW_TYPE:
 		retval = ipa_get_hw_type();
 		break;
+
 	default:
+		pr_err("ioctl is not supported (%d)\n", cmd);
 		return -ENOTTY;
 	}
 
 	return retval;
 }
 
+static int ipa_test_open(struct inode *inode, struct file *file)
+{
+	pr_debug("ipa_test module opened by %s\n", current->comm);
+	return 0;
+}
+
+static int ipa_test_release(struct inode *inode, struct file *file)
+{
+	pr_debug("ipa_test module closed by %s\n", current->comm);
+	return 0;
+}
+
+
 static const struct file_operations ipa_test_fops = {
 	.owner = THIS_MODULE,
 	.write = ipa_test_write,
 	.read  = ipa_test_read,
+	.open  = ipa_test_open,
+	.release  = ipa_test_release,
 	.unlocked_ioctl = ipa_test_ioctl,
 };
 
@@ -6923,7 +7309,6 @@ static void __exit ipa_test_exit(void)
 
 	pr_debug(DRV_NAME ":ipa_test_exit complete.\n");
 }
-
 
 module_init(ipa_test_init);
 module_exit(ipa_test_exit);
