@@ -7068,7 +7068,7 @@ static int configure_test_scenario(
 	 * This value is arbitrary, it is used in
 	 * order to be able to cleanup
 	 */
-	ipa_test->current_configuration_idx = 57;
+	ipa_test->current_configuration_idx = GENERIC_TEST_CONFIGURATION_IDX;
 
 	pr_debug("finished scenario configuration\n");
 

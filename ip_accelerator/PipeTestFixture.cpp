@@ -97,7 +97,6 @@ bool PipeTestFixture::Teardown()
 	/*The Destroy method will close the inode.*/
 	m_IpaToUsbPipe.Destroy();
 	m_UsbToIpaPipe.Destroy();
-	GenericConfigureScenarioDestory();
 
 	return true;
 }
