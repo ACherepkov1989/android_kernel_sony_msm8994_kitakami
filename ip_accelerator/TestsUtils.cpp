@@ -30,16 +30,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
-
+#include <errno.h>
 #include "TestsUtils.h"
 #include "InterfaceAbstraction.h"
 #include "Constants.h"
 #include "Pipe.h"
 
+using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 
 extern Logger g_Logger;
@@ -198,6 +200,8 @@ static const uint8_t WLAN802_3IPv4Packet[] =
 	0xab, 0xc9, 0x00, 0x00,
 	0x00
 };
+
+static struct ipa_test_config_header *current_configuration = NULL;
 
 ///////////////////////////////////////////////////////////////////////////////
 /**
@@ -542,7 +546,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 
 	if (NULL == pSendBuffer)
 	{
-		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]",strlen(params) + 10);
+		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]", strlen(params) + 10);
 		return -1;
 	}
 
@@ -553,7 +557,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 
 	ret = write(fd, pSendBuffer, sizeof(pSendBuffer) );
 	if (ret < 0) {
-		g_Logger.AddMessage(LOG_ERROR ,"%s Write operation failed.\n", __FUNCTION__);
+		g_Logger.AddMessage(LOG_ERROR, "%s Write operation failed.\n", __FUNCTION__);
 		goto bail;
 	}
 
@@ -565,7 +569,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	// Read the configuration index from the device node
 	ret = read(fd, str, sizeof(str));
 	if (ret < 0) {
-		g_Logger.AddMessage(LOG_ERROR ,"%s Read operation failed.\n", __FUNCTION__);
+		g_Logger.AddMessage(LOG_ERROR, "%s Read operation failed.\n", __FUNCTION__);
 		goto bail;
 	}
 
@@ -577,7 +581,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 		nanosleep(&time, NULL);
 		ret = read(fd, str, sizeof(str));
 		if (ret < 0) {
-			g_Logger.AddMessage(LOG_ERROR ,"%s Read operation failed.\n", __FUNCTION__);
+			g_Logger.AddMessage(LOG_ERROR, "%s Read operation failed.\n", __FUNCTION__);
 			goto bail;
 		}
 	}
@@ -601,14 +605,14 @@ void ConfigureScenario(int testConfiguration, const char* params)
 	// and read its current configuration.
 	fd = open(CONFIGURATION_NODE_PATH, O_RDWR);
 	if (fd < 0) {
-		g_Logger.AddMessage(LOG_ERROR ,"%s Could not open configuration device node.\n", __FUNCTION__);
+		g_Logger.AddMessage(LOG_ERROR, "%s Could not open configuration device node.\n", __FUNCTION__);
 		exit(0);
 	}
 
 	// Read the current configuration.
 	ret = read(fd, str, sizeof(str));
 	if (ret < 0) {
-		g_Logger.AddMessage(LOG_ERROR ,"%s Read operation failed.\n", __FUNCTION__);
+		g_Logger.AddMessage(LOG_ERROR, "%s Read operation failed.\n", __FUNCTION__);
 		return;
 	}
 	currentConf = atoi(str);
@@ -625,7 +629,7 @@ void ConfigureScenario(int testConfiguration, const char* params)
 		g_Logger.AddMessage(LOG_DEVELOPMENT,"%s System has other configuration (%d) - cleanup\n", __FUNCTION__, currentConf);
 		ret = ConfigureSystem(-1, fd);
 		if (ret < 0) {
-			g_Logger.AddMessage(LOG_ERROR ,"%s Configure operation failed.\n",
+			g_Logger.AddMessage(LOG_ERROR, "%s Configure operation failed.\n",
 					__FUNCTION__);
 			return;
 		}
@@ -636,7 +640,7 @@ void ConfigureScenario(int testConfiguration, const char* params)
 
 	ret = ConfigureSystem(testConfiguration, fd, params);
 	if (ret < 0) {
-		g_Logger.AddMessage(LOG_ERROR ,"%s configure operation failed.\n",
+		g_Logger.AddMessage(LOG_ERROR, "%s configure operation failed.\n",
 				__FUNCTION__);
 		return;
 	}
@@ -646,11 +650,124 @@ void ConfigureScenario(int testConfiguration, const char* params)
 	close(fd);
 }//func
 
+int GenericConfigureScenario(struct ipa_test_config_header *header)
+{
+	int fd;
+	int retval;
+
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "configuration has started, parameters:\n");
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "header->head_marker=0x%x\n", header->head_marker);
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "header->from_ipa_channels_num=%d\n", header->from_ipa_channels_num);
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "header->to_ipa_channels_num=%d\n", header->to_ipa_channels_num);
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "header->tail_marker=0x%x\n", header->tail_marker);
+
+	for (int i = 0 ; i < header->from_ipa_channels_num ; i++) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+				"header->from_ipa_channel_config[%d]->head_marker=0x%x\n", i,
+				header->from_ipa_channel_config[i]->head_marker);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+				"header->from_ipa_channel_config[%d]->index=%d\n", i,
+				header->from_ipa_channel_config[i]->index);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+				"header->from_ipa_channel_config[%d]->client=%d\n", i,
+				header->from_ipa_channel_config[i]->client);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+				"header->from_ipa_channel_config[%d]->config_size=%d\n", i,
+				header->from_ipa_channel_config[i]->config_size);
+	}
+
+	for (int i = 0 ; i < header->to_ipa_channels_num ; i++) {
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+			"header->to_ipa_channel_config[%d]->head_marker=0x%x\n", i,
+			header->to_ipa_channel_config[i]->head_marker);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+			"header->to_ipa_channel_config[%d]->index=%d\n", i,
+			header->to_ipa_channel_config[i]->index);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+			"header->to_ipa_channel_config[%d]->client=%d\n", i,
+			header->to_ipa_channel_config[i]->client);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+			"header->to_ipa_channel_config[%d]->config_size=%d\n", i,
+			header->to_ipa_channel_config[i]->config_size);
+	}
+
+	fd = open(CONFIGURATION_NODE_PATH,  O_RDWR);
+	if (fd == -1) {
+		g_Logger.AddMessage(LOG_ERROR,
+				"%s - open %s failed (fd=%d,errno=%s)\n",
+				__FUNCTION__, CONFIGURATION_NODE_PATH, fd, strerror(errno));
+		return false;
+	}
+
+	retval = ioctl(fd, IPA_TEST_IOC_CONFIGURE, header);
+	if (retval) {
+		g_Logger.AddMessage(LOG_ERROR, "fail to configure the system (%d)\n", retval);
+		close(fd);
+		return false;
+	} else {
+		g_Logger.AddMessage(LOG_DEVELOPMENT, "system was successfully configured\n");
+	}
+
+	retval = close(fd);
+	if (retval) {
+		g_Logger.AddMessage(LOG_ERROR,
+				"%s - fail to close the fd (path=%s,retval=%d,fd=%d,errno=%s)\n",
+				__FUNCTION__, CONFIGURATION_NODE_PATH, retval, fd, strerror(errno));
+		return false;
+	}
+
+	return true;
+}
+
+int GenericConfigureScenarioDestory(void)
+{
+	int fd;
+	int retval;
+
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "cleanup started\n");
+
+	fd = open(CONFIGURATION_NODE_PATH,  O_RDWR);
+	if (fd == -1) {
+		g_Logger.AddMessage(LOG_ERROR,
+			"%s - open %s failed (retval=%d,fd=%d,errno=%s)\n",
+			__FUNCTION__, CONFIGURATION_NODE_PATH, fd, strerror(errno));
+		return false;
+	}
+
+	retval = ioctl(fd, IPA_TEST_IOC_CLEAN);
+	if (retval)
+		g_Logger.AddMessage(LOG_ERROR, "fail to clean the system (%d)\n", retval);
+	else
+		g_Logger.AddMessage(LOG_DEVELOPMENT, "system was successfully cleaned\n");
+
+	retval = close(fd);
+	if (retval) {
+		g_Logger.AddMessage(LOG_ERROR, "fail to close the fd - %d\n", retval);
+		return false;
+	}
+
+	return true;
+}
+
+void configure_channel(struct ipa_channel_config *channel,
+		int index,
+		enum ipa_client_type client,
+		void *cfg,
+		size_t config_size)
+{
+	channel->head_marker = IPA_TEST_CHANNEL_CONFIG_MARKER;
+	channel->index = index;
+	channel->client = client;
+	channel->cfg = (char*)cfg;
+	channel->config_size = config_size;
+	channel->tail_marker = IPA_TEST_CHANNEL_CONFIG_MARKER;
+}
+
 bool CompareResultVsGolden(Byte *goldenBuffer,   unsigned int goldenSize,
 			   Byte *receivedBuffer, unsigned int receivedSize)
 {
 	if (receivedSize != goldenSize) {
-		g_Logger.AddMessage(LOG_VERBOSE , "%s File sizes are different.\n", __FUNCTION__);
+		g_Logger.AddMessage(LOG_VERBOSE,  "%s File sizes are different.\n", __FUNCTION__);
 		return false;
 	}
 	return !memcmp((void*)receivedBuffer, (void*)goldenBuffer, goldenSize);
@@ -665,7 +782,7 @@ Byte *LoadFileToMemory(const string &name, unsigned int *sizeLoaded)
 	// Open file
 	file = fopen(name.c_str(), "rb");
 	if (!file) {
-		g_Logger.AddMessage(LOG_ERROR , "Unable to open file %s\n", name.c_str());
+		g_Logger.AddMessage(LOG_ERROR,  "Unable to open file %s\n", name.c_str());
 		return NULL;
 	}
 

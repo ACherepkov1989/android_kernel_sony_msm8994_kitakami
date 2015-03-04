@@ -38,6 +38,7 @@
 #include "Constants.h"
 #include "RoutingDriverWrapper.h"
 #include "InterfaceAbstraction.h"
+#include "ipa_test_module.h"
 #include "Logger.h"
 #include "Constants.h"
 
@@ -241,6 +242,8 @@ bool CreateBypassRoutingTable(
 */
 void ConfigureScenario(int testConfiguration);
 void ConfigureScenario(int testConfiguration, const char *params);
+int GenericConfigureScenario(struct ipa_test_config_header *header);
+int GenericConfigureScenarioDestory(void);
 
 
 int ConfigureSystem(int testConfiguration, int fd);
@@ -434,6 +437,134 @@ public:
 		int ipPacketSize,
 		Byte *pRNDISPacket,
 		size_t rndisPacketSize);
+};
+
+enum ipa_nat_en_type {
+	IPA_BYPASS_NAT,
+	IPA_SRC_NAT,
+	IPA_DST_NAT,
+};
+
+enum ipa_mode_type {
+	IPA_BASIC,
+	IPA_ENABLE_FRAMING_HDLC,
+	IPA_ENABLE_DEFRAMING_HDLC,
+	IPA_DMA,
+};
+
+enum ipa_aggr_en_type {
+	IPA_BYPASS_AGGR,
+	IPA_ENABLE_AGGR,
+	IPA_ENABLE_DEAGGR,
+};
+
+enum ipa_aggr_type {
+	IPA_MBIM_16 = 0,
+	IPA_HDLC    = 1,
+	IPA_TLP     = 2,
+	IPA_RNDIS   = 3,
+	IPA_GENERIC = 4,
+	IPA_QCMAP   = 6,
+};
+
+enum ipa_aggr_mode {
+	IPA_MBIM,
+	IPA_QCNCM,
+};
+
+enum hdr_total_len_or_pad_type {
+	IPA_HDR_PAD = 0,
+	IPA_HDR_TOTAL_LEN = 1,
+};
+
+struct ipa_ep_cfg_nat {
+	enum ipa_nat_en_type nat_en;
+};
+
+struct ipa_ep_cfg_hdr {
+	uint32_t  hdr_len;
+	uint32_t  hdr_ofst_metadata_valid;
+	uint32_t  hdr_ofst_metadata;
+	uint32_t  hdr_additional_const_len;
+	uint32_t  hdr_ofst_pkt_size_valid;
+	uint32_t  hdr_ofst_pkt_size;
+	uint32_t  hdr_a5_mux;
+	uint32_t  hdr_remove_additional;
+	uint32_t  hdr_metadata_reg_valid;
+};
+
+struct ipa_ep_cfg_hdr_ext {
+	uint32_t hdr_pad_to_alignment;
+	uint32_t hdr_total_len_or_pad_offset;
+	bool hdr_payload_len_inc_padding;
+	enum hdr_total_len_or_pad_type hdr_total_len_or_pad;
+	bool hdr_total_len_or_pad_valid;
+	bool hdr_little_endian;
+};
+
+struct ipa_ep_cfg_mode {
+	enum ipa_mode_type mode;
+	enum ipa_client_type dst;
+};
+
+struct ipa_ep_cfg_aggr {
+	enum ipa_aggr_en_type aggr_en;
+	enum ipa_aggr_type aggr;
+	uint32_t aggr_byte_limit;
+	uint32_t aggr_time_limit;
+	uint32_t aggr_pkt_limit;
+};
+
+struct ipa_ep_cfg_route {
+	uint32_t rt_tbl_hdl;
+};
+
+struct ipa_ep_cfg_deaggr {
+	uint32_t deaggr_hdr_len;
+	bool packet_offset_valid;
+	uint32_t packet_offset_location;
+	uint32_t max_packet_len;
+};
+
+enum ipa_cs_offload {
+	IPA_DISABLE_CS_OFFLOAD,
+	IPA_ENABLE_CS_OFFLOAD_UL,
+	IPA_ENABLE_CS_OFFLOAD_DL,
+	IPA_CS_RSVD
+};
+
+struct ipa_ep_cfg_cfg {
+	bool frag_offload_en;
+	enum ipa_cs_offload cs_offload_en;
+	uint8_t cs_metadata_hdr_offset;
+};
+
+struct ipa_ep_cfg_metadata_mask {
+	uint32_t metadata_mask;
+};
+
+struct ipa_ep_cfg_metadata {
+	uint32_t qmap_id;
+};
+
+/*
+ * This struct is a mirroring of the ipa struct
+ * the test module expect to get from user-space the
+ * exact same struct as IPA driver defined.
+ * In case of any change to IPA driver struct
+ * this struct should be updated as well!
+ */
+struct test_ipa_ep_cfg {
+	struct ipa_ep_cfg_nat nat;
+	struct ipa_ep_cfg_hdr hdr;
+	struct ipa_ep_cfg_hdr_ext hdr_ext;
+	struct ipa_ep_cfg_mode mode;
+	struct ipa_ep_cfg_aggr aggr;
+	struct ipa_ep_cfg_deaggr deaggr;
+	struct ipa_ep_cfg_route route;
+	struct ipa_ep_cfg_cfg cfg;
+	struct ipa_ep_cfg_metadata_mask metadata_mask;
+	struct ipa_ep_cfg_metadata meta;
 };
 
 #endif
