@@ -244,10 +244,14 @@ void ConfigureScenario(int testConfiguration);
 void ConfigureScenario(int testConfiguration, const char *params);
 int GenericConfigureScenario(struct ipa_test_config_header *header);
 int GenericConfigureScenarioDestory(void);
-
-
 int ConfigureSystem(int testConfiguration, int fd);
 int ConfigureSystem(int testConfiguration, int fd, const char *params);
+
+void configure_channel(struct ipa_channel_config *channel,
+		int index,
+		enum ipa_client_type client,
+		void *cfg,
+		size_t config_size);
 
 /**
 	@brief
