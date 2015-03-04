@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -34,6 +34,10 @@
 #include "IPAFilteringTable.h"
 #include "TestsUtils.h"
 
+#define IPA_TEST_DMUX_HEADER_LENGTH           8
+#define IPA_TEST_META_DATA_IS_VALID           1
+#define IPA_TEST_DMUX_HEADER_META_DATA_OFFSET 4
+
 /////////////////////////////////////////////////////////////////////////////////
 
 //define the static Pipes which will be used by all derived tests.
@@ -41,12 +45,9 @@ Pipe HeaderRemovalTestFixture::m_A2NDUNToIpaPipe(IPA_CLIENT_TEST2_PROD, IPA_TEST
 Pipe HeaderRemovalTestFixture::m_IpaToUsbPipe(IPA_CLIENT_TEST_CONS, IPA_TEST_CONFIFURATION_3);
 Pipe HeaderRemovalTestFixture::m_IpaToA2NDUNPipe(IPA_CLIENT_TEST2_CONS, IPA_TEST_CONFIFURATION_3);
 Pipe HeaderRemovalTestFixture::m_IpaToQ6LANPipe(IPA_CLIENT_TEST4_CONS, IPA_TEST_CONFIFURATION_3);
-
 RoutingDriverWrapper   HeaderRemovalTestFixture::m_routing;
 Filtering HeaderRemovalTestFixture::m_filtering;
-
 const char HeaderRemovalTestFixture_bypass0[20] = "Bypass0";
-
 const char HeaderRemovalTestFixture_bypassIPv60[20] = "BypassIPv60";
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +58,62 @@ HeaderRemovalTestFixture::HeaderRemovalTestFixture()
 	Register(*this);
 }
 
+static int SetupKernelModule(void)
+{
+	int retval;
+	struct ipa_channel_config from_ipa_channels[3];
+	struct test_ipa_ep_cfg from_ipa_cfg[3];
+	struct ipa_channel_config to_ipa_channels[1];
+	struct test_ipa_ep_cfg to_ipa_cfg[1];
+	struct ipa_test_config_header header = {0};
+
+	/* From ipa configurations - 3 pipes */
+	memset(&from_ipa_cfg[0], 0, sizeof(from_ipa_cfg[0]));
+	configure_channel(&from_ipa_channels[0],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST_CONS,
+			(void *)&from_ipa_cfg[0],
+			sizeof(from_ipa_cfg[0]));
+	header.from_ipa_channel_config[0] = &from_ipa_channels[0];
+
+	memset(&from_ipa_cfg[1], 0, sizeof(from_ipa_cfg[1]));
+	configure_channel(&from_ipa_channels[1],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST2_CONS,
+			(void *)&from_ipa_cfg[1],
+			sizeof(from_ipa_cfg[1]));
+	header.from_ipa_channel_config[1] = &from_ipa_channels[1];
+
+	memset(&from_ipa_cfg[2], 0, sizeof(from_ipa_cfg[2]));
+	configure_channel(&from_ipa_channels[2],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST4_CONS,
+			(void *)&from_ipa_cfg[2],
+			sizeof(from_ipa_cfg[2]));
+	header.from_ipa_channel_config[2] = &from_ipa_channels[2];
+
+	/* To ipa configurations - 1 pipes */
+	memset(&to_ipa_cfg[0], 0, sizeof(to_ipa_cfg[0]));
+	to_ipa_cfg[0].hdr.hdr_len = IPA_TEST_DMUX_HEADER_LENGTH;
+	to_ipa_cfg[0].hdr.hdr_ofst_metadata_valid = IPA_TEST_META_DATA_IS_VALID;
+	to_ipa_cfg[0].hdr.hdr_ofst_metadata =
+		IPA_TEST_DMUX_HEADER_META_DATA_OFFSET;
+	configure_channel(&to_ipa_channels[0],
+			header.to_ipa_channels_num++,
+			IPA_CLIENT_TEST2_PROD,
+			(void *)&to_ipa_cfg[0],
+			sizeof(to_ipa_cfg[0]));
+	header.to_ipa_channel_config[0] = &to_ipa_channels[0];
+
+	header.head_marker = IPA_TEST_CONFIG_MARKER;
+	header.tail_marker = IPA_TEST_CONFIG_MARKER;
+
+	retval = GenericConfigureScenario(&header);
+
+	return retval;
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////
 
 bool HeaderRemovalTestFixture::Setup()
@@ -64,7 +121,12 @@ bool HeaderRemovalTestFixture::Setup()
 	bool bRetVal = true;
 
 	//Set the configuration to support USB->IPA and IPA->USB pipes.
-	ConfigureScenario(PHASE_THREE_TEST_CONFIGURATION);
+	//ConfigureScenario(PHASE_THREE_TEST_CONFIGURATION);
+
+	bRetVal = SetupKernelModule();
+	if (bRetVal != true) {
+		return bRetVal;
+	}
 
 	//Initialize the pipe for all the tests - this will open the inode which represents the pipe.
 	bRetVal &= m_A2NDUNToIpaPipe.Init();
