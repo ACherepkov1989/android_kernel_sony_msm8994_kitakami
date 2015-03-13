@@ -970,3 +970,14 @@ void glink_loopback_client_init(void)
 		return;
 	}
 }
+
+/**
+ * glink_loopback_client_exit() - loopback client deinitialization
+ *
+ * This function performs the clean up when loopback client is deleted.
+ */
+void glink_loopback_client_exit(void)
+{
+	if (glink_lbp_client_wq)
+		destroy_workqueue(glink_lbp_client_wq);
+}
