@@ -301,6 +301,13 @@ int glink_loopback_sigs_set(void *handle, uint32_t sigs);
 void glink_loopback_client_init(void);
 
 /**
+ * glink_loopback_client_exit() - loopback client deinitialization
+ *
+ * This function performs the clean up when loopback client is deleted.
+ */
+void glink_loopback_client_exit(void);
+
+/**
  * glink_loopback_tx_nowait() - Send the data on loopback channel
  *				without waiting for the echo of the data.
  * @handle:	Handle returned by glink_open()
