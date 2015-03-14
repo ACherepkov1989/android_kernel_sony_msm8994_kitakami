@@ -1750,23 +1750,28 @@ static void glink_ft_transport_teardown(struct seq_file *s)
 }
 
 /**
- * glink_ut_smem_ssr - WCNSS SSR test
+ * glink_ut0_ssr - SSR test
  * @s: pointer to output file
  *
  * Return: Nothing
  *
- * This function triggers SSR for WCNSS, which notifies the modem and triggers
- * local cleanup. The function then verifies that all responses to SSR
- * notifications have been received successfully.
+ * This function triggers SSR on the subsystem given by ut_dfs_d->edge_name.
  */
-static void glink_ut_smem_ssr(struct seq_file *s)
+static void glink_ut0_ssr(struct seq_file *s)
 {
 	int failed = 0;
 	unsigned timeout_mult = 5;
+	struct glink_dbgfs_data *dfs_d;
+	struct glink_ut_dbgfs *ut_dfs_d;
+	struct subsys_info *ss_info;
 
-	GLINK_STATUS(s, "Running %s\n", __func__);
+	dfs_d = s->private;
+	ut_dfs_d = dfs_d->priv_data;
+
+	GLINK_STATUS(s, "Running %s for %s\n", __func__, ut_dfs_d->edge_name);
 	do {
-		subsystem_restart("wcnss");
+		ss_info = get_info_for_edge(ut_dfs_d->edge_name);
+		subsystem_restart(ss_info->ssr_name);
 		UT_ASSERT_BOOL(true, ==,
 				glink_ssr_wait_cleanup_done(timeout_mult));
 
@@ -5277,9 +5282,9 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 					xprt_name, edge_name,
 					ut_loopback_stress_test,
 					glink_ut_local_basic_core);
-		glink_ut_rss_debug_create("ssr0_wcnss_smem",
+		glink_ut_rss_debug_create("ssr_basic",
 					xprt_name, edge_name, NULL,
-					glink_ut_smem_ssr);
+					glink_ut0_ssr);
 		glink_ut_rss_debug_create("ut1_smem_open_close",
 					xprt_name, edge_name,
 					ut_loopback_open_close_test,
