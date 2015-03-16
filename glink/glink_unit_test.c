@@ -1783,6 +1783,41 @@ static void glink_ut0_ssr(struct seq_file *s)
 }
 
 /**
+ * glink_ft_ssr_bypass - SSR bypass test
+ * @s: pointer to output file
+ *
+ * Return: Nothing
+ *
+ * This function performs SSR from a G-Link perspective only. It performs
+ * local cleanup and sends the do_cleanup message to the remote subsystem,
+ * without an actual SSR occurring.
+ */
+static void glink_ft_ssr_bypass(struct seq_file *s)
+{
+	struct glink_dbgfs_data *dfs_d;
+	struct glink_ut_dbgfs *ut_dfs_d;
+	struct subsys_info *ss_info;
+	int ret;
+	int failed = 0;
+
+	dfs_d = s->private;
+	ut_dfs_d = dfs_d->priv_data;
+
+	GLINK_STATUS(s, "Running %s for %s\n", __func__, ut_dfs_d->edge_name);
+	do {
+		ss_info = get_info_for_edge(ut_dfs_d->edge_name);
+		glink_ssr(ss_info->edge);
+		ret = notify_for_subsystem(ss_info);
+
+		UT_ASSERT_INT(ret, ==, 0)
+		GLINK_STATUS(s, "\tOK\n");
+	} while (0);
+
+	if (failed)
+		GLINK_STATUS(s, "\tFailed\n");
+}
+
+/**
  * ut_loopback_stress_test - Stress test
  *
  * @s: pointer to output file
@@ -5285,6 +5320,9 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 		glink_ut_rss_debug_create("ssr_basic",
 					xprt_name, edge_name, NULL,
 					glink_ut0_ssr);
+		glink_ut_rss_debug_create("ft_ssr_bypass",
+					xprt_name, edge_name, NULL,
+					glink_ft_ssr_bypass);
 		glink_ut_rss_debug_create("ut1_smem_open_close",
 					xprt_name, edge_name,
 					ut_loopback_open_close_test,
