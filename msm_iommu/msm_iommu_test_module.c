@@ -374,40 +374,6 @@ static int create_domain(struct iommu_domain **domain)
 	return domain_id;
 }
 
-static int test_map_phys_range(struct iommu_domain *domain,
-			 unsigned long iova,
-			 phys_addr_t phys,
-			 unsigned long size,
-			 int cached)
-{
-	int ret;
-	struct scatterlist *sglist;
-	int prot = IOMMU_WRITE | IOMMU_READ;
-	prot |= cached ? IOMMU_CACHE : 0;
-
-	sglist = vmalloc(sizeof(*sglist));
-	if (!sglist) {
-		ret = -ENOMEM;
-		pr_err("Unable to allocate memory for sglist: %s\n", __func__);
-		goto out;
-	}
-
-	sg_init_table(sglist, 1);
-	sglist->length = size;
-	sglist->offset = 0;
-	sg_dma_address(sglist) = phys;
-
-	ret = iommu_map_range(domain, iova, sglist, size, prot);
-	if (ret) {
-		pr_err("%s: could not map %lx in domain %p\n",
-			__func__, iova, domain);
-	}
-
-	vfree(sglist);
-out:
-	return ret;
-}
-
 static int test_map_phys(struct iommu_domain *domain,
 			 unsigned long iova,
 			 phys_addr_t phys,
@@ -504,27 +470,6 @@ static int do_mapping_test(unsigned int i, unsigned int j, unsigned int k,
 	pa = iova;
 	size = SZ_64M;
 
-	/* Test using iommu_map_range */
-	pr_debug("Test iommu_map_range\n");
-	ret = test_map_phys_range(domain, iova, pa, size, 0);
-	if (ret) {
-		pr_err("%s: Failed to map VA 0x%x to PA %pa using map_range\n",
-			__func__, iova, &pa);
-		goto out;
-	}
-
-	pr_debug("VA2PA map range\n");
-	result_pa = iommu_iova_to_phys(domain, iova);
-	if (result_pa != pa) {
-		pr_err("%s: VA2PA FAILED for %s: PA: %pa expected PA: %pa using map_range\n",
-			__func__, ctx_name, &result_pa, &pa);
-		ret = -EIO;
-	}
-	iommu_unmap_range(domain, iova, size);
-
-	if (ret)
-		goto out;
-
 	/* Test using iommu_map */
 	pr_debug("Test iommu_map\n");
 	ret = test_map_phys(domain, iova, pa, size, 0);
@@ -548,48 +493,31 @@ out:
 static int do_map_range_test(struct iommu_domain *domain, const char *ctx_name)
 {
 	int ret;
-	struct sg_table *table;
-	struct scatterlist *sg;
 	int prot = IOMMU_WRITE | IOMMU_READ;
 	unsigned int num_pages_sizes = ARRAY_SIZE(MAP_SIZES);
 	unsigned int i;
 	unsigned int tot_size = 0;
-	unsigned int iova = MAP_SIZES[num_pages_sizes-1];
+	unsigned int start_iova, iova;
 	unsigned int result_pa;
 	phys_addr_t pa;
 
-	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
-	if (!table) {
-		ret = -ENOMEM;
-		pr_err("%s: Unable to allocate sgtable\n", __func__);
-		goto out;
-	}
-
-	ret = sg_alloc_table(table, num_pages_sizes, GFP_KERNEL);
-	if (ret) {
-		pr_err("%s: Unable to allocate sglist\n", __func__);
-		goto free_table;
-	}
+	start_iova = iova = MAP_SIZES[num_pages_sizes-1];
 
 	pa = MAP_SIZES[num_pages_sizes-1];
-	sg = table->sgl;
 	for(i = 0; i < num_pages_sizes; ++i) {
-		sg->length = MAP_SIZES[num_pages_sizes-i-1];
-		sg->offset = 0;
-		sg_dma_address(sg) = pa;
-		sg = sg_next(sg);
-		tot_size += MAP_SIZES[num_pages_sizes-i-1];
+		ret = iommu_map(domain, iova, pa, MAP_SIZES[num_pages_sizes-i-1], prot);
+		if (ret) {
+			pr_err("%s: Could not map 0x%x (phys %pa) in domain %p\n",
+				__func__, iova, &pa, domain);
+			goto out;
+		}
+		iova += MAP_SIZES[num_pages_sizes-i-1];
 		pa += MAP_SIZES[num_pages_sizes-i-1];
-	}
-
-	ret = iommu_map_range(domain, iova, table->sgl, tot_size, prot);
-	if (ret) {
-		pr_err("%s: could not map 0x%x in domain %p\n",
-			__func__, iova, domain);
-		goto free_sglist;
+		tot_size += MAP_SIZES[num_pages_sizes-i-1];
 	}
 
 	pa = MAP_SIZES[num_pages_sizes-1];
+	iova = start_iova;
 	for(i = 0; i < num_pages_sizes; ++i) {
 		result_pa = iommu_iova_to_phys(domain, iova);
 		if (pa != result_pa) {
@@ -602,13 +530,8 @@ static int do_map_range_test(struct iommu_domain *domain, const char *ctx_name)
 		pa += MAP_SIZES[num_pages_sizes-i-1];
 	}
 
-	iova = MAP_SIZES[num_pages_sizes-1];
-	iommu_unmap_range(domain, iova, tot_size);
-free_sglist:
-	sg_free_table(table);
-free_table:
-	kfree(table);
 out:
+	iommu_unmap_range(domain, start_iova, tot_size);
 	return ret;
 }
 
@@ -638,8 +561,6 @@ static int do_various_mappings_test(struct iommu_domain *domain,
 				    const char *ctx_name)
 {
 	int ret;
-	struct sg_table *table;
-	struct scatterlist *sg;
 	int prot = IOMMU_WRITE | IOMMU_READ;
 	unsigned int num_pages_sizes = ARRAY_SIZE(MAPPING_SIZES);
 	unsigned int i;
@@ -647,21 +568,9 @@ static int do_various_mappings_test(struct iommu_domain *domain,
 	unsigned int tot_size = 0;
 	unsigned int iova;
 	unsigned int iova_list_len = ARRAY_SIZE(IOVA_LIST);
+	unsigned int iova_start;
 	unsigned int result_pa;
 	phys_addr_t pa;
-
-	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
-	if (!table) {
-		ret = -ENOMEM;
-		pr_err("%s: Unable to allocate sgtable\n", __func__);
-		goto out;
-	}
-
-	ret = sg_alloc_table(table, num_pages_sizes, GFP_KERNEL);
-	if (ret) {
-		pr_err("%s: Unable to allocate sglist\n", __func__);
-		goto free_table;
-	}
 
 	/* Test corner case by mapping the last entry of the page table. */
 	iova = SZ_1G-SZ_4K;
@@ -671,26 +580,21 @@ static int do_various_mappings_test(struct iommu_domain *domain,
 
 	for (j = 0; j < iova_list_len; ++j) {
 		iova = IOVA_LIST[j];
-		pa = iova;
+		iova_start = pa = iova;
 		tot_size = 0;
-		sg = table->sgl;
 		for(i = 0; i < num_pages_sizes; ++i) {
-			sg->length = MAPPING_SIZES[i];
-			sg->offset = 0;
-			sg_dma_address(sg) = pa;
-			sg = sg_next(sg);
+			ret = iommu_map(domain, iova, pa, MAPPING_SIZES[i], prot);
+			if (ret) {
+				pr_err("%s: Could not map 0x%x (phys %pa) in domain %p\n",
+				__func__, iova, &pa, domain);
+				goto out;
+			}
 			tot_size += MAPPING_SIZES[i];
 			pa += MAPPING_SIZES[i];
+			iova += MAPPING_SIZES[i];
 		}
 
-		ret = iommu_map_range(domain, iova, table->sgl, tot_size, prot);
-		if (ret) {
-			pr_err("%s: could not map 0x%x in domain %p\n",
-				__func__, iova, domain);
-			goto free_sglist;
-		}
-
-		pa = iova;
+		iova = pa = iova_start;
 		for(i = 0; i < num_pages_sizes; ++i) {
 			result_pa = iommu_iova_to_phys(domain, iova);
 			if (pa != result_pa) {
@@ -704,13 +608,12 @@ static int do_various_mappings_test(struct iommu_domain *domain,
 		}
 
 		iova = IOVA_LIST[j];
-		iommu_unmap_range(domain, iova, tot_size);
-	}
-free_sglist:
-	sg_free_table(table);
-free_table:
-	kfree(table);
+
 out:
+		iommu_unmap_range(domain, iova_start, tot_size);
+		if (ret)
+			break;
+	}
 	return ret;
 }
 
