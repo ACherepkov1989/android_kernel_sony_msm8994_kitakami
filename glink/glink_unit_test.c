@@ -90,12 +90,6 @@ struct glink_ut_dbgfs_work {
 	struct work_struct dbgfs_work;
 };
 
-struct ut_ch_close_work {
-	void *ch_handle;
-	struct ut_notify_data *cb_data;
-	struct work_struct work;
-};
-
 /**
  * Structure to hold status of TX work function
  * @glink_tx_entered: Holds status about that the work function is called.
@@ -836,18 +830,6 @@ static void glink_ut0_mock_low_basic(struct seq_file *s)
 	glink_ut0_mock_basic_core(s, MOCK_LOW, "mock_low");
 }
 
-void ut_ch_close_work_func(struct work_struct *work)
-{
-	struct ut_ch_close_work  *close_work =
-		container_of(work, struct ut_ch_close_work, work);
-	do {
-		wait_for_completion(&close_work->cb_data->cb_completion);
-
-	} while (close_work->cb_data->event != GLINK_REMOTE_DISCONNECTED);
-
-	glink_close(close_work->ch_handle);
-}
-
 /**
  * glink_ut0_mock_ssr - Basic SSR test case using mock transport.
  *
@@ -873,8 +855,6 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 	struct glink_core_rx_intent *rx_intent_ptr;
 	struct ut_notify_data cb_data;
 	struct completion event;
-	struct workqueue_struct *ch_close_wq;
-	struct ut_ch_close_work *ch_close_work;
 
 	GLINK_STATUS(s, "Running %s\n", __func__);
 
@@ -884,7 +864,6 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		cb_data_init(&cb_data);
 		init_completion(&event);
 		register_completion(&mock_ptr->if_ptr, &event);
-		ch_close_wq = create_singlethread_workqueue("ssr_ch_close_q");
 
 		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
@@ -957,18 +936,12 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_tx_done(
 						&mock_ptr->if_ptr, 1, 1, false);
 		UT_ASSERT_INT(true, == , cb_data.tx_done);
-
-		ch_close_work = kzalloc(sizeof(struct ut_ch_close_work),
-							GFP_KERNEL);
-		ch_close_work->cb_data = &cb_data;
-		ch_close_work->ch_handle = handle;
-		INIT_WORK(&ch_close_work->work, ut_ch_close_work_func);
-		queue_work(ch_close_wq, &ch_close_work->work);
 		glink_ssr("local");
 
-		kfree(tx_cmd);
-		destroy_workqueue(ch_close_wq);
-		kfree(ch_close_work);
+		UT_ASSERT_INT(GLINK_REMOTE_DISCONNECTED, ==, cb_data.event);
+		ret = glink_close(handle);
+		UT_ASSERT_INT(ret, ==, 0);
+
 		UT_ASSERT_INT(GLINK_LOCAL_DISCONNECTED, ==, cb_data.event);
 		glink_loopback_xprt_link_up();
 		GLINK_STATUS(s, "\tOK\n");
