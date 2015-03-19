@@ -5570,6 +5570,7 @@ static void glink_exit(void)
 	destroy_workqueue(ut_dbgfs_create_workqueue);
 	glink_mock_xprt_exit();
 	glink_loopback_xprt_exit();
+	glink_loopback_client_exit();
 }
 
 module_init(glink_init);
