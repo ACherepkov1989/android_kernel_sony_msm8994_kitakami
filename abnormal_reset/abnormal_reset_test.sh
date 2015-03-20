@@ -1,6 +1,6 @@
 #! /bin/sh --
 
-# Copyright (c) 2014, The Linux Foundation. All rights reserved.
+# Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -44,7 +44,7 @@ fi
 tsensor_reset_mod=${modpath}/tsensor_reset_mod.ko
 
 case "$TARGET_TYPE" in
-	"8916" | "8939" | "8909")
+	"8916" | "8939" | "8909" | "8952")
 		SPMI_PON_BASE=0x800;
 		SID=0x0;
 	;;
