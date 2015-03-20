@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -201,7 +201,8 @@ static void sec_wdog_bite_work(struct work_struct *work)
 
 	rc = of_machine_is_compatible("qcom,msm8916") ||
 				of_machine_is_compatible("qcom,msm8939") ||
-				of_machine_is_compatible("qcom,msm8909");
+				of_machine_is_compatible("qcom,msm8909") ||
+				of_machine_is_compatible("qcom,msm8952");
 	if (rc)
 		sec_wdog_virt = ioremap(REG_MPM2_8916_WDOG_BASE, SZ_4K);
 	else
