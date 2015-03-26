@@ -44,7 +44,7 @@ static struct cats_reg cats_reg_v1 = {
 static struct target_config tc[] = {
 	{
 		.ts = {
-			.name = "msmtellurium-sim",
+			.name = "msm8952",
 		},
 		.cr = &cats_reg_v1,
 	},
