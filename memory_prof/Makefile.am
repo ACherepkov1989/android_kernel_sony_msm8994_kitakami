@@ -8,7 +8,27 @@ memory_prof_SOURCES	= memory_prof.c alloc_profiles.c memory_prof_util.c \
 memory_prof_CFLAGS = -lm -Werror -DALLOC_PROFILES_PATH=$(memory_profdir)
 memfeast_SOURCES = memfeast.c memory_prof_util.c
 dist_memory_prof_SCRIPTS  = memory_prof.sh run.sh
-dist_memory_prof_DATA = README.txt $(wildcard alloc_profiles/*)
+dist_memory_prof_DATA = \
+	README.txt \
+	alloc_profiles/1MB-10MB.txt \
+	alloc_profiles/4KB-1MB.txt \
+	alloc_profiles/alloc_pages.txt \
+	alloc_profiles/builtin.txt \
+	alloc_profiles/cache_ops.txt \
+	alloc_profiles/cache_ops1.txt \
+	alloc_profiles/cache_ops2.txt \
+	alloc_profiles/cp_heap.txt \
+	alloc_profiles/general.txt \
+	alloc_profiles/iommu_attach.txt \
+	alloc_profiles/iommu_detach.txt \
+	alloc_profiles/iommu_map.txt \
+	alloc_profiles/one_1GB_buffer_from_system.txt \
+	alloc_profiles/pil1_heap.txt \
+	alloc_profiles/qseecom_heap.txt \
+	alloc_profiles/simple.txt \
+	alloc_profiles/system.txt \
+	alloc_profiles/tons-of-clients.txt \
+	alloc_profiles/user_alloc.txt
 
 KERNEL_FLAGS ?= ARCH=arm
 
