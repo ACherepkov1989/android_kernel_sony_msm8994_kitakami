@@ -546,7 +546,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 
 	if (NULL == pSendBuffer)
 	{
-		LOG_MSG_ERROR("Failed to allocated pSendBuffer[%d]", strlen(params) + 10);
+		LOG_MSG_ERROR("Failed to allocated pSendBuffer");
 		return -1;
 	}
 
@@ -564,7 +564,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	// Wait until the system is fully configured
 
 	// Convert testConfiguration to string
-	sprintf(testConfigurationStr, "%d", testConfiguration);
+	snprintf(testConfigurationStr, 10, "%d", testConfiguration);
 
 	// Read the configuration index from the device node
 	ret = read(fd, str, sizeof(str));
@@ -1362,6 +1362,11 @@ bool RNDISAggregationHelper::CompareIPvsRNDISPacket(
 	// Create Ethernet packet from the IP packet and compare it to RNDIS payload
 	size_t EtherPacketSize = ipPacketSize + sizeof(struct ethhdr);
 	Byte* pEtherPacket = (Byte *) malloc(EtherPacketSize);
+	if (pEtherPacket == NULL) {
+		LOG_MSG_ERROR("Memory allocation failure.\n");
+		return false;
+	}
+
 	memcpy(pEtherPacket, Eth2Helper::m_ETH2_IP4_HDR, sizeof(struct ethhdr));
 	memcpy(pEtherPacket + sizeof(struct ethhdr), pIPPacket, ipPacketSize);
 
