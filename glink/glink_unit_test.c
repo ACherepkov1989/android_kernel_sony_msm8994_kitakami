@@ -2769,6 +2769,8 @@ static void glink_ut_mt_test_core(struct seq_file *s)
 				__func__, current->pid);
 		if (result)
 			GLINK_STATUS_MT(s, "%s: Failed\n", __func__);
+		else
+			GLINK_STATUS_MT(s, "\tOK\n");
 	} while (0);
 
 	if (failed) {
@@ -2963,7 +2965,7 @@ static void glink_ut0_smd_trans_basic_va(struct seq_file *s)
 	}
 
 	if (!failed)
-		seq_puts(s, "Passed\n");
+		seq_puts(s, "\tOK\n");
 }
 
 
@@ -3166,7 +3168,7 @@ static void glink_ut0_smd_trans_basic_vb(struct seq_file *s)
 	}
 
 	if (!failed)
-		seq_puts(s, "Passed\n");
+		seq_puts(s, "\tOK\n");
 }
 
 /**
@@ -3319,7 +3321,7 @@ close:
 	}
 
 	if (!failed)
-		seq_puts(s, "Passed\n");
+		seq_puts(s, "\tOK\n");
 }
 
 /**
@@ -3448,7 +3450,7 @@ close:
 	}
 
 	if (!failed)
-		seq_puts(s, "Passed\n");
+		seq_puts(s, "\tOK\n");
 }
 
 /**
@@ -3558,7 +3560,7 @@ close:
 	}
 
 	if (!failed)
-		seq_puts(s, "Passed\n");
+		seq_puts(s, "\tOK\n");
 }
 
 /**
@@ -3690,7 +3692,7 @@ close:
 	}
 
 	if (!failed)
-		seq_puts(s, "Passed\n");
+		seq_puts(s, "\tOK\n");
 }
 
 static void glink_local_mt_core(struct seq_file *s, int xprt_id,
