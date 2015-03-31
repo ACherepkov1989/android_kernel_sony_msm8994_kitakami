@@ -1744,6 +1744,7 @@ static void glink_ut0_ssr(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s for %s\n", __func__, ut_dfs_d->edge_name);
 	do {
 		ss_info = get_info_for_edge(ut_dfs_d->edge_name);
+		UT_ASSERT_PTR(ss_info, !=, NULL);
 		subsystem_restart(ss_info->ssr_name);
 		UT_ASSERT_BOOL(true, ==,
 				glink_ssr_wait_cleanup_done(timeout_mult));
@@ -1779,6 +1780,7 @@ static void glink_ft_ssr_bypass(struct seq_file *s)
 	GLINK_STATUS(s, "Running %s for %s\n", __func__, ut_dfs_d->edge_name);
 	do {
 		ss_info = get_info_for_edge(ut_dfs_d->edge_name);
+		UT_ASSERT_PTR(ss_info, !=, NULL);
 		glink_ssr(ss_info->edge);
 		ret = notify_for_subsystem(ss_info);
 
