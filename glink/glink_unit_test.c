@@ -1152,15 +1152,6 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
 		/* open channel completed */
 
-		/* close channel */
-		ret = glink_close(handle);
-		UT_ASSERT_INT(ret, ==, 0);
-		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
-		UT_ASSERT_PTR(NULL, !=, tx_cmd);
-		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
-		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
-		kfree(tx_cmd);
-
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
 					&mock_ptr->if_ptr, 1);
 		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
@@ -1168,6 +1159,15 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_REMOTE_DISCONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
+
+		/* close channel */
+		ret = glink_close(handle);
+		UT_ASSERT_INT(ret, ==, 0);
+		tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
+		UT_ASSERT_PTR(NULL, !=, tx_cmd);
+		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
+		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
 		kfree(tx_cmd);
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_close_ack(
