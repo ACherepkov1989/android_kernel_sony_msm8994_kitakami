@@ -168,6 +168,9 @@ struct mt_test_info_struct {
 static int do_mock_negotiation(struct seq_file *s, uint32_t version,
 		uint32_t features, int pr_index);
 
+static void do_mock_negotiation_init(uint32_t version, uint32_t features,
+		int pr_index);
+
 static int glink_ut1_local_mt_send_config_reqs(struct seq_file *s, void
 		*cntl_handle, const char *name);
 
@@ -632,6 +635,82 @@ static int do_mock_negotiation(struct seq_file *s, uint32_t version,
 	} while (0);
 
 	return failed;
+}
+
+/**
+ * do_mock_negotiation_init - helper function that does version negotiation
+ *			during init
+ *
+ * @version: Version to negotiate
+ * @features: Feature to negotiate
+ * @pr_index: Which mock transport priority to perform the negotiation on
+ */
+static void do_mock_negotiation_init(uint32_t version, uint32_t features,
+		int pr_index)
+{
+	struct glink_mock_xprt *mock_ptr;
+	struct glink_mock_cmd *tx_cmd;
+	int line = 0;
+
+	mock_ptr = mock_xprt_get(pr_index);
+	if (!mock_ptr) {
+		GLINK_UT_ERR("%s:%d mock_ptr is NULL\n", __func__, line);
+		return;
+	}
+
+	/*
+	 * Bring-up transport and do local negotiation. Manually
+	 * check for failures as the UT_ASSERT macros cannot be used
+	 * here due to lack of a seq_file pointer.
+	 */
+	mock_ptr->if_ptr.glink_core_if_ptr->link_up(&mock_ptr->if_ptr);
+	tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
+	if (!tx_cmd) {
+		line = __LINE__;
+		goto fail;
+	}
+	kfree(tx_cmd);
+	mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version_ack(
+			&mock_ptr->if_ptr, version, features);
+
+	tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
+	if (!tx_cmd) {
+		line = __LINE__;
+		goto fail;
+	}
+	kfree(tx_cmd);
+	mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version_ack(
+			&mock_ptr->if_ptr, version, features);
+
+	/* do remote negotiation */
+	mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_version(
+			&mock_ptr->if_ptr, version, features);
+	tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
+	if (!tx_cmd) {
+		line = __LINE__;
+		goto fail;
+	}
+	kfree(tx_cmd);
+
+	/* confirm negotiation is now complete */
+	tx_cmd = mock_xprt_get_next_cmd(mock_ptr);
+	if (!tx_cmd) {
+		line = __LINE__;
+		goto fail;
+	}
+	if (SET_VERSION != tx_cmd->type ||
+		version != tx_cmd->version.version ||
+		features != tx_cmd->version.features)
+		GLINK_UT_ERR(
+			"%s: Version negotiation failed during init\n",
+				__func__);
+
+	kfree(tx_cmd);
+	return;
+
+fail:
+	GLINK_UT_ERR("%s:%d tx_cmd is NULL\n", __func__, line);
+
 }
 
 /**
@@ -5527,9 +5606,9 @@ static int __init glink_init(void)
 	/* Initialize mutex for multithreaded locking test */
 	mutex_init(&multithread_test_mutex_lha0);
 	glink_mock_xprt_init();
-	do_mock_negotiation(NULL, 0x1, 0x0, MOCK_LOW);
-	do_mock_negotiation(NULL, 0x1, 0x0, MOCK);
-	do_mock_negotiation(NULL, 0x1, 0x0, MOCK_HIGH);
+	do_mock_negotiation_init(0x1, 0x0, MOCK_LOW);
+	do_mock_negotiation_init(0x1, 0x0, MOCK);
+	do_mock_negotiation_init(0x1, 0x0, MOCK_HIGH);
 	glink_loopback_xprt_init();
 	glink_loopback_client_init();
 	glink_ut_link_state_notif_handle = glink_register_link_state_cb(
