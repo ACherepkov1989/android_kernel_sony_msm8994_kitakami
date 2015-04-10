@@ -343,6 +343,7 @@ static void glink_ut1_mock_rmt_rx_intent_req(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 
 		/* Simulate Remote Intent Request with non-zero size */
 		mock_ptr->if_ptr.glink_core_if_ptr->
@@ -780,6 +781,7 @@ static void glink_ut0_mock_basic_core(struct seq_file *s, unsigned pr_index,
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		/*
@@ -978,6 +980,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 
 		glink_queue_rx_intent(handle, (void *)&cb_data,
 				strlen(testdata));
@@ -1100,6 +1103,7 @@ static void glink_ut1_mock_open_close(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		/* close channel */
@@ -1202,6 +1206,7 @@ static void glink_ut1_mock_open_close_remote_first(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		mock_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
@@ -1304,6 +1309,7 @@ static void glink_ut1_mock_transmit_no_rx_intent(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		/*
@@ -1442,6 +1448,7 @@ static void glink_ut1_mock_size_greater_than(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		/*
@@ -1560,6 +1567,7 @@ static void glink_ut1_mock_read_no_rx_intent(struct seq_file *s)
 		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		/*
@@ -5184,6 +5192,7 @@ static void channel_test_thread_worker(struct work_struct *work)
 		UT_ASSERT_INT_MT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
 		UT_ASSERT_INT_MT(channel_id, ==, tx_cmd->remote_open_ack.rcid);
 		UT_ASSERT_INT_MT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
 		/* open channel completed */
 
 		while (i < ITERATIONS) {
