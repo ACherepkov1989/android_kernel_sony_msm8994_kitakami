@@ -2,7 +2,6 @@ AC_PREREQ(2.64)
 
 AC_INIT([kernel-tests],[1.0.0])
 AM_INIT_AUTOMAKE([-Wall -Werror gnu foreign])
-m4_ifdef([AM_PROG_AR], [AM_INIT_AUTOMAKE([-Wall -Werror gnu foreign -Wno-extra-portability -Wno-portability])])
 
 AM_MAINTAINER_MODE
 
