@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,6 +24,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/ktime.h>
+#include <linux/dma-mapping.h>
 
 #define MODULE_NAME "spinlock_test"
 #define CPU_NUM_MAX	NR_CPUS
@@ -31,7 +32,6 @@
 #define INNER_TEST_TIME_SECS_DEFAULT 5
 #define INNER_TEST_TIME_SECS_MAX 100
 #define SPINLOCK_TEST_DELAY_MS 1000
-#define NUM_OF_SPINLOCK_TEST 4
 #define IRQ_DIALBE_TIME_MS (MSEC_PER_SEC/HZ)
 
 static void spinwork_fn(struct work_struct *work);
@@ -57,12 +57,15 @@ static struct locks {
  */
 static DEFINE_SPINLOCK(global_lock_static);
 static spinlock_t *global_lock_heap;
+static spinlock_t *uncached_lock;
 
 enum {
 	IRQS_DISABLED_TEST = 1,
 	STACK_LOCK_TEST,
 	TWOLOCKS_TEST,
 	SIMPLE_TEST,
+	UNCACHED_LOCK_TEST,
+	NUM_OF_SPINLOCK_TEST = 5,
 };
 
 static int set_inner_test_time(void *data, u64 val)
@@ -261,6 +264,30 @@ static void spintest_stack_lock(int cpu)
 	sync_cpus(STACK_LOCK_TEST, cpu);
 }
 
+static void spintest_uncached_lock_test(int cpu)
+{
+	unsigned long flags;
+	int incritical = 0;
+	ktime_t test_time = ktime_add_us(ktime_get(),
+				(inner_test_time_secs * USEC_PER_SEC));
+	pr_info("(uncached-lock): Running test on CPU %d for %d seconds.\n", cpu,
+		inner_test_time_secs);
+
+	while (ktime_compare(ktime_get(), test_time) < 0)
+	{
+		spin_lock_irqsave(&global_lock_static, flags);
+		spin_lock(uncached_lock);
+		incritical++;
+		spin_unlock(uncached_lock);
+		spin_unlock_irqrestore(&global_lock_static, flags);
+	}
+
+	pr_info("(uncached-lock): CPU%d entered critical section %d times.\n",
+		cpu, incritical);
+
+	sync_cpus(UNCACHED_LOCK_TEST, cpu);
+}
+
 static void spinwork_fn(struct work_struct *work)
 {
 	struct delayed_work *dwork = (struct delayed_work *)work;
@@ -293,6 +320,11 @@ static void spinwork_fn(struct work_struct *work)
 
 	spintest_two_lock_single_cacheline(cpu);
 	pr_info("spintest_two_lock is done (CPU:%d iteration:%d)\n",
+		cpu, cpu_start[cpu]);
+	msleep(SPINLOCK_TEST_DELAY_MS);
+
+	spintest_uncached_lock_test(cpu);
+	pr_info("spintest_uncached_lock_test is done (CPU:%d iteration:%d)\n",
 		cpu, cpu_start[cpu]);
 	msleep(SPINLOCK_TEST_DELAY_MS);
 
@@ -402,12 +434,19 @@ static int spinlock_test_remove(struct platform_device *pdev)
 		kfree(global_lock_heap);
 		global_lock_heap = NULL;
 	}
+
+	if (uncached_lock) {
+		dma_free_coherent(&pdev->dev, sizeof(spinlock_t), uncached_lock, 0);
+		uncached_lock = NULL;
+	}
+
 	return 0;
 }
 
 static int spinlock_test_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+	phys_addr_t phys;
 	if (num_possible_cpus() > CPU_NUM_MAX) {
 		dev_err(&pdev->dev, "Number of possible cpus on this target \
 			exceeds the limit %d\n", CPU_NUM_MAX);
@@ -419,14 +458,24 @@ static int spinlock_test_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "unable to alloc memory for global lock\n");
 		return -ENOMEM;
 	}
+
+	uncached_lock = dma_alloc_coherent(&pdev->dev, sizeof(spinlock_t), &phys, GFP_KERNEL);
+	if (!uncached_lock) {
+		dev_err(&pdev->dev ,"Failed to allocate Uncached memory for lock\n");
+		kfree(global_lock_heap);
+		return -ENOMEM;
+	}
+
 	spin_lock_init(&testlocks.lock1);
 	spin_lock_init(&testlocks.lock2);
 	spin_lock_init(global_lock_heap);
+	spin_lock_init(uncached_lock);
 
 	ret = creat_spinlock_debugfs();
 	if (ret) {
 		dev_err(&pdev->dev, "create spinlock debugfs failed!\n");
 		kfree(global_lock_heap);
+		dma_free_coherent(&pdev->dev, sizeof(spinlock_t), uncached_lock, phys);
 		return ret;
 	}
 	return 0;
