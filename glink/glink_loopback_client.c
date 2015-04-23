@@ -916,8 +916,8 @@ int glink_loopback_sigs_set(void *handle, uint32_t sigs)
 		return -ETIMEDOUT;
 	}
 
-	newsigs = glink_sigs_local_get(lpb_ch->handle);
-	if (newsigs < 0) {
+	ret = glink_sigs_local_get(lpb_ch->handle, &newsigs);
+	if (ret < 0) {
 		GLINK_LL_CLNT_ERR(
 			"%s:%s:%s %s: glink_sigs_local_get failed ret[%d]\n",
 			lpb_ch->open_cfg.transport,
@@ -934,8 +934,8 @@ int glink_loopback_sigs_set(void *handle, uint32_t sigs)
 		return -EINVAL;
 	}
 
-	newsigs = glink_sigs_remote_get(lpb_ch->handle);
-	if (newsigs < 0) {
+	ret = glink_sigs_remote_get(lpb_ch->handle, &newsigs);
+	if (ret < 0) {
 		GLINK_LL_CLNT_ERR(
 			"%s:%s:%s %s: glink_sigs_remote_get failed ret[%d]\n",
 			lpb_ch->open_cfg.transport,
