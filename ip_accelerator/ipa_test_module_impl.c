@@ -33,6 +33,10 @@
 #include "ipa_rm_ut.h"
 #include "ipa_test_module.h"
 
+#ifdef INIT_COMPLETION
+#define reinit_completion(x) INIT_COMPLETION(*(x))
+#endif /* INIT_COMPLETION */
+
 #ifndef IPA_ON_R3PC
 #define IPA_ON_R3PC
 #endif
@@ -696,7 +700,7 @@ static int datapath_read_data(void *element, int size)
 
 	pr_debug(DRV_NAME ":%s():Entering\n", __func__);
 
-	INIT_COMPLETION(p_data_path_ctx->ipa_receive_completion);
+	reinit_completion(&p_data_path_ctx->ipa_receive_completion);
 	pr_debug(DRV_NAME ":%s() Init completion\n", __func__);
 	mutex_lock(&p_data_path_ctx->lock);
 	pr_debug(DRV_NAME ":%s() Checking if kfifo is empty\n", __func__);
