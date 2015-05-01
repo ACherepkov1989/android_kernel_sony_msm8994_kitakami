@@ -88,6 +88,15 @@ if test -f ${autoconf}; then
 	fi
 fi
 
+# Build bam_dmux loopback only if kernel module enabled
+msm_bam_dmux_configured=no
+autoconf="${with_kernel}/include/generated/autoconf.h"
+if test -f ${autoconf}; then
+	if grep -q "^#define CONFIG_MSM_BAM_DMUX 1" ${autoconf}; then
+		msm_bam_dmux_configured=yes
+	fi
+fi
+
 #
 # Build all kernel tests by default
 #
@@ -128,7 +137,7 @@ ENABLE_KERNEL_TEST([iommu],[include the iommu test (default=yes)])
 ENABLE_KERNEL_TEST([ip_accelerator],[include the ip_accelerator test (default=yes)])
 
 # bam_dmux_loopback
-ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (default=yes)])
+ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (default=yes)], [$msm_bam_dmux_configured])
 
 # hrtimer
 ENABLE_KERNEL_TEST([hrtimer],[include the hrtimer test (default=yes)])
