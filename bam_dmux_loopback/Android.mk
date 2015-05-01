@@ -1,5 +1,6 @@
 ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
 ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
+ifneq ($(wildcard kernel/drivers/soc/qcom/bam_dmux_private.h),)
 
 LOCAL_PATH := $(call my-dir)
 
@@ -20,5 +21,6 @@ LOCAL_MODULE_TAGS := optional debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_PREBUILT)
 
+endif
 endif
 endif
