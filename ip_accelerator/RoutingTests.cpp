@@ -52,6 +52,7 @@
 #define FLOW_CLASS_MB_OFFSET_IPV6 (2)
 #define FLOW_CLASS_LSB_OFFSET_IPV6 (3)
 
+extern Logger g_Logger;
 
 class IpaRoutingBlockTestFixture:public TestBase
 {
@@ -76,44 +77,46 @@ public:
 		struct test_ipa_ep_cfg from_ipa_cfg[3];
 		struct ipa_channel_config to_ipa_channels[1];
 		struct test_ipa_ep_cfg to_ipa_cfg[1];
+
 		struct ipa_test_config_header header = {0};
+		struct ipa_channel_config *to_ipa_array[1];
+		struct ipa_channel_config *from_ipa_array[3];
 
 		/* From ipa configurations - 3 pipes */
 		memset(&from_ipa_cfg[0], 0, sizeof(from_ipa_cfg[0]));
-		configure_channel(&from_ipa_channels[0],
+		prepare_channel_struct(&from_ipa_channels[0],
 				header.from_ipa_channels_num++,
 				IPA_CLIENT_TEST2_CONS,
 				(void *)&from_ipa_cfg[0],
 				sizeof(from_ipa_cfg[0]));
-		header.from_ipa_channel_config[0] = &from_ipa_channels[0];
+		from_ipa_array[0] = &from_ipa_channels[0];
 
 		memset(&from_ipa_cfg[1], 0, sizeof(from_ipa_cfg[1]));
-		configure_channel(&from_ipa_channels[1],
+		prepare_channel_struct(&from_ipa_channels[1],
 				header.from_ipa_channels_num++,
 				IPA_CLIENT_TEST3_CONS,
 				(void *)&from_ipa_cfg[1],
 				sizeof(from_ipa_cfg[1]));
-		header.from_ipa_channel_config[1] = &from_ipa_channels[1];
+		from_ipa_array[1] = &from_ipa_channels[1];
 
 		memset(&from_ipa_cfg[2], 0, sizeof(from_ipa_cfg[2]));
-		configure_channel(&from_ipa_channels[2],
+		prepare_channel_struct(&from_ipa_channels[2],
 				header.from_ipa_channels_num++,
 				IPA_CLIENT_TEST4_CONS,
 				(void *)&from_ipa_cfg[2],
 				sizeof(from_ipa_cfg[2]));
-		header.from_ipa_channel_config[2] = &from_ipa_channels[2];
+		from_ipa_array[2] = &from_ipa_channels[2];
 
 		/* To ipa configurations - 1 pipes */
 		memset(&to_ipa_cfg[0], 0, sizeof(to_ipa_cfg[0]));
-		configure_channel(&to_ipa_channels[0],
+		prepare_channel_struct(&to_ipa_channels[0],
 				header.to_ipa_channels_num++,
 				IPA_CLIENT_TEST_PROD,
 				(void *)&to_ipa_cfg[0],
 				sizeof(to_ipa_cfg[0]));
-		header.to_ipa_channel_config[0] = &to_ipa_channels[0];
+		to_ipa_array[0] = &to_ipa_channels[0];
 
-		header.head_marker = IPA_TEST_CONFIG_MARKER;
-		header.tail_marker = IPA_TEST_CONFIG_MARKER;
+		prepare_header_struct(&header, from_ipa_array, to_ipa_array);
 
 		retval = GenericConfigureScenario(&header);
 
