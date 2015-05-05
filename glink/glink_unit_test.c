@@ -24,11 +24,12 @@
 #include <soc/qcom/smsm.h>
 #include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/tracer_pkt.h>
+#include "glink_ch_migration_test.h"
+#include "glink_core_if.h"
 #include "glink_loopback_client.h"
 #include "glink_mock_xprt.h"
-#include "glink_test_common.h"
-#include "glink_core_if.h"
 #include "glink_private.h"
+#include "glink_test_common.h"
 
 static atomic_t local_mt_test_num_workers = ATOMIC_INIT(0);
 static atomic_t mpss_mt_test_num_workers = ATOMIC_INIT(0);
@@ -76,16 +77,7 @@ module_param_named(pkt_size_tput_ch, ut_mt_pkt_size_tput_ch,
 const char *testdata = "Hello GLINK";
 static struct workqueue_struct *ut_intent_req_workqueue;
 struct mutex multithread_test_mutex_lha0;
-typedef int (*testfunc)(struct seq_file *s, void *cntl_handle,
-							void **data_handle);
 static void *glink_ut_link_state_notif_handle;
-
-struct glink_ut_dbgfs {
-	const char *ut_name;
-	char xprt_name[GLINK_NAME_SIZE];
-	char edge_name[GLINK_NAME_SIZE];
-	testfunc tfunc;
-};
 
 static struct workqueue_struct *ut_dbgfs_create_workqueue;
 struct glink_ut_dbgfs_work {
@@ -168,12 +160,6 @@ struct mt_test_info_struct {
 	struct ch_config ch_cfg;
 	int index;
 };
-
-static int do_mock_negotiation(struct seq_file *s, uint32_t version,
-		uint32_t features, int pr_index);
-
-static void do_mock_negotiation_init(uint32_t version, uint32_t features,
-		int pr_index);
 
 static int glink_ut1_local_mt_send_config_reqs(struct seq_file *s, void
 		*cntl_handle, const char *name);
@@ -591,7 +577,7 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
  *
  * Return: 0 is negotiation successful, != 0 otherwise
  */
-static int do_mock_negotiation(struct seq_file *s, uint32_t version,
+int do_mock_negotiation(struct seq_file *s, uint32_t version,
 		uint32_t features, int pr_index)
 {
 	int failed = 0;
@@ -649,7 +635,7 @@ static int do_mock_negotiation(struct seq_file *s, uint32_t version,
  * @features: Feature to negotiate
  * @pr_index: Which mock transport priority to perform the negotiation on
  */
-static void do_mock_negotiation_init(uint32_t version, uint32_t features,
+void do_mock_negotiation_init(uint32_t version, uint32_t features,
 		int pr_index)
 {
 	struct glink_mock_xprt *mock_ptr;
@@ -3004,17 +2990,7 @@ static void glink_ut_mt_test_core(struct seq_file *s)
 	}
 }
 
-struct smd_trans_notify {
-	struct completion connected_completion;
-	struct completion local_disconnect_completion;
-	struct completion remote_disconnect_completion;
-	struct completion tx_done_completion;
-	struct completion rx_intent_req_completion;
-	struct completion rx_completion;
-	bool rx_reuse;
-};
-
-static void init_smd_trans_notify(struct smd_trans_notify *n)
+void init_smd_trans_notify(struct smd_trans_notify *n)
 {
 	init_completion(&n->connected_completion);
 	init_completion(&n->local_disconnect_completion);
@@ -3025,7 +3001,7 @@ static void init_smd_trans_notify(struct smd_trans_notify *n)
 	n->rx_reuse = false;
 }
 
-static void reset_smd_trans_notify(struct smd_trans_notify *n)
+void reset_smd_trans_notify(struct smd_trans_notify *n)
 {
 	reinit_completion(&n->connected_completion);
 	reinit_completion(&n->local_disconnect_completion);
@@ -3036,7 +3012,7 @@ static void reset_smd_trans_notify(struct smd_trans_notify *n)
 	n->rx_reuse = false;
 }
 
-static void smd_trans_notify_state(void *handle, const void *priv,
+void smd_trans_notify_state(void *handle, const void *priv,
 				   unsigned event)
 {
 	struct smd_trans_notify *n = (struct smd_trans_notify *)priv;
@@ -3061,7 +3037,7 @@ static void smd_trans_notify_state(void *handle, const void *priv,
 	};
 }
 
-static void smd_trans_notify_tx_done(void *handle, const void *priv,
+void smd_trans_notify_tx_done(void *handle, const void *priv,
 				     const void *pkt_priv, const void *ptr)
 {
 	struct smd_trans_notify *n = (struct smd_trans_notify *)priv;
@@ -3179,134 +3155,6 @@ static void glink_ut0_smd_trans_basic_va(struct seq_file *s)
 
 	if (!failed)
 		seq_puts(s, "\tOK\n");
-}
-
-
-/**
- * glink_ut0_smd_trans_migration_link_state_cb() - Link state callback
- *
- * @cb_info:	callback information
- * @priv:	pointer to storage of best transport ID (uint16_t)
- */
-static void glink_ut0_smd_trans_migration_link_state_cb(
-		struct glink_link_state_cb_info *cb_info, void *priv)
-{
-	uint16_t *best_xprt_ptr = (uint16_t *)priv;
-	uint16_t xprt_id;
-
-	if (!best_xprt_ptr)
-		return;
-
-	if (cb_info->link_state != GLINK_LINK_STATE_UP)
-		return;
-
-	if (glink_xprt_name_to_id(cb_info->transport, &xprt_id))
-		return;
-
-	*best_xprt_ptr = min_t(uint16_t, xprt_id, *best_xprt_ptr);
-}
-
-/**
- * glink_ut0_smd_trans_migration() - SMD Transition channel migration test
- *
- * @s: pointer to output file
- *
- * This test opens a channel with the GLINK_OPT_INITIAL_XPORT flag on the
- * "smd_trans" transport.  The channel should then migrate to a better
- * transport (if available).
- */
-static void glink_ut0_smd_trans_migration(struct seq_file *s)
-{
-	struct glink_open_config cfg;
-	void *handle = NULL;
-	struct smd_trans_notify notify;
-	bool failed = false;
-	struct glink_ut_dbgfs *ut_dfs_d;
-	struct glink_dbgfs_data *dfs_d;
-	struct glink_link_info xprt_notif;
-	char *xprt_name;
-	void *xprt_notif_handle;
-	uint16_t initial_xprt_id;
-	uint16_t best_xprt_id;
-	uint16_t final_xprt_id;
-
-	if (!(smsm_get_state(SMSM_MODEM_STATE) & (SMSM_INIT | SMSM_SMDINIT))) {
-		GLINK_STATUS(s, "FAILED: Modem not SMSM and SMD initialized\n");
-		return;
-	}
-
-	init_smd_trans_notify(&notify);
-
-	dfs_d = s->private;
-	ut_dfs_d = dfs_d->priv_data;
-	GLINK_STATUS(s, "Running %s\n", ut_dfs_d->ut_name);
-
-	do {
-		/* get best edge on transport */
-		UT_ASSERT_INT(0, ==, glink_xprt_name_to_id(ut_dfs_d->xprt_name,
-					&initial_xprt_id));
-		best_xprt_id = initial_xprt_id;
-		xprt_notif.transport = NULL;
-		xprt_notif.edge = ut_dfs_d->edge_name;
-		xprt_notif.glink_link_state_notif_cb =
-			glink_ut0_smd_trans_migration_link_state_cb;
-		xprt_notif_handle = glink_register_link_state_cb(&xprt_notif,
-				&best_xprt_id);
-		UT_ASSERT_ERR_PTR(xprt_notif_handle);
-		UT_ASSERT_INT(best_xprt_id, >=, 0);
-		UT_ASSERT_INT(initial_xprt_id, >=, best_xprt_id);
-		glink_unregister_link_state_cb(xprt_notif_handle);
-
-		/* open channel */
-		memset(&cfg, 0, sizeof(struct glink_open_config));
-		cfg.priv = &notify;
-		cfg.options = GLINK_OPT_INITIAL_XPORT;
-		cfg.transport = ut_dfs_d->xprt_name;
-		cfg.edge = ut_dfs_d->edge_name;
-		cfg.name = "LOOPBACK";
-		cfg.notify_rx = smd_trans_notify_rx;
-		cfg.notify_tx_done = smd_trans_notify_tx_done;
-		cfg.notify_state = smd_trans_notify_state;
-		cfg.notify_rx_intent_req = smd_trans_rx_intent_req;
-
-		reset_smd_trans_notify(&notify);
-
-		handle = glink_open(&cfg);
-		UT_ASSERT_ERR_PTR(handle);
-		UT_ASSERT_INT((int)wait_for_completion_timeout(
-					&notify.connected_completion, 5 * HZ),
-				>, 0);
-
-		/* confirm final negotiated transport is the best transport */
-		xprt_name = glink_get_ch_xprt_name(handle);
-		UT_ASSERT_ERR_PTR(xprt_name);
-		UT_ASSERT_INT(0, ==, glink_xprt_name_to_id(xprt_name,
-					&final_xprt_id));
-
-		UT_ASSERT_UINT((unsigned)final_xprt_id, ==,
-				(unsigned)best_xprt_id);
-		if (initial_xprt_id == best_xprt_id)
-			seq_puts(s, "\tNote:  Migration did not occur because initial transport was the best transport\n");
-
-		glink_close(handle);
-		UT_ASSERT_INT((int)wait_for_completion_timeout(
-				&notify.local_disconnect_completion, 5 * HZ),
-				>, 0);
-		handle = NULL;
-		GLINK_STATUS(s, "\tOK\n");
-	} while (0);
-
-	if (failed) {
-		if (handle) {
-			glink_close(handle);
-			if (wait_for_completion_timeout(
-				&notify.local_disconnect_completion, 5 * HZ)
-					== 0)
-				GLINK_STATUS(s, "\tFailed to close port\n");
-
-		}
-		GLINK_STATUS(s, "FAILED\n");
-	}
 }
 
 /**
