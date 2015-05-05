@@ -11,7 +11,7 @@ CC_FLAGS = -Idrivers/soc/qcom
 module = glink_test.ko
 kmake  = $(MAKE) $(KERNEL_FLAGS) $(CC_FLAGS) -C $(KERNEL_DIR) M=$(CURDIR)
 
-$(module): glink_mock_xprt.c glink_unit_test.c glink_loopback_xprt.c glink_loopback_client.c
+$(module): glink_mock_xprt.c glink_unit_test.c glink_loopback_xprt.c glink_loopback_client.c glink_ch_migration_test.c
 	$(kmake) modules
 
 all-local: $(module)

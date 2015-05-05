@@ -20,6 +20,9 @@ extern int glink_loopback_xprt_init(void);
 extern void glink_loopback_xprt_exit(void);
 extern void glink_loopback_xprt_link_up(void);
 
+typedef int (*testfunc)(struct seq_file *s, void *cntl_handle,
+							void **data_handle);
+
 /**
  * enum mock_layers - Different mock transport instances based on priority
  * @MOCK_LOW:	Lowest priority instance
@@ -31,6 +34,51 @@ enum mock_layers {
 	MOCK,
 	MOCK_HIGH,
 };
+
+struct glink_ut_dbgfs {
+	const char *ut_name;
+	char xprt_name[GLINK_NAME_SIZE];
+	char edge_name[GLINK_NAME_SIZE];
+	testfunc tfunc;
+};
+
+struct smd_trans_notify {
+	struct completion connected_completion;
+	struct completion local_disconnect_completion;
+	struct completion remote_disconnect_completion;
+	struct completion tx_done_completion;
+	struct completion rx_intent_req_completion;
+	struct completion rx_completion;
+	bool rx_reuse;
+};
+
+int do_mock_negotiation(struct seq_file *s, uint32_t version,
+		uint32_t features, int pr_index);
+void do_mock_negotiation_init(uint32_t version, uint32_t features,
+		int pr_index);
+
+void glink_test_notify_rx(void *handle, const void *priv, const void *pkt_priv,
+		const void *ptr, size_t size);
+void glink_test_notify_tx_done(void *handle, const void *priv, const void
+		*pkt_priv, const void *ptr);
+void glink_test_notify_state(void *handle, const void *priv, unsigned event);
+bool glink_test_rmt_rx_intent_req_cb(void *handle, const void *priv, size_t sz);
+
+void glink_ut_link_state_cb(struct glink_link_state_cb_info *cb_info,
+				void *priv);
+void glink_ut_rss_debug_create(const char *ut_name, const char *xprt_name,
+				const char *edge_name, testfunc tfunc,
+				void (*show)(struct seq_file *));
+
+void init_smd_trans_notify(struct smd_trans_notify *n);
+void reset_smd_trans_notify(struct smd_trans_notify *n);
+void smd_trans_notify_state(void *handle, const void *priv,
+				   unsigned event);
+void smd_trans_notify_tx_done(void *handle, const void *priv,
+				     const void *pkt_priv, const void *ptr);
+bool smd_trans_rx_intent_req(void *handle, const void *priv, size_t sz);
+void smd_trans_notify_rx(void *handle, const void *priv, const void *pkt_priv,
+			 const void *ptr, size_t size);
 
 #define GLINK_STATUS(seq_filep, x...) do { \
 	SEQ_PRINTFV(seq_filep, x); \
