@@ -247,11 +247,15 @@ int GenericConfigureScenarioDestory(void);
 int ConfigureSystem(int testConfiguration, int fd);
 int ConfigureSystem(int testConfiguration, int fd, const char *params);
 
-void configure_channel(struct ipa_channel_config *channel,
+void prepare_channel_struct(struct ipa_channel_config *channel,
 		int index,
 		enum ipa_client_type client,
 		void *cfg,
 		size_t config_size);
+
+void prepare_header_struct(struct ipa_test_config_header *header,
+		struct ipa_channel_config **from,
+		struct ipa_channel_config **to);
 
 /**
 	@brief

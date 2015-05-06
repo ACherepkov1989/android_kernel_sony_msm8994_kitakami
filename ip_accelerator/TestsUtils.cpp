@@ -672,12 +672,11 @@ void clean_old_stashed_config()
 	current_configuration = NULL;
 }
 
-
 void stash_new_configuration(struct ipa_test_config_header *header)
 {
 	clean_old_stashed_config();
 
-	/*
+        /*
 	 * We will start by shallow copying each level, and afterwards,
 	 * override the pointers
 	 */
@@ -884,6 +883,10 @@ int GenericConfigureScenario(struct ipa_test_config_header *header)
 		return false;
 	}
 
+	g_Logger.AddMessage(LOG_DEVELOPMENT ,"stashing new configuration\n");
+
+	stash_new_configuration(header);
+
 	return true;
 }
 
@@ -917,7 +920,7 @@ int GenericConfigureScenarioDestory(void)
 	return true;
 }
 
-void configure_channel(struct ipa_channel_config *channel,
+void prepare_channel_struct(struct ipa_channel_config *channel,
 		int index,
 		enum ipa_client_type client,
 		void *cfg,
@@ -929,6 +932,16 @@ void configure_channel(struct ipa_channel_config *channel,
 	channel->cfg = (char*)cfg;
 	channel->config_size = config_size;
 	channel->tail_marker = IPA_TEST_CHANNEL_CONFIG_MARKER;
+}
+
+void prepare_header_struct(struct ipa_test_config_header *header,
+		struct ipa_channel_config **from,
+		struct ipa_channel_config **to)
+{
+	header->head_marker = IPA_TEST_CONFIG_MARKER;
+	header->from_ipa_channel_config = from;
+	header->to_ipa_channel_config = to;
+	header->tail_marker = IPA_TEST_CONFIG_MARKER;
 }
 
 bool CompareResultVsGolden(Byte *goldenBuffer,   unsigned int goldenSize,
