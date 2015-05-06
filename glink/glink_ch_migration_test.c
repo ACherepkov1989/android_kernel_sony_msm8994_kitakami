@@ -30,6 +30,192 @@
 #include "glink_private.h"
 #include "glink_test_common.h"
 
+/*
+ * glink_ut0_mock_migration_1 - Basic mock migration test 1
+ *
+ * @s: Pointer to output file
+ *
+ * This tests that specified transport should exist. It performs the following:
+ * - Reset the medium mock transport
+ * - Attempt a local open with the medium mock transport specified, but no
+ *   initial flag
+ * - Verify the local open fails
+ */
+void glink_ut0_mock_migration_1(struct seq_file *s)
+{
+	int failed = 0;
+	void *handle = NULL;
+	struct glink_mock_xprt *mock_ptr;
+	struct glink_open_config open_cfg;
+	struct ut_notify_data cb_data;
+	struct completion event;
+
+	GLINK_STATUS(s, "Running %s\n", __func__);
+	do {
+		mock_ptr = mock_xprt_get(MOCK);
+		mock_xprt_reset(mock_ptr);
+		cb_data_init(&cb_data);
+		init_completion(&event);
+		register_completion(&mock_ptr->if_ptr, &event);
+
+		/* Open the channel */
+		memset(&open_cfg, 0, sizeof(open_cfg));
+		open_cfg.transport = "mock";
+		open_cfg.edge = "local";
+		open_cfg.name = "loopback";
+
+		open_cfg.notify_rx =  glink_test_notify_rx;
+		open_cfg.notify_tx_done = glink_test_notify_tx_done;
+		open_cfg.notify_state = glink_test_notify_state;
+		open_cfg.notify_rx_intent_req = glink_test_rmt_rx_intent_req_cb;
+		open_cfg.priv = &cb_data;
+
+		handle = glink_open(&open_cfg);
+		UT_ASSERT_PTR(handle, ==, ERR_PTR(-ENODEV));
+
+		GLINK_STATUS(s, "\tOK\n");
+	} while (0);
+
+	unregister_completion(&event, mock_ptr);
+	if (failed) {
+		GLINK_STATUS(s, "\tFailed\n");
+		if (!IS_ERR_OR_NULL(handle)) {
+			glink_close(handle);
+			handle = NULL;
+		}
+	}
+}
+
+/*
+ * glink_ut0_mock_migration_2 - Basic mock migration test 2, no migration
+ *
+ * @s: Pointer to output file
+ *
+ * This tests a basic channel connect where there is no migration. It performs
+ * the following:
+ * - Reset all mock transports
+ * - Initialize all mock transports
+ * - Attempt a local open with the medium mock transport specified, but no
+ *   initial flag
+ * - Perform a remote open on the medium mock transport
+ * - Verify that the open succeeds (the CONNECTED event is received)
+ */
+void glink_ut0_mock_migration_2(struct seq_file *s)
+{
+	int failed = 0;
+	int ret;
+	void *handle = NULL;
+	struct glink_mock_xprt *mock_high_ptr;
+	struct glink_mock_xprt *mock_med_ptr;
+	struct glink_mock_xprt *mock_low_ptr;
+	struct glink_open_config open_cfg;
+	struct glink_mock_cmd *tx_cmd;
+	struct ut_notify_data cb_data;
+	struct completion event_high;
+	struct completion event_med;
+	struct completion event_low;
+
+	GLINK_STATUS(s, "Running %s\n", __func__);
+	do {
+		mock_high_ptr = mock_xprt_get(MOCK_HIGH);
+		mock_med_ptr = mock_xprt_get(MOCK);
+		mock_low_ptr = mock_xprt_get(MOCK_LOW);
+
+		mock_xprt_reset(mock_high_ptr);
+		mock_xprt_reset(mock_med_ptr);
+		mock_xprt_reset(mock_low_ptr);
+
+		init_completion(&event_high);
+		register_completion(&mock_high_ptr->if_ptr, &event_high);
+
+		init_completion(&event_med);
+		register_completion(&mock_med_ptr->if_ptr, &event_med);
+
+		init_completion(&event_low);
+		register_completion(&mock_low_ptr->if_ptr, &event_low);
+
+		cb_data_init(&cb_data);
+
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0,
+					MOCK_HIGH));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0,
+					MOCK));
+		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0,
+					MOCK_LOW));
+
+		/* Open the channel */
+		memset(&open_cfg, 0, sizeof(open_cfg));
+		open_cfg.transport = "mock";
+		open_cfg.edge = "local";
+		open_cfg.name = "loopback";
+
+		open_cfg.notify_rx =  glink_test_notify_rx;
+		open_cfg.notify_tx_done = glink_test_notify_tx_done;
+		open_cfg.notify_state = glink_test_notify_state;
+		open_cfg.notify_rx_intent_req = glink_test_rmt_rx_intent_req_cb;
+		open_cfg.priv = &cb_data;
+
+		handle = glink_open(&open_cfg);
+		UT_ASSERT_ERR_PTR(handle);
+
+		tx_cmd = mock_xprt_get_next_cmd(mock_med_ptr);
+		UT_ASSERT_PTR(NULL, !=, tx_cmd);
+		UT_ASSERT_INT(LOCAL_OPEN, ==, tx_cmd->type);
+		UT_ASSERT_INT(1, ==, tx_cmd->local_open.lcid);
+		UT_ASSERT_STRING_COMPARE("loopback", tx_cmd->local_open.name);
+		mock_med_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_open_ack(
+			&mock_med_ptr->if_ptr, tx_cmd->local_open.lcid,
+			MOCK_XPRT_ID);
+		kfree(tx_cmd);
+
+		mock_med_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_open(
+					&mock_med_ptr->if_ptr, 1, "loopback",
+					MOCK_XPRT_ID);
+		tx_cmd = mock_xprt_get_next_cmd(mock_med_ptr);
+		UT_ASSERT_PTR(NULL, !=, tx_cmd);
+		UT_ASSERT_INT(REMOTE_OPEN_ACK, ==, tx_cmd->type);
+		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
+		UT_ASSERT_INT(GLINK_CONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
+		/* open channel completed */
+
+		ret = glink_close(handle);
+		UT_ASSERT_INT(ret, ==, 0);
+		tx_cmd = mock_xprt_get_next_cmd(mock_med_ptr);
+		UT_ASSERT_PTR(NULL, !=, tx_cmd);
+		UT_ASSERT_INT(LOCAL_CLOSE, ==, tx_cmd->type);
+		UT_ASSERT_INT(1, ==, tx_cmd->local_close.lcid);
+
+		mock_med_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_close_ack(
+			&mock_med_ptr->if_ptr, tx_cmd->local_close.lcid);
+		kfree(tx_cmd);
+		UT_ASSERT_INT(GLINK_LOCAL_DISCONNECTED, ==, cb_data.event);
+
+		mock_med_ptr->if_ptr.glink_core_if_ptr->rx_cmd_ch_remote_close(
+					&mock_med_ptr->if_ptr, 1);
+		tx_cmd = mock_xprt_get_next_cmd(mock_med_ptr);
+		UT_ASSERT_PTR(NULL, !=, tx_cmd);
+		UT_ASSERT_INT(REMOTE_CLOSE_ACK, ==, tx_cmd->type);
+		UT_ASSERT_INT(1, ==, tx_cmd->remote_open_ack.rcid);
+		UT_ASSERT_INT(GLINK_LOCAL_DISCONNECTED, ==, cb_data.event);
+		kfree(tx_cmd);
+
+
+		GLINK_STATUS(s, "\tOK\n");
+	} while (0);
+
+	unregister_completion(&event_high, mock_high_ptr);
+	unregister_completion(&event_med, mock_med_ptr);
+	unregister_completion(&event_low, mock_low_ptr);
+	if (failed) {
+		GLINK_STATUS(s, "\tFailed\n");
+		if (!IS_ERR_OR_NULL(handle)) {
+			glink_close(handle);
+			handle = NULL;
+		}
+	}
+}
+
 /**
  * glink_ut0_smd_trans_migration_link_state_cb() - Link state callback
  *
@@ -63,7 +249,7 @@ static void glink_ut0_smd_trans_migration_link_state_cb(
  * "smd_trans" transport.  The channel should then migrate to a better
  * transport (if available).
  */
-void glink_ut0_smd_trans_migration(struct seq_file *s)
+void glink_ut0_smd_trans_migration_1(struct seq_file *s)
 {
 	struct glink_open_config cfg;
 	void *handle = NULL;
