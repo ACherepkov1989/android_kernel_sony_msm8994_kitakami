@@ -20,6 +20,15 @@ LOCAL_MODULE_TAGS := optional debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_PREBUILT)
 
+# the userspace test program
+include $(CLEAR_VARS)
+LOCAL_MODULE := glink_pkt_test
+LOCAL_C_FLAGS := -lpthread
+LOCAL_SRC_FILES := glink_pkt_loopback_test.c
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_OUT_EXECUTABLES)/kernel-tests
+include $(BUILD_EXECUTABLE)
+
 endif
 endif
 endif

@@ -1,4 +1,7 @@
 glinkdir = $(prefix)/glink
+glink_PROGRAMS = glink_pkt_test
+glink_pkt_test_SOURCES = glink_pkt_loopback_test.c
+glink_pkt_test_LDADD = -lpthread -lrt
 dist_glink_SCRIPTS  = glink_ktest.sh run.sh
 dist_glink_DATA = $(module) README
 
