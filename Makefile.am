@@ -36,6 +36,9 @@ endif
 if USEBAM_DMUX_LOOPBACK
 BUILD_TEST += bam_dmux_loopback
 endif
+if USEGLINK
+BUILD_TEST += glink
+endif
 if USEPAGE_NOM
 BUILD_TEST += page-nom
 endif
@@ -55,6 +58,17 @@ endif
 if USESWP
 BUILD_TEST += swp
 endif
-
+if USEMODSIGN
+BUILD_TEST += modsign
+endif
+if USECORESIGHT
+BUILD_TEST += coresight
+endif
+if USEBUS_TIMEOUT
+BUILD_TEST += bus-timeout
+endif
+if USEABNORMAL_RESET
+BUILD_TEST += abnormal_reset
+endif
 SUBDIRS = $(BUILD_TEST)
 

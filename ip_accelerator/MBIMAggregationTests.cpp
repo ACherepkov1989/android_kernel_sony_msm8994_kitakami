@@ -1437,7 +1437,7 @@ bool MBIMAggregationScenarios::MBIMAggregationMultiplePacketsTest(
 
 	//deaggregating the aggregated packet
 	return DeaggragateAndComparePackets(pReceivedPacket, pPackets,
-			pPacketsSizes, MAX_PACKETS_IN_NDP + 1, MAX_PACKET_SIZE, isQcncm);
+			pPacketsSizes, NUM_PACKETS, MAX_PACKET_SIZE, isQcncm);
 }
 
 /////////////////////////////////////////////////////////////////////////////////

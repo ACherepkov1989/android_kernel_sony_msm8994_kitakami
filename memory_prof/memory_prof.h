@@ -122,6 +122,10 @@ int profile_alloc_for_heap(unsigned int heap_id_mask,
 			unsigned int flags, unsigned int size,
 			double *alloc_ms, double *map_ms,
 			double *memset_ms, double *free_ms);
+int profile_ion_cache_ops_for_heap(unsigned int heap_id_mask,
+                                        unsigned int flags, unsigned int size,
+                                        double *time_elapsed_flush_ms,
+                                        bool cache_clean, bool cache_inv);
 void print_stats_results(const char *name, const char *flags_label,
 			const char *size_string,
 			double stats[], int reps);

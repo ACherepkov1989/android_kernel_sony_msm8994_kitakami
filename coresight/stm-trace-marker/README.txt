@@ -32,8 +32,5 @@ TEST BEHAVIOR:
 	  event observed in the trace.txt file previously dumped and should
 	  match that exactly.
 
-TARGETS:
-	* 8974
-
 NOTE:
 	* Assumes /data partition exists

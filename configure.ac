@@ -61,6 +61,33 @@ if test -f ${autoconf}; then
 	fi
 fi
 
+# Build G-Link Tests only if kernel module enabled
+msm_glink_configured=no
+autoconf="${with_kernel}/include/generated/autoconf.h"
+if test -f ${autoconf}; then
+	if grep -q "^#define CONFIG_MSM_GLINK 1" ${autoconf}; then
+		msm_glink_configured=yes
+	fi
+fi
+
+# Build bam_dmux loopback only if kernel module enabled
+msm_bam_dmux_configured=no
+autoconf="${with_kernel}/include/generated/autoconf.h"
+if test -f ${autoconf}; then
+	if grep -q "^#define CONFIG_MSM_BAM_DMUX 1" ${autoconf}; then
+		msm_bam_dmux_configured=yes
+	fi
+fi
+
+# Build ocmem test only if kernel module enabled
+msm_ocmem_configured=no
+autoconf="${with_kernel}/include/generated/autoconf.h"
+if test -f ${autoconf}; then
+	if grep -q "^#define CONFIG_MSM_OCMEM 1" ${autoconf}; then
+		msm_ocmem_configured=yes
+	fi
+fi
+
 #
 # Build all kernel tests by default
 #
@@ -92,7 +119,7 @@ ENABLE_KERNEL_TEST([v4l2apps],[include the v4l2apps test (default=no)],[no])
 ENABLE_KERNEL_TEST([watchdog],[include the watchdog test (default=yes)])
 
 # ocmem
-ENABLE_KERNEL_TEST([ocmem],[include the ocmem test (default=yes)])
+ENABLE_KERNEL_TEST([ocmem],[include the ocmem test (default=yes)],[$msm_ocmem_configured])
 
 # iommu
 ENABLE_KERNEL_TEST([iommu],[include the iommu test (default=yes)])
@@ -101,7 +128,7 @@ ENABLE_KERNEL_TEST([iommu],[include the iommu test (default=yes)])
 ENABLE_KERNEL_TEST([ip_accelerator],[include the ip_accelerator test (default=yes)])
 
 # bam_dmux_loopback
-ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (default=yes)])
+ENABLE_KERNEL_TEST([bam_dmux_loopback],[include the bam_dmux_loopback test (default=yes)], [$msm_bam_dmux_configured])
 
 # hrtimer
 ENABLE_KERNEL_TEST([hrtimer],[include the hrtimer test (default=yes)])
@@ -114,6 +141,21 @@ ENABLE_KERNEL_TEST([ipi],[include the ipi test (default=yes)])
 
 # page-nom
 ENABLE_KERNEL_TEST([page-nom],[include the page-nom test (default=yes)])
+
+# modsign
+ENABLE_KERNEL_TEST([modsign],[include the modsign test (default=yes)])
+
+# coresight
+ENABLE_KERNEL_TEST([coresight],[include the coresight test (default=yes)])
+
+# bus-timeout
+ENABLE_KERNEL_TEST([bus-timeout],[include the bus-timeout test (default=yes)])
+
+# abnormal_reset
+ENABLE_KERNEL_TEST([abnormal_reset],[include the abnormal_reset test (default=yes)])
+
+#glink
+ENABLE_KERNEL_TEST([glink],[include the glink test (default=yes)], [$msm_glink_configured])
 
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
@@ -128,6 +170,18 @@ AC_CONFIG_FILES([
 	ocmem/Makefile
 	msm_iommu/Makefile
 	sps/Makefile
+	coresight/Makefile
+	coresight/byte-cntr/Makefile
+	coresight/stm-trace-marker/Makefile
+	coresight/stm/Makefile
+	coresight/etm/Makefile
+	coresight/cti/Makefile
+	coresight/mult_trace/Makefile
+	coresight/platform/Makefile
+	coresight/profile/Makefile
+	coresight/sink_switch/Makefile
+	bus-timeout/Makefile
+	abnormal_reset/Makefile
 	v4l2apps/Makefile
 	watchdog/Makefile
 	ip_accelerator/Makefile
@@ -135,5 +189,7 @@ AC_CONFIG_FILES([
 	swp/Makefile
 	ipi/Makefile
 	page-nom/Makefile
+	modsign/Makefile
+	glink/Makefile
 	])
 AC_OUTPUT
