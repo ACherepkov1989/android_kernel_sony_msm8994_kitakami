@@ -12,6 +12,8 @@
 #ifndef _GLINK_CH_MIGRATION_TEST_H_
 #define _GLINK_CH_MIGRATION_TEST_H_
 
-void glink_ut0_smd_trans_migration(struct seq_file *s);
+void glink_ut0_mock_migration_1(struct seq_file *s);
+void glink_ut0_mock_migration_2(struct seq_file *s);
+void glink_ut0_smd_trans_migration_1(struct seq_file *s);
 
 #endif

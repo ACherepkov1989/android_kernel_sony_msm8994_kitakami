@@ -5342,9 +5342,9 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 	} else if (!strcmp(xprt_name, "smd_trans")
 			&& !(strcmp(edge_name, "mpss"))) {
 		/*below test cases are designed to work only with MPSS */
-		glink_ut_rss_debug_create("ut0_smd_trans_migration",
+		glink_ut_rss_debug_create("ut0_smd_trans_migration_1",
 					xprt_name, edge_name, NULL,
-					glink_ut0_smd_trans_migration);
+					glink_ut0_smd_trans_migration_1);
 		glink_ut_rss_debug_create("ut0_smd_trans_basic_va",
 					xprt_name, edge_name, NULL,
 					glink_ut0_smd_trans_basic_va);
@@ -5440,6 +5440,14 @@ void glink_ut_dbgfs_worker_func(struct work_struct *work)
 					xprt_name, edge_name,
 					NULL,
 					glink_ut0_mock_remote_negotiation);
+		glink_ut_rss_debug_create("ut0_mock_migration_1",
+					xprt_name, edge_name,
+					NULL,
+					glink_ut0_mock_migration_1);
+		glink_ut_rss_debug_create("ut0_mock_migration_2",
+					xprt_name, edge_name,
+					NULL,
+					glink_ut0_mock_migration_2);
 		glink_ut_rss_debug_create("ut1_size_greater_than",
 					xprt_name, edge_name,
 					NULL,
