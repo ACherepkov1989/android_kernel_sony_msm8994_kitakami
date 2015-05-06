@@ -3910,7 +3910,7 @@ int configure_system_19(char **params)
 	memset(&ipa_to_usb_ep_cfg_ctrl, 0 , sizeof(struct ipa_ep_cfg_ctrl));
 	ipa_to_usb_ep_cfg_ctrl.ipa_ep_suspend = true;
 
-	res = ipa_cfg_ep_ctrl(from_ipa_devs[0]->dma_ep.clnt_hdl,
+	res = ipa_cfg_ep_ctrl(from_ipa_devs[0]->ipa_client_hdl,
 			&ipa_to_usb_ep_cfg_ctrl);
 	if (res) {
 		pr_err("end-point ctrl register configuration failed\n");
@@ -3931,7 +3931,7 @@ int configure_system_19(char **params)
 		res = -ENOMEM;
 		goto fail;
 	}
-	suspend_priv_data->clnt_hdl = from_ipa_devs[0]->dma_ep.clnt_hdl;
+	suspend_priv_data->clnt_hdl = from_ipa_devs[0]->ipa_client_hdl;
 	res = ipa_add_interrupt_handler(IPA_TX_SUSPEND_IRQ, suspend_handler,
 			(bool)defer_work, (void *)suspend_priv_data);
 	if (res) {
