@@ -32,6 +32,7 @@
 #include <asm/smp_plat.h>
 #include <asm/insn.h>
 #include <soc/qcom/kryo-l2-accessors.h>
+#include <soc/qcom/scm-mpu.h>
 
 #define TYPE_MAX_CHARACTERS 20
 
@@ -175,6 +176,7 @@ static u64 do_cpregister_rw(int write)
 	 * Grab address of the Dummy function, write the MRS/MSR
 	 * instruction, ensuring cache coherency.
 	 */
+	scm_mpu_unlock_kernel_text();
 	p_opcode = (u32 *)&cpaccess_dummy_inst;
 	aarch64_insn_write(p_opcode, opcode);
 
