@@ -1,0 +1,4 @@
+# Suitable for latency tests with a parallel monkey or stress test.
+# 600 repetetions of test with 10MB allocations each
+
+lat,2,0,0,1,0,2560,3,600

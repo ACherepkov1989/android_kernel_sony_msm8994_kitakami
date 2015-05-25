@@ -31,7 +31,8 @@ LOCAL_SRC_FILES += memory_prof.c \
 	op-iommu-unmap.c \
 	op-iommu-attach.c \
 	op-iommu-detach.c \
-	op-ion-cache.c
+	op-ion-cache.c \
+	concurrency-latency-kpi.c
 
 
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/

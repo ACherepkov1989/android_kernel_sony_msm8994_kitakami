@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -117,11 +117,19 @@ bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
 		err(1, "Couldn't copy the string %s. %s:%d", src, file, line); \
 	} while(0)
 
+#define _OPEN(path, flags, fd, file, line) do {				\
+		fd = open(path, flags);					\
+		if (0 > fd)						\
+			err(1, "Couldn't open file %s:%d", file, line); \
+	} while(0)
+
 #define MALLOC(ptr_type, ptr, size) _MALLOC(ptr_type, ptr, size, __FILE__, __LINE__)
 #define REALLOC(ptr_type, ptr, size) _REALLOC(ptr_type, ptr, size, __FILE__, __LINE__)
 #define STRTOL(var, word, base) _STRTOL(var, word, base, __FILE__, __LINE__)
 #define STRDUP(dst, src) _STRDUP(dst, src, __FILE__, __LINE__)
 #define ASPRINTF(dst, src, pid) _ASPRINTF(dst, src, pid, __FILE__, __LINE__)
+#define OPEN(path, flags, fd) _OPEN(path, flags, fd, __FILE__, __LINE__)
+
 /*
  * strncpy is considered "unsafe" and strlcpy doesn't exist on all
  * systems (notably glibc-based ones). Here's a strncpy that
@@ -133,5 +141,15 @@ bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
 		p = (char *) memcpy(dst, src, l);		\
 		*(p + l) = '\0';				\
 	} while (0)
+
+/**
+ * Returns true if string starts with prefix
+ */
+static inline bool startswith(const char *string, const char *prefix)
+{
+	size_t l1 = strlen(string);
+	size_t l2 = strlen(prefix);
+	return strncmp(string, prefix, MIN(l1, l2)) == 0;
+}
 
 #endif /* __MEMORY_PROF_UTIL_H__ */

@@ -784,7 +784,7 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	return alloc_profile;
 }
 
-static int heap_profiling(struct alloc_profile_entry *alloc_profile)
+static int run_profile(struct alloc_profile_entry *alloc_profile)
 {
 	struct alloc_profile_entry *entry;
 	struct alloc_profile_handler *iter;
@@ -807,10 +807,6 @@ static int heap_profiling(struct alloc_profile_entry *alloc_profile)
 				warn("global_setup failed for %s!",
 					iter->keyword);
 	}
-
-	puts("All times are in milliseconds unless otherwise indicated");
-	printf(ST_PREFIX_PREALLOC_SIZE " pre-alloc size (MB): %d\n",
-		ion_pre_alloc_size);
 
 	/* Run .run callbacks */
 	for_each_alloc_profile_entry(entry, alloc_profile)
@@ -1245,9 +1241,9 @@ static int file_exists(const char const *fname)
 	"  -a         Do the adversarial test (same as -l)\n"		\
 	"  -b         Do basic sanity tests\n"				\
 	"  -z         Size (in bytes) of buffer for basic sanity tests\n" \
-	"             (default=65536 (64KB))\n"			\
+	"             (default=65536 (64KB))\n"				\
 	"  -e         Do Ion heap profiling.\n"				\
-	"  -i file    Input `alloc profile' for heap profiling (-e)\n"	\
+	"  -i file    Input `alloc profile'\n"				\
 	"             (Runs a general default profile if omitted).\n"	\
 	"             If - is given, the allocation profile is read\n"	\
 	"             from stdin.\n"					\
@@ -1386,19 +1382,35 @@ int main(int argc, char *argv[])
 			rc |= basic_sanity_tests(basic_sanity_size);
 		did_something = true;
 	}
+
 	if (do_heap_profiling) {
 		struct alloc_profile_entry *alloc_profile
 			= get_alloc_profile_from_file(alloc_profile_path);
+		puts("All times are in milliseconds unless otherwise indicated");
+		printf(ST_PREFIX_PREALLOC_SIZE " pre-alloc size (MB): %d\n",
+			ion_pre_alloc_size);
+
 		for (i = 0; i < num_reps; ++i)
-			rc |= heap_profiling(alloc_profile);
+			rc |= run_profile(alloc_profile);
+		did_something = true;
+	} else if (alloc_profile_path) { /* Execute any other profile */
+		struct alloc_profile_entry *alloc_profile
+			= get_alloc_profile_from_file(alloc_profile_path);
+		rc |= run_profile(alloc_profile);
 		did_something = true;
 	}
+
 	if (eval_program) {
 		struct alloc_profile_entry *alloc_profile
 			= get_alloc_profile_from_string(eval_program);
-		rc |= heap_profiling(alloc_profile);
+		puts("All times are in milliseconds unless otherwise indicated");
+		printf(ST_PREFIX_PREALLOC_SIZE " pre-alloc size (MB): %d\n",
+			ion_pre_alloc_size);
+
+		rc |= run_profile(alloc_profile);
 		did_something = true;
 	}
+
 	if (do_kernel_alloc_profiling) {
 		for (i = 0; i < num_reps; ++i)
 			rc |= profile_kernel_alloc();
