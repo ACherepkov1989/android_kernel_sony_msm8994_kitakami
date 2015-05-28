@@ -21,9 +21,7 @@
 #include <linux/iommu.h>
 #include <asm/cacheflush.h>
 #include <asm-generic/sizes.h>
-#include <linux/msm_iommu_domains.h>
 #include <linux/msm_ion.h>
-#include <linux/qcom_iommu.h>
 #include <asm/uaccess.h>
 
 #include "memory_prof_module.h"
@@ -241,273 +239,6 @@ static gfp_t get_gfp_from_memory_prof_gfp(u64 mp_gfp)
 	return gfp;
 }
 
-static int get_iommu_prot_from_memory_prof_prot(int mp_prot)
-{
-	int prot = 0;
-	if (mp_prot & MP_IOMMU_WRITE)
-		prot |= IOMMU_WRITE;
-	if (mp_prot & MP_IOMMU_READ)
-		prot |= IOMMU_READ;
-	if (mp_prot & MP_IOMMU_CACHE)
-		prot |= IOMMU_CACHE;
-	return prot;
-}
-
-static int is_ctx_busy(struct device *dev)
-{
-	struct msm_iommu_ctx_drvdata *ctx_drvdata;
-	int ret = 0;
-
-	ctx_drvdata = dev_get_drvdata(dev);
-	if (ctx_drvdata)
-		ret = !!ctx_drvdata->attached_domain;
-
-	return ret;
-}
-
-static int create_domain(struct iommu_domain **domain, int secure)
-{
-	int domain_id;
-
-	struct msm_iova_partition partition = {
-		.start = 0x1000,
-		.size = 0xFFFFF000,
-	};
-	struct msm_iova_layout layout = {
-		.partitions = &partition,
-		.npartitions = 1,
-		.client_name = "iommu_test",
-		.domain_flags = secure,
-	};
-
-	domain_id = msm_register_domain(&layout);
-	*domain = msm_get_iommu_domain(domain_id);
-	return domain_id;
-}
-
-#ifdef CONFIG_IOMMU_LPAE
-#define MAP_SIZE SZ_2M
-#else
-#define MAP_SIZE SZ_1M
-#endif
-
-static int do_iommu_map_test(void __user *arg,
-				   struct mp_iommu_map_test_args *args,
-				   bool measure_map, bool use_range)
-{
-	int i, j, prot, len, chunk_len, rc = 0;
-	struct timespec before, after, diff;
-	struct sg_table table;
-	struct scatterlist *sg;
-	struct iommu_domain *domain;
-	int domain_id;
-	const char *ctx_name = args->ctx_name;
-	struct device *dev;
-	unsigned long long sum_us = 0;
-	unsigned long long time_elapsed_us;
-	u32 iova;
-
-	args->time_elapsed_min_us = ~0;
-	args->time_elapsed_max_us = 0;
-
-	domain_id = create_domain(&domain, args->flags & MP_IOMMU_SECURE);
-	if (domain_id < 0) {
-		pr_err("Cannot create domain, rc = %d\n", domain_id);
-		return domain_id;
-	}
-
-	dev  = msm_iommu_get_ctx(ctx_name);
-	if (IS_ERR_OR_NULL(dev)) {
-		pr_err("context %s not found: %ld\n", ctx_name,
-			PTR_ERR(dev));
-		rc = -EINVAL;
-		goto free_domain;
-	}
-
-	if (is_ctx_busy(dev)) {
-		pr_err("Ctx %s is busy\n", ctx_name);
-		rc = -EBUSY;
-		goto free_domain;
-	}
-
-	if (args->flags & MP_IOMMU_ATTACH) {
-		rc = iommu_attach_device(domain, dev);
-		if (rc) {
-			pr_err("iommu attach failed: %x\n", rc);
-			goto free_domain;
-		}
-	}
-
-	if (sg_alloc_table(&table, args->nchunks, GFP_KERNEL)) {
-		rc = -ENOMEM;
-		goto detach;
-	}
-
-	chunk_len = (1 << args->chunk_order) * PAGE_SIZE;
-	len = args->nchunks * chunk_len;
-
-	for_each_sg(table.sgl, sg, args->nchunks, j) {
-		u32 pa = (u32) (((u64)(MAP_SIZE * (j + 1))) - (u64) SZ_4K);
-		sg_dma_address(sg) = pa;
-		sg->length = chunk_len;
-	}
-
-	prot = get_iommu_prot_from_memory_prof_prot(args->prot);
-
-	for (i = 0; i < args->iterations; ++i) {
-		iova = MAP_SIZE - SZ_4K;
-
-		if (measure_map)
-			getnstimeofday(&before);
-
-		if (use_range) {
-			rc = iommu_map_range(domain, iova, table.sgl,
-					     len, prot);
-			if (rc) {
-				pr_err("Failed to iommu_map_range: %d\n", rc);
-				goto free_table;
-			}
-		} else {
-			for_each_sg(table.sgl, sg, args->nchunks, j) {
-				rc = iommu_map(domain, iova, sg_dma_address(sg),
-						sg->length, prot);
-				iova += sg->length;
-				if (rc) {
-					pr_err("Failed to iommu_map: %d\n", rc);
-					goto free_table;
-				}
-			}
-		}
-
-		if (measure_map)
-			getnstimeofday(&after);
-
-		if (!measure_map)
-			getnstimeofday(&before);
-		if (use_range) {
-			rc = iommu_unmap_range(domain, MAP_SIZE - SZ_4K, len);
-		} else {
-			rc = iommu_unmap(domain, MAP_SIZE - SZ_4K, len);
-			if (rc != len) {
-				pr_err("Failed to unmap %d. Instead, this was unmapped: %d\n",
-					len, rc);
-				rc = -EINVAL;
-			} else {
-				rc = 0;
-			}
-		}
-		if (!measure_map)
-			getnstimeofday(&after);
-
-		if (rc) {
-			pr_err("Failed to unmap: %d\n", rc);
-			goto free_table;
-		}
-
-		diff = timespec_sub(after, before);
-		time_elapsed_us = div_s64(timespec_to_ns(&diff), 1000);
-
-		if (args->time_elapsed_min_us > time_elapsed_us )
-			args->time_elapsed_min_us = time_elapsed_us;
-		if (args->time_elapsed_max_us < time_elapsed_us)
-			args->time_elapsed_max_us = time_elapsed_us;
-		sum_us += time_elapsed_us;
-	}
-
-	args->time_elapsed_us = sum_us;
-
-	rc = copy_to_user((void __user *)arg, args,
-			sizeof(struct mp_iommu_map_test_args));
-
-free_table:
-	sg_free_table(&table);
-detach:
-	if (args->flags & MP_IOMMU_ATTACH)
-		iommu_detach_device(domain, dev);
-free_domain:
-	msm_unregister_domain(domain);
-
-	return rc;
-}
-
-static int do_iommu_attach_test(void __user *arg,
-				struct mp_iommu_attach_test_args *args, bool
-				attach)
-{
-	int rc = 0;
-	int domain_id;
-	struct iommu_domain *domain;
-	struct timespec before, after, diff;
-	const char *ctx_name = args->ctx_name;
-	struct device *dev;
-	unsigned long long sum_us = 0;
-	unsigned int i;
-	unsigned long long time_elapsed_us;
-
-	args->time_elapsed_min_us = ~0;
-	args->time_elapsed_max_us = 0;
-
-	domain_id = create_domain(&domain, args->flags & MP_IOMMU_SECURE);
-	if (domain_id < 0) {
-		pr_err("Cannot create domain, rc = %d\n", domain_id);
-		return domain_id;
-	}
-
-	dev  = msm_iommu_get_ctx(ctx_name);
-	if (IS_ERR_OR_NULL(dev)) {
-		pr_err("context %s not found: %ld\n", ctx_name,
-			PTR_ERR(dev));
-		rc = -EINVAL;
-		goto out;
-	}
-
-	if (is_ctx_busy(dev)) {
-		pr_err("Ctx %s is busy\n", ctx_name);
-		rc = -EBUSY;
-		goto out;
-	}
-
-	for (i = 0; i < args->iterations; ++i) {
-		if (attach)
-			getnstimeofday(&before);
-		rc = iommu_attach_device(domain, dev);
-		if (attach)
-			getnstimeofday(&after);
-		if (rc) {
-			pr_err("iommu attach failed: %x\n", rc);
-			goto out;
-		}
-
-
-		if (!attach)
-			getnstimeofday(&before);
-		iommu_detach_device(domain, dev);
-		if (!attach)
-			getnstimeofday(&after);
-		if (rc) {
-			pr_err("iommu detaach failed: %x\n", rc);
-			goto out;
-		}
-		diff = timespec_sub(after, before);
-		time_elapsed_us = div_s64(timespec_to_ns(&diff), 1000);
-
-		if (args->time_elapsed_min_us > time_elapsed_us )
-			args->time_elapsed_min_us = time_elapsed_us;
-		if (args->time_elapsed_max_us < time_elapsed_us)
-			args->time_elapsed_max_us = time_elapsed_us;
-		sum_us += time_elapsed_us;
-	}
-
-	args->time_elapsed_us = sum_us;
-
-	rc = copy_to_user((void __user *)arg, args,
-			sizeof(struct mp_iommu_attach_test_args));
-
-out:
-	msm_unregister_domain(domain);
-	return rc;
-}
-
 static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 {
 	int ret = 0;
@@ -581,32 +312,23 @@ static long memory_prof_test_ioctl(struct file *file, unsigned cmd, unsigned lon
 	case MEMORY_PROF_IOC_IOMMU_UNMAP_TEST:
 	{
 		struct mp_iommu_map_test_args args;
-		bool measure_map = (cmd == MEMORY_PROF_IOC_IOMMU_MAP_TEST ||
-				   cmd == MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST);
-		bool use_range = (cmd == MEMORY_PROF_IOC_IOMMU_MAP_RANGE_TEST ||
-				 cmd == MEMORY_PROF_IOC_IOMMU_UNMAP_RANGE_TEST);
 
 		if (copy_from_user(
 				&args, (void __user *)arg,
 				sizeof(struct mp_iommu_map_test_args)))
 			return -EFAULT;
-
-		ret = do_iommu_map_test((void __user *)arg, &args,
-					measure_map, use_range);
 		break;
 	}
 	case MEMORY_PROF_IOC_IOMMU_ATTACH_TEST:
 	case MEMORY_PROF_IOC_IOMMU_DETACH_TEST:
 	{
 		struct mp_iommu_attach_test_args args;
-		bool attach = (cmd == MEMORY_PROF_IOC_IOMMU_ATTACH_TEST);
 
 		if (copy_from_user(
 				&args, (void __user *)arg,
 				sizeof(struct mp_iommu_attach_test_args)))
 			return -EFAULT;
 
-		ret = do_iommu_attach_test((void __user *)arg, &args, attach);
 		break;
 	}
 	default:
