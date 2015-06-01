@@ -51,6 +51,8 @@ void glink_ut0_mock_migration_1(struct seq_file *s)
 	struct completion event;
 
 	GLINK_STATUS(s, "Running %s\n", __func__);
+	glink_loopback_xprt_exit();
+	glink_loopback_client_exit();
 	do {
 		mock_ptr = mock_xprt_get(MOCK);
 		mock_xprt_reset(mock_ptr);
@@ -84,6 +86,8 @@ void glink_ut0_mock_migration_1(struct seq_file *s)
 			handle = NULL;
 		}
 	}
+	glink_loopback_xprt_init();
+	glink_loopback_client_init();
 }
 
 /*
@@ -116,6 +120,8 @@ void glink_ut0_mock_migration_2(struct seq_file *s)
 	struct completion event_low;
 
 	GLINK_STATUS(s, "Running %s\n", __func__);
+	glink_loopback_xprt_exit();
+	glink_loopback_client_exit();
 	do {
 		mock_high_ptr = mock_xprt_get(MOCK_HIGH);
 		mock_med_ptr = mock_xprt_get(MOCK);
@@ -214,6 +220,8 @@ void glink_ut0_mock_migration_2(struct seq_file *s)
 			handle = NULL;
 		}
 	}
+	glink_loopback_xprt_init();
+	glink_loopback_client_init();
 }
 
 /**
