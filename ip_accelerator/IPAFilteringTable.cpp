@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,6 +29,7 @@
 
 #include "IPAFilteringTable.h"
 #include <cstring>
+#include "TestsUtils.h"
 
 IPAFilteringTable::IPAFilteringTable () : // C'tor
 			m_pFilteringTable(NULL),
@@ -38,7 +39,7 @@ bool IPAFilteringTable::Init(ipa_ip_type ipFamily, ipa_client_type pipeNo, uint8
 {
 	if (NULL != m_pFilteringTable) {
 		char message[256] = {0};
-		sprintf(message, "Error in Function %s, m_pFilteringTable==0x%p, must be NULL, Please call D'tor prior to calling () %s.",
+		snprintf(message, sizeof(message), "Error in Function %s, m_pFilteringTable==0x%p, must be NULL, Please call D'tor prior to calling () %s.",
 				__FUNCTION__,m_pFilteringTable,__FUNCTION__);
 		ReportError(message);
 		return false;
@@ -46,7 +47,7 @@ bool IPAFilteringTable::Init(ipa_ip_type ipFamily, ipa_client_type pipeNo, uint8
 
 	if (numOfRulesInTable < 1) {
 		char message[256] = {0};
-		sprintf(message,"Error in Function %s, numberOfRulesInTable==%d must be  > 0",
+		snprintf(message, sizeof(message),"Error in Function %s, numberOfRulesInTable==%d must be  > 0",
 				__FUNCTION__,numOfRulesInTable);
 		ReportError(message);
 		return false;
@@ -58,7 +59,7 @@ bool IPAFilteringTable::Init(ipa_ip_type ipFamily, ipa_client_type pipeNo, uint8
 
 	if (NULL ==  m_pFilteringTable) {
 		char message[256] = {0};
-		sprintf(message,"Error in Function %s, Failed to allocate %d filter rules in Filtering Table",__FUNCTION__,numOfRulesInTable);
+		snprintf(message, sizeof(message),"Error in Function %s, Failed to allocate %d filter rules in Filtering Table",__FUNCTION__,numOfRulesInTable);
 		ReportError(message);
 		return false;
 	}
@@ -92,7 +93,7 @@ bool IPAFilteringTable::GeneratePresetRule(uint8_t preset,ipa_flt_rule_add &flt_
 		break;
 	default:
 		char message[256] = {0};
-		sprintf(message,"Error in Function %s, preset=%d, is not supported.",__FUNCTION__,preset);
+		snprintf(message, sizeof(message),"Error in Function %s, preset=%d, is not supported.",__FUNCTION__,preset);
 		ReportError(message);
 		return false;
 	}
@@ -103,14 +104,14 @@ uint8_t IPAFilteringTable::AddRuleToTable(ipa_flt_rule_add flt_rule_entry)
 {
 	if (NULL == m_pFilteringTable) {
 		char message[256] = {0};
-		sprintf(message,"Error in Function %s, m_pFilteringTable==NULL, Please call Init() prior to calling %s().",__FUNCTION__,__FUNCTION__);
+		snprintf(message, sizeof(message),"Error in Function %s, m_pFilteringTable==NULL, Please call Init() prior to calling %s().",__FUNCTION__,__FUNCTION__);
 		ReportError(message);
 		return -1;
 	}
 
 	if (nextRuleIndex >= m_pFilteringTable->num_rules) {
 		char message[256] = {0};
-		sprintf(message,"Error in Function %s, ruleIindex==%d while, No. of Rules in Filtering Table is %d. Please use IPAFilteringTable::WriteRule().",
+		snprintf(message, sizeof(message),"Error in Function %s, ruleIindex==%d while, No. of Rules in Filtering Table is %d. Please use IPAFilteringTable::WriteRule().",
 				__FUNCTION__,nextRuleIndex,m_pFilteringTable->num_rules);
 		ReportError(message);
 		return -1;

@@ -42,6 +42,15 @@
 #include "Logger.h"
 #include "Constants.h"
 
+// strlcpy for use on systems with no glib library
+#ifndef MSM_IPA_TESTS
+# ifdef USE_GLIB
+# include <glib.h>
+# else
+  size_t strlcpy(char * dst, const char * src, size_t size);
+# endif
+#endif
+
 using namespace std;
 #define TEST_APP_VERSION "2.00"
 

@@ -27,6 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "HeaderProcessingContextTestFixture.h"
+#include "TestsUtils.h"
 
 const Byte IpaHdrProcCtxTestFixture::WLAN_ETH2_HDR[WLAN_ETH2_HDR_SIZE] =
 {
@@ -175,7 +176,7 @@ void IpaHdrProcCtxTestFixture::AddHeader(HeaderHandleId handleId)
 		memcpy(hdr->hdr, WLAN_ETH2_HDR, WLAN_ETH2_HDR_SIZE);
 		hdr->hdr_len = WLAN_ETH2_HDR_SIZE;
 
-		strcpy (hdr->name, "WLAN_ETH2");
+		strlcpy(hdr->name, "WLAN_ETH2", sizeof(hdr->name));
 		hdr->type = IPA_HDR_L2_ETHERNET_II;
 		break;
 
@@ -187,12 +188,12 @@ void IpaHdrProcCtxTestFixture::AddHeader(HeaderHandleId handleId)
 			(size_t*)&hdr->hdr_len))
 			return;
 
-		strcpy (hdr->name, "RNDIS_ETH2");
+		strlcpy(hdr->name, "RNDIS_ETH2", sizeof(hdr->name));
 		hdr->type = IPA_HDR_L2_ETHERNET_II;
 		break;
 
 	case HEADER_HANDLE_ID_ETH2:
-		strcpy (hdr->name, "ETH2");
+		strlcpy(hdr->name, "ETH2", sizeof(hdr->name));
 		memcpy(hdr->hdr, ETH2_HDR, ETH_HLEN);
 		hdr->type = IPA_HDR_L2_ETHERNET_II;
 		hdr->hdr_len = ETH_HLEN;
@@ -204,7 +205,7 @@ void IpaHdrProcCtxTestFixture::AddHeader(HeaderHandleId handleId)
 		break;
 
 	case HEADER_HANDLE_ID_WLAN_802_3:
-		strcpy (hdr->name, "WLAN_802_3");
+		strlcpy(hdr->name, "WLAN_802_3", sizeof(hdr->name));
 		memcpy(hdr->hdr, WLAN_802_3_HDR, WLAN_802_3_HDR_SIZE);
 		hdr->type = IPA_HDR_L2_802_3;
 		hdr->hdr_len = WLAN_802_3_HDR_SIZE;
@@ -334,7 +335,7 @@ void IpaHdrProcCtxTestFixture::AddRtBypassRule(uint32_t hdrHdl, uint32_t procCtx
 	}
 
 	routing_table0.ip = IPA_IP_v4;
-	strcpy (routing_table0.name,bypass0);
+	strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 	if (!m_routing.GetRoutingTable(&routing_table0))
 	{
 		LOG_MSG_ERROR("m_routing.GetRoutingTable() Failed.");
@@ -450,7 +451,7 @@ bool IpaHdrProcCtxTestFixture::CreateIPv4BypassRoutingTable (
 	rt_table->num_rules = 1;
 	rt_table->ip = IPA_IP_v4;
 	rt_table->commit = true;
-	strcpy (rt_table->rt_tbl_name, name);
+	strlcpy(rt_table->rt_tbl_name, name, sizeof(rt_table->rt_tbl_name));
 
 	rt_rule_entry = &rt_table->rules[0];
 	rt_rule_entry->at_rear = 0;

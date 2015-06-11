@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,6 +28,7 @@
  */
 
 #include "MBIMAggregationTestFixtureConf12.h"
+#include "TestsUtils.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -162,7 +163,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "StreamId0\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "StreamId0", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&aHeadertoAdd,
 			sizeof(uint8_t)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(uint8_t);
@@ -170,7 +171,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
@@ -266,7 +267,7 @@ bool MBIMAggregationTestFixtureConf12::AddRulesDeaggregation() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "StreamId0\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "StreamId0", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&aHeadertoAdd,
 			sizeof(uint8_t)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(uint8_t);
@@ -274,7 +275,7 @@ bool MBIMAggregationTestFixtureConf12::AddRulesDeaggregation() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
@@ -370,7 +371,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregationTime() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "StreamId0\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "StreamId0", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&aHeadertoAdd,
 			sizeof(uint8_t)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(uint8_t);
@@ -378,7 +379,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregationTime() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
@@ -474,7 +475,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation0Limits() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "StreamId0\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "StreamId0", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&aHeadertoAdd,
 			sizeof(uint8_t)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(uint8_t);
@@ -482,7 +483,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation0Limits() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))

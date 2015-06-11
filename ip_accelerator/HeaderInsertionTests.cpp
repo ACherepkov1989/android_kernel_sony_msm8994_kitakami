@@ -166,7 +166,7 @@ public:
 	// 1. Generate and commit single bypass routing table.
 	virtual bool AddRules() {
 		m_eIP = IPA_IP_v4;
-		const char bypass0[20] = "Bypass0\0";
+		const char bypass0[20] = "Bypass0";
 		struct ipa_ioc_get_rt_tbl sRoutingTable;
 		bool bRetVal = true;
 		struct ipa_ioc_get_hdr sRetHeader;
@@ -175,7 +175,7 @@ public:
 		uint32_t nRTTableHdl=0;
 		memset(&sRoutingTable, 0, sizeof(sRoutingTable));
 		memset(&sRetHeader, 0, sizeof(sRetHeader));
-		strcpy (sRetHeader.name, "IEEE802_3\0");
+		strlcpy(sRetHeader.name, "IEEE802_3", sizeof(sRetHeader.name));
 
 		LOG_MSG_STACK("Entering Function");
 		// Create Header:
@@ -191,14 +191,14 @@ public:
 		}
 		pHeaderDescriptor->commit = true;
 		pHeaderDescriptor->num_hdrs = 1;
-		strcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name);
+		strlcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name, sizeof(pHeaderDescriptor->hdr[0].name));
 		memcpy(pHeaderDescriptor->hdr[0].hdr, m_aHeadertoAdd,
 				m_nHeadertoAddSize); //Header's Data
 		pHeaderDescriptor->hdr[0].hdr_len = m_nHeadertoAddSize;
 		pHeaderDescriptor->hdr[0].hdr_hdl = -1; //Return Value
 		pHeaderDescriptor->hdr[0].is_partial = false;
 		pHeaderDescriptor->hdr[0].status = -1; // Return Parameter
-		strcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name);
+		strlcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sRetHeader.name));
 
 		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
 		{
@@ -220,7 +220,7 @@ public:
 		}
 		LOG_MSG_INFO("CreateBypassRoutingTable completed successfully");
 		sRoutingTable.ip = m_eIP;
-		strcpy(sRoutingTable.name, bypass0);
+		strlcpy(sRoutingTable.name, bypass0, sizeof(sRoutingTable.name));
 		if (!m_Routing.GetRoutingTable(&sRoutingTable)) {
 			LOG_MSG_ERROR(
 					"m_routing.GetRoutingTable(&sRoutingTable=0x%p) Failed.", &sRoutingTable);
@@ -310,7 +310,7 @@ public:
 	// 1. Generate and commit single bypass routing table.
 	virtual bool AddRules() {
 		m_eIP = IPA_IP_v4;
-		const char bypass0[20] = "Bypass0\0";
+		const char bypass0[20] = "Bypass0";
 		struct ipa_ioc_get_rt_tbl sRoutingTable;
 		bool bRetVal = true;
 		struct ipa_ioc_get_hdr sRetHeader;
@@ -319,7 +319,7 @@ public:
 		uint32_t nRTTableHdl=0;
 		memset(&sRoutingTable, 0, sizeof(sRoutingTable));
 		memset(&sRetHeader, 0, sizeof(sRetHeader));
-		strcpy (sRetHeader.name, "IEEE802_3\0");
+		strlcpy(sRetHeader.name, "IEEE802_3", sizeof(sRetHeader.name));
 
 		LOG_MSG_STACK("Entering Function");
 		// Create Header:
@@ -335,7 +335,7 @@ public:
 		}
 		pHeaderDescriptor->commit = true;
 		pHeaderDescriptor->num_hdrs = 1;
-		strcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name, sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[0].hdr, m_aHeadertoAdd,
 				m_nHeadertoAddSize); //Header's Data
     pHeaderDescriptor->hdr[0].hdr[12] = 0x00; //set length to zero, to confirm if ipa updates or not
@@ -343,7 +343,7 @@ public:
 		pHeaderDescriptor->hdr[0].hdr_hdl = -1; //Return Value
 		pHeaderDescriptor->hdr[0].is_partial = false;
 		pHeaderDescriptor->hdr[0].status = -1; // Return Parameter
-		strcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name);
+		strlcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sRetHeader.name));
 
 		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
 		{
@@ -365,7 +365,7 @@ public:
 		}
 		LOG_MSG_INFO("CreateBypassRoutingTable completed successfully");
 		sRoutingTable.ip = m_eIP;
-		strcpy(sRoutingTable.name, bypass0);
+		strlcpy(sRoutingTable.name, bypass0, sizeof(sRoutingTable.name));
 		if (!m_Routing.GetRoutingTable(&sRoutingTable)) {
 			LOG_MSG_ERROR(
 					"m_routing.GetRoutingTable(&sRoutingTable=0x%p) Failed.", &sRoutingTable);
@@ -474,9 +474,9 @@ public:
 	// 1. Generate and commit single bypass routing table.
 	virtual bool AddRules() {
 		m_eIP = IPA_IP_v4;
-		const char aBypass1[20] = "Bypass1\0";
-		const char aBypass2[20] = "Bypass2\0";
-		const char aBypass3[20] = "Bypass3\0";
+		const char aBypass1[20] = "Bypass1";
+		const char aBypass2[20] = "Bypass2";
+		const char aBypass3[20] = "Bypass3";
 		uint32_t nTableHdl01, nTableHdl02, nTableHdl03;
 		bool bRetVal = true;
 		IPAFilteringTable cFilterTable0;
@@ -502,7 +502,7 @@ public:
 		pHeaderDescriptor->commit = true;
 		pHeaderDescriptor->num_hdrs = 2;
 		// Adding Header No1.
-		strcpy(pHeaderDescriptor->hdr[0].name, "RMNet\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[0].name, "RMNet", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[0].hdr, m_aHeadertoAdd1,
 				m_nHeadertoAddSize1); //Header's Data
 		pHeaderDescriptor->hdr[0].hdr_len    = m_nHeadertoAddSize1;
@@ -511,7 +511,7 @@ public:
 		pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
 		// Adding Header No2.
-		strcpy(pHeaderDescriptor->hdr[1].name, "IEEE_802_3\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[1].name, "IEEE_802_3", sizeof(pHeaderDescriptor->hdr[1].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[1].hdr, m_aHeadertoAdd2,
 				m_nHeadertoAddSize2); //Header's Data
 		pHeaderDescriptor->hdr[1].hdr_len    = m_nHeadertoAddSize2;
@@ -519,8 +519,8 @@ public:
 		pHeaderDescriptor->hdr[1].is_partial = false;
 		pHeaderDescriptor->hdr[1].status     = -1; // Return Parameter
 
-		strcpy(sGetHeader1.name, pHeaderDescriptor->hdr[0].name);
-		strcpy(sGetHeader2.name, pHeaderDescriptor->hdr[1].name);
+		strlcpy(sGetHeader1.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader1.name));
+		strlcpy(sGetHeader2.name, pHeaderDescriptor->hdr[1].name, sizeof(sGetHeader2.name));
 
 		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
 		{
@@ -724,7 +724,7 @@ public:
 		bool bRetVal = true;
 		struct ipa_ioc_get_hdr sRetHeader;
 		memset(&sRetHeader, 0, sizeof(sRetHeader));
-		strcpy (sRetHeader.name, "Generic\0");
+		strlcpy(sRetHeader.name, "Generic", sizeof(sRetHeader.name));
 
 		LOG_MSG_STACK("Entering Function");
 		// Create Header:
@@ -740,14 +740,14 @@ public:
 		}
 		pHeaderDescriptor->commit = true;
 		pHeaderDescriptor->num_hdrs = 1;
-		strcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name);
+		strlcpy(pHeaderDescriptor->hdr[0].name, sRetHeader.name, sizeof(pHeaderDescriptor->hdr[0].name));
 		memcpy(pHeaderDescriptor->hdr[0].hdr, m_aHeadertoAdd,
 				m_nHeadertoAddSize); //Header's Data
 		pHeaderDescriptor->hdr[0].hdr_len = len;
 		pHeaderDescriptor->hdr[0].hdr_hdl = -1; //Return Value
 		pHeaderDescriptor->hdr[0].is_partial = false;
 		pHeaderDescriptor->hdr[0].status = -1; // Return Parameter
-		strcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name);
+		strlcpy(sRetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sRetHeader.name));
 
 		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
 		{

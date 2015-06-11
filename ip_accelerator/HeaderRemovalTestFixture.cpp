@@ -32,7 +32,6 @@
 #include "Constants.h"
 #include "Logger.h"
 #include "IPAFilteringTable.h"
-#include "TestsUtils.h"
 
 #define IPA_TEST_DMUX_HEADER_LENGTH           8
 #define IPA_TEST_META_DATA_IS_VALID           1
@@ -251,7 +250,7 @@ bool  HeaderRemovalTestFixture::SetFilterTableToPassAllToSpecificClient(
 	struct ipa_ioc_get_rt_tbl sRoutingTable;
 
 	sRoutingTable.ip = IPA_IP_v4;
-	strcpy(sRoutingTable.name, "Bypass0");
+	strlcpy(sRoutingTable.name, "Bypass0", sizeof(sRoutingTable.name));
 
 	if (false == m_routing.GetRoutingTable(&sRoutingTable)) {
 	  LOG_MSG_ERROR("Configure the routing block first");
@@ -326,7 +325,7 @@ bool HeaderRemovalTestFixture::CreateBypassRoutingTablesIPv4(
 	rt_rule0->num_rules = 1;
 	rt_rule0->ip = IPA_IP_v4;
 	rt_rule0->commit = true;
-	strcpy (rt_rule0->rt_tbl_name, bypass0);
+	strlcpy(rt_rule0->rt_tbl_name, bypass0, sizeof(rt_rule0->rt_tbl_name));
 
 	rt_rule_entry = &rt_rule0->rules[0];
 	rt_rule_entry->at_rear = 0;
@@ -367,7 +366,7 @@ bool HeaderRemovalTestFixture::ConfigureFilteringBlockWithMetaDataEq(
 
 	LOG_MSG_INFO("CreateBypassRoutingTablesIPv4 completed successfully");
 	routing_table0.ip = IPA_IP_v4;
-	strcpy (routing_table0.name, bypass0);
+	strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 	if (!m_routing.GetRoutingTable(&routing_table0)) {
 		LOG_MSG_INFO(
 				"m_routing.GetRoutingTable(&routing_table0=0x%p) Failed."

@@ -151,25 +151,25 @@ bool IpaFilteringEthernetBridgingTestFixture::ReceivePacketsAndCompare()
 
 	size_t j;
 	for(j = 0; j < m_sendSize1; j++)
-		sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer1[j]);
+		snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer1[j]);
 	for(j = 0; j < receivedSize; j++)
-		sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 	printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",
 		m_sendSize1,SentBuffer,receivedSize,recievedBuffer);
 	recievedBuffer[0] = 0;
 
 	for(j = 0; j < m_sendSize2; j++)
-		sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		snprintf(&SentBuffer[3 * j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer2[j]);
 	for(j = 0; j < receivedSize2; j++)
-		sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff2[j]);
 	printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",
 		m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
 	recievedBuffer[0] = 0;
 
 	for(j = 0; j < m_sendSize3; j++)
-		sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer3[j]);
 	for(j = 0; j < receivedSize3; j++)
-		sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff3[j]);
 	printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",
 		m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
 	recievedBuffer[0] = 0;
@@ -222,7 +222,7 @@ bool IpaFilteringEthernetBridgingTestFixture::CreateThreeIPv4BypassRoutingTables
 	rt_rule0->num_rules = 1;
 	rt_rule0->ip = IPA_IP_v4;
 	rt_rule0->commit = true;
-	strcpy (rt_rule0->rt_tbl_name, bypass0);
+	strlcpy(rt_rule0->rt_tbl_name, bypass0, sizeof(rt_rule0->rt_tbl_name));
 
 	rt_rule_entry = &rt_rule0->rules[0];
 	rt_rule_entry->at_rear = 0;
@@ -243,7 +243,7 @@ bool IpaFilteringEthernetBridgingTestFixture::CreateThreeIPv4BypassRoutingTables
 	rt_rule1->num_rules = 1;
 	rt_rule1->ip = IPA_IP_v4;
 	rt_rule1->commit = true;
-	strcpy (rt_rule1->rt_tbl_name, bypass1);
+	strlcpy(rt_rule1->rt_tbl_name, bypass1, sizeof(rt_rule1->rt_tbl_name));
 	rt_rule_entry = &rt_rule1->rules[0];
 	rt_rule_entry->at_rear = 0;
 	rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
@@ -263,7 +263,7 @@ bool IpaFilteringEthernetBridgingTestFixture::CreateThreeIPv4BypassRoutingTables
 	rt_rule2->num_rules = 1;
 	rt_rule2->ip = IPA_IP_v4;
 	rt_rule2->commit = true;
-	strcpy (rt_rule2->rt_tbl_name, bypass2);
+	strlcpy(rt_rule2->rt_tbl_name, bypass2, sizeof(rt_rule2->rt_tbl_name));
 	rt_rule_entry = &rt_rule2->rules[0];
 	rt_rule_entry->at_rear = 0;
 	rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
@@ -323,7 +323,7 @@ bool IpaFilteringEthernetBridgingTestFixture::CreateThreeIPv6BypassRoutingTables
 	rt_rule0->num_rules = 1;
 	rt_rule0->ip = IPA_IP_v6;
 	rt_rule0->commit = true;
-	strcpy (rt_rule0->rt_tbl_name, bypass0);
+	strlcpy(rt_rule0->rt_tbl_name, bypass0, sizeof(rt_rule0->rt_tbl_name));
 
 	rt_rule_entry = &rt_rule0->rules[0];
 	rt_rule_entry->at_rear = 0;
@@ -349,7 +349,7 @@ bool IpaFilteringEthernetBridgingTestFixture::CreateThreeIPv6BypassRoutingTables
 	rt_rule1->num_rules = 1;
 	rt_rule1->ip = IPA_IP_v6;
 	rt_rule1->commit = true;
-	strcpy (rt_rule1->rt_tbl_name, bypass1);
+	strlcpy(rt_rule1->rt_tbl_name, bypass1, sizeof(rt_rule1->rt_tbl_name));
 	rt_rule_entry = &rt_rule1->rules[0];
 	rt_rule_entry->at_rear = 0;
 	rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
@@ -374,7 +374,7 @@ bool IpaFilteringEthernetBridgingTestFixture::CreateThreeIPv6BypassRoutingTables
 	rt_rule2->num_rules = 1;
 	rt_rule2->ip = IPA_IP_v6;
 	rt_rule2->commit = true;
-	strcpy (rt_rule2->rt_tbl_name, bypass2);
+	strlcpy(rt_rule2->rt_tbl_name, bypass2, sizeof(rt_rule2->rt_tbl_name));
 	rt_rule_entry = &rt_rule2->rules[0];
 	rt_rule_entry->at_rear = 0;
 	rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;

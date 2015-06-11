@@ -224,10 +224,10 @@ public:
 //		char * p = recievedBuffer;
 		size_t j;
 		for(j = 0; j < m_sendSize; j++)
-		    sprintf(&SentBuffer[3*j], " %02X", send[j]);
+		    snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", send[j]);
 		for(j = 0; j < receivedSize; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
-		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		    snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 		printf("Expected Value (%zu)\n%s\n, Received Value1(%zu)\n%s\n",send_sz,SentBuffer,receivedSize,recievedBuffer);
 
 		delete[] rxBuff1;
@@ -275,24 +275,24 @@ public:
 //		char * p = recievedBuffer;
 		size_t j;
 		for(j = 0; j < m_sendSize; j++)
-		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		    snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer[j]);
 		for(j = 0; j < receivedSize; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
-		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		    snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
 
 		for(j = 0; j < m_sendSize2; j++)
-		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		    snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer2[j]);
 		for(j = 0; j < receivedSize2; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
-		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		    snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff2[j]);
 		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
 
 		for(j = 0; j < m_sendSize3; j++)
-		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		    snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer3[j]);
 		for(j = 0; j < receivedSize3; j++)
 //			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
-		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		    snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff3[j]);
 		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
 
 		delete[] rxBuff1;
@@ -320,7 +320,7 @@ public:
 
 		memset(&st_rt_tbl, 0, sizeof(st_rt_tbl));
 		memset(&flt_rule_entry, 0, sizeof(flt_rule_entry));
-		strcpy(st_rt_tbl.name, "LAN");
+		strlcpy(st_rt_tbl.name, "LAN", sizeof(st_rt_tbl.name));
 		st_rt_tbl.ip = m_IpaIPType;
 		fltTable.Init(m_IpaIPType, IPA_CLIENT_TEST_PROD, true, 1);
 		m_routing.GetRoutingTable(&st_rt_tbl);
@@ -441,7 +441,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v4;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -572,7 +572,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v4;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -703,7 +703,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v4;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -831,7 +831,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v4;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -969,7 +969,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v6;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -1116,7 +1116,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v6;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -1261,7 +1261,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v6;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -1394,7 +1394,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v6;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
@@ -1541,7 +1541,7 @@ public:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v6;
-		strcpy(rt_rule->rt_tbl_name, "LAN");
+		strlcpy(rt_rule->rt_tbl_name, "LAN", sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule_entry = &rt_rule->rules[0];
 		rt_rule_entry->at_rear = 0;
