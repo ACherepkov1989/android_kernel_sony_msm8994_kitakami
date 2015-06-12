@@ -248,7 +248,7 @@ void print_buff(void *data, size_t size)
 		":Printing buffer at address 0x%p, size = %zu:\n"
 		, data, size);
 	for (i = 0; i < num_lines; i++) {
-		strlcpy(str, "\0", sizeof(str));
+		str[0] = '\0';
 		for (j = 0; (j < bytes_in_line) &&
 			((i * bytes_in_line + j) < size); j++) {
 			snprintf(tmp, sizeof(tmp), "%02x ",
@@ -4173,8 +4173,8 @@ void notify_upon_exception(void *priv,
 	pr_debug("[%s:%d, %s()] was called, evt=%s(%d)"
 			, __FILE__, __LINE__,
 			__func__, (evt == IPA_RECEIVE) ?
-					"IPA_RECEIVE\0" :
-					"IPA_WRITE_DONE\0", evt);
+					"IPA_RECEIVE" :
+					"IPA_WRITE_DONE", evt);
 	if (IPA_RECEIVE != evt) {
 		pr_err("[%s:%d, %s()]unexpected value of evt == %d\n"
 				, __FILE__, __LINE__,

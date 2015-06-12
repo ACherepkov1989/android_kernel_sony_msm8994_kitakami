@@ -392,9 +392,9 @@ bool SendReceiveAndCompare(InterfaceAbstraction *pSink, uint8_t* pSendBuffer, si
 		memset(aRecievedBufferStr,0,3*nReceivedBuffSize+1);
 
 		for(j = 0; j < nExpectedBuffSize; j++)
-			sprintf(&aExpectedBufferStr[3*j], " %02X", pExpectedBuffer[j]);
+			snprintf(&aExpectedBufferStr[3*j], 3*nExpectedBuffSize+1 - (3*j + 1), " %02X", pExpectedBuffer[j]);
 		for(j = 0; j < nReceivedBuffSize; j++)
-			sprintf(&aRecievedBufferStr[3*j], " %02X", pRxBuff[j]);
+			snprintf(&aRecievedBufferStr[3*j], 3*nReceivedBuffSize+1 - (3*j + 1), " %02X", pRxBuff[j]);
 		LOG_MSG_INFO("\nExpected Value (%d)\n%s\n, Received Value(%d)\n%s\n",nExpectedBuffSize,aExpectedBufferStr,nReceivedBuffSize,aRecievedBufferStr);
 	}
 
@@ -418,7 +418,7 @@ bool SendReceiveAndCompare(InterfaceAbstraction *pSink, uint8_t* pSendBuffer, si
 		LOG_MSG_ERROR("More Data in Pipe!\nReceived %d bytes on %s.", nReceivedBuffSize, pSource->m_fromChannelName.c_str());
 		memset(aRecievedBufferStr,0,3*nReceivedBuffSize+1);
 		for(j = 0; j < nReceivedBuffSize; j++) {
-			sprintf(&aRecievedBufferStr[3*j], " %02X", pRxBuff[j]);
+			snprintf(&aRecievedBufferStr[3*j], 3*nReceivedBuffSize+1 - (3*j + 1), " %02X", pRxBuff[j]);
 		}
 		LOG_MSG_ERROR("\nReceived Value(%d)\n%s\n",nReceivedBuffSize,aRecievedBufferStr);
 		nReceivedBuffSize = pSource->ReceiveData(pRxBuff, 2*(nExpectedBuffSize+1)); // We cannot overflow here.
@@ -455,7 +455,7 @@ bool CreateBypassRoutingTable (RoutingDriverWrapper * pRouting,enum ipa_ip_type 
 	pRoutingRule->num_rules = 1;
 	pRoutingRule->ip = ((IPA_IP_v4 == eIP)? IPA_IP_v4 : IPA_IP_v6);
 	pRoutingRule->commit = true;
-	strcpy (pRoutingRule->rt_tbl_name, pTableName);
+	strlcpy(pRoutingRule->rt_tbl_name, pTableName, sizeof(pRoutingRule->rt_tbl_name));
 
 	pRoutingRuleEntry = &(pRoutingRule->rules[0]);
 	pRoutingRuleEntry->at_rear = 1;
@@ -476,7 +476,7 @@ bool CreateBypassRoutingTable (RoutingDriverWrapper * pRouting,enum ipa_ip_type 
 	}
 	LOG_MSG_INFO("pRoutingRuleEntry->rt_rule_hdl == 0x%x added to Table %s",pRoutingRuleEntry->rt_rule_hdl,pTableName);
 	sRoutingTable.ip = eIP;
-	strcpy(sRoutingTable.name, pTableName);
+	strlcpy(sRoutingTable.name, pTableName, sizeof(sRoutingTable.name));
 	if (!pRouting->GetRoutingTable(&sRoutingTable)) {
 		LOG_MSG_ERROR(
 				"m_routing.GetRoutingTable(&sRoutingTable=0x%p) Failed.", &sRoutingTable);
@@ -551,9 +551,9 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	}
 
 	if(params != NULL)
-		sprintf(pSendBuffer, "%d %s", testConfiguration, params);
+		snprintf(pSendBuffer, strlen(params) + 10, "%d %s", testConfiguration, params);
 	else
-		sprintf(pSendBuffer, "%d", testConfiguration);
+		snprintf(pSendBuffer, 10, "%d", testConfiguration);
 
 	ret = write(fd, pSendBuffer, sizeof(pSendBuffer) );
 	if (ret < 0) {
@@ -564,7 +564,7 @@ int ConfigureSystem(int testConfiguration, int fd, const char* params)
 	// Wait until the system is fully configured
 
 	// Convert testConfiguration to string
-	snprintf(testConfigurationStr, 10, "%d", testConfiguration);
+	snprintf(testConfigurationStr, sizeof(testConfigurationStr), "%d", testConfiguration);
 
 	// Read the configuration index from the device node
 	ret = read(fd, str, sizeof(str));
@@ -999,11 +999,11 @@ void print_buff(void *data, size_t size)
 
 	printf("Printing buffer at address 0x%p, size = %zu: \n", data, size);
 	for (i = 0 ; i < num_lines; i++) {
-		strncpy(str, "\0", sizeof(str));
+		str[0] = '\0';
 		for (j = 0; (j < bytes_in_line) && ((i * bytes_in_line + j) < size); j++) {
 			snprintf(tmp, sizeof(tmp), "%02x ",
 				 ((unsigned char*)data)[i * bytes_in_line + j]);
-			strncat(str, tmp, sizeof(str) - strlen(str) - 1);
+			strlcpy(str + strlen(str), tmp, sizeof(str) - strlen(str));
 		}
 		printf("%s\n", str);
 	}
@@ -1476,3 +1476,13 @@ bool RNDISAggregationHelper::ComparePackets(
 
 	return res;
 }
+
+#if !defined(MSM_IPA_TESTS) && !defined(USE_GLIB)
+size_t strlcpy(char * dst, const char * src, size_t size){
+	if (size < 1)
+		return 0;
+	strncpy(dst, src, size - 1);
+	dst[size-1] = 0;
+	return strlen(dst);
+}
+#endif

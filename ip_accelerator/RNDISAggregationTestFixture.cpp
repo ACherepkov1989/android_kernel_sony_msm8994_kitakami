@@ -281,7 +281,7 @@ bool RNDISAggregationTestFixture::AddRulesAggTimeLimit() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "RndisEthernet\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "RndisEthernet", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&rndisEtherHeader,
 		sizeof(struct RndisEtherHeader)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(struct RndisEtherHeader);
@@ -289,7 +289,7 @@ bool RNDISAggregationTestFixture::AddRulesAggTimeLimit() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
@@ -387,7 +387,7 @@ bool RNDISAggregationTestFixture::AddRulesAggByteLimit() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "RndisEthernet\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "RndisEthernet", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&rndisEtherHeader,
 		sizeof(struct RndisEtherHeader)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(struct RndisEtherHeader);
@@ -395,7 +395,7 @@ bool RNDISAggregationTestFixture::AddRulesAggByteLimit() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
@@ -493,7 +493,7 @@ bool RNDISAggregationTestFixture::AddRulesAggPacketLimit() {
 	pHeaderDescriptor->commit = true;
 	pHeaderDescriptor->num_hdrs = 1;
 	// Adding Header No1.
-	strcpy(pHeaderDescriptor->hdr[0].name, "RndisEthernet\0"); // Header's Name
+	strlcpy(pHeaderDescriptor->hdr[0].name, "RndisEthernet", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 	memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&rndisEtherHeader,
 		sizeof(struct RndisEtherHeader)); //Header's Data
 	pHeaderDescriptor->hdr[0].hdr_len    = sizeof(struct RndisEtherHeader);
@@ -501,7 +501,7 @@ bool RNDISAggregationTestFixture::AddRulesAggPacketLimit() {
 	pHeaderDescriptor->hdr[0].is_partial = false;
 	pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
-	strcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name);
+	strlcpy(sGetHeader.name, pHeaderDescriptor->hdr[0].name, sizeof(sGetHeader.name));
 
 
 	if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))

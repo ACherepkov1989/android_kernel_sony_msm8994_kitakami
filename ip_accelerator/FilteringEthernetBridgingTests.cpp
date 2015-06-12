@@ -70,7 +70,7 @@ public:
 		}
 
 		routing_table0.ip = IPA_IP_v4;
-		strcpy (routing_table0.name,bypass0);
+		strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 		if (!m_routing.GetRoutingTable(&routing_table0))
 		{
 			LOG_MSG_ERROR(
@@ -79,7 +79,7 @@ public:
 			return false;
 		}
 		routing_table1.ip = IPA_IP_v4;
-		strcpy (routing_table1.name,bypass1);
+		strlcpy(routing_table1.name, bypass1, sizeof(routing_table1.name));
 		if (!m_routing.GetRoutingTable(&routing_table1))
 		{
 			LOG_MSG_ERROR(
@@ -89,7 +89,7 @@ public:
 		}
 
 		routing_table2.ip = IPA_IP_v4;
-		strcpy (routing_table2.name,bypass2);
+		strlcpy(routing_table2.name, bypass2, sizeof(routing_table2.name));
 		if (!m_routing.GetRoutingTable(&routing_table2))
 		{
 			LOG_MSG_ERROR(
@@ -236,7 +236,7 @@ public:
 		}
 
 		routing_table0.ip = IPA_IP_v4;
-		strcpy (routing_table0.name,bypass0);
+		strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 		if (!m_routing.GetRoutingTable(&routing_table0))
 		{
 			LOG_MSG_ERROR(
@@ -245,7 +245,7 @@ public:
 			return false;
 		}
 		routing_table1.ip = IPA_IP_v4;
-		strcpy (routing_table1.name,bypass1);
+		strlcpy(routing_table1.name, bypass1, sizeof(routing_table1.name));
 		if (!m_routing.GetRoutingTable(&routing_table1))
 		{
 			LOG_MSG_ERROR("m_routing.GetRoutingTable(&routing_table1=0x%p)",
@@ -254,7 +254,7 @@ public:
 		}
 
 		routing_table2.ip = IPA_IP_v4;
-		strcpy (routing_table2.name,bypass2);
+		strlcpy(routing_table2.name, bypass2, sizeof(routing_table2.name));
 		if (!m_routing.GetRoutingTable(&routing_table2))
 		{
 			LOG_MSG_ERROR(
@@ -413,7 +413,7 @@ public:
 		}
 
 		routing_table0.ip = IPA_IP_v4;
-		strcpy (routing_table0.name,bypass0);
+		strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 		if (!m_routing.GetRoutingTable(&routing_table0))
 		{
 			LOG_MSG_ERROR(
@@ -422,7 +422,7 @@ public:
 			return false;
 		}
 		routing_table1.ip = IPA_IP_v4;
-		strcpy (routing_table1.name,bypass1);
+		strlcpy(routing_table1.name, bypass1, sizeof(routing_table1.name));
 		if (!m_routing.GetRoutingTable(&routing_table1))
 		{
 			LOG_MSG_ERROR("m_routing.GetRoutingTable(&routing_table1=0x%p)",
@@ -431,7 +431,7 @@ public:
 		}
 
 		routing_table2.ip = IPA_IP_v4;
-		strcpy (routing_table2.name,bypass2);
+		strlcpy(routing_table2.name, bypass2, sizeof(routing_table2.name));
 		if (!m_routing.GetRoutingTable(&routing_table2))
 		{
 			LOG_MSG_ERROR(
@@ -593,7 +593,7 @@ public:
 		}
 
 		routing_table0.ip = IPA_IP_v4;
-		strcpy (routing_table0.name,bypass0);
+		strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 		if (!m_routing.GetRoutingTable(&routing_table0))
 		{
 			LOG_MSG_ERROR(
@@ -602,7 +602,7 @@ public:
 			return false;
 		}
 		routing_table1.ip = IPA_IP_v4;
-		strcpy (routing_table1.name,bypass1);
+		strlcpy(routing_table1.name, bypass1, sizeof(routing_table1.name));
 		if (!m_routing.GetRoutingTable(&routing_table1))
 		{
 			LOG_MSG_ERROR("m_routing.GetRoutingTable(&routing_table1=0x%p)",
@@ -611,7 +611,7 @@ public:
 		}
 
 		routing_table2.ip = IPA_IP_v4;
-		strcpy (routing_table2.name,bypass2);
+		strlcpy(routing_table2.name, bypass2, sizeof(routing_table2.name));
 		if (!m_routing.GetRoutingTable(&routing_table2))
 		{
 			LOG_MSG_ERROR(

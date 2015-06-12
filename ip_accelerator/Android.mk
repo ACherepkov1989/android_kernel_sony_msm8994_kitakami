@@ -22,6 +22,7 @@ LOCAL_C_INCLUDES :=   external/stlport/stlport bionic/ bionic/libstdc++/include
 # For APQ8064
 LOCAL_CFLAGS += -I$(TOP)/kernel/include
 LOCAL_CFLAGS += -DIPA_ON_R3PC
+LOCAL_CFLAGS += -DMSM_IPA_TESTS
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_MODULE      := ip_accelerator

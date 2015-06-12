@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -172,17 +172,20 @@ int chooserMode() {
 	TestBase *test;
 	const char* res;
 	int result = 0;
+	char input_str[4];
 
 	printf("Welcome to the ip_accelerator\nChoose an option:\n");
 	printf("1) Run tests\n2) Run suites\n3) Exit\nChoose an option: ");
-	scanf("%d",&type);
+	fgets(input_str, sizeof(input_str), stdin);
+	type = atoi(input_str);
 	switch((enum ipa_test_type)type) {
 	case TEST:
 		BuildRegressionTestSuite();
 		showTests();
 		printf("Choose which test you wish to run: \n");
 		fflush(stdin);
-		scanf("%u",&test_num);
+		fgets(input_str, sizeof(input_str), stdin);
+		test_num = atoi(input_str);
 		if ( test_num > testmanager->m_testList.size()) {
 			printf("Invalid test number. Try again\n");
 			result = -1;
@@ -202,7 +205,8 @@ int chooserMode() {
 		showSuits();
 		printf("Choose which suite you wish to run: \n");
 		fflush(stdin);
-		scanf("%d",&suite_num);
+		fgets(input_str, sizeof(input_str), stdin);
+		suite_num = atoi(input_str);
 		if (suite_num < 0 || suite_num > MAX_SUITES) {
 			printf("Invalid test number. Try again\n");
 			result = -1;

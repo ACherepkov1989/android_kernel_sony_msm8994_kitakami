@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -98,8 +98,8 @@ private:
 		// Get a copy of IPA --> WLAN Header, the partial header was
 		// installed by the WLAN driver
 		struct ipa_ioc_copy_hdr ipa_to_wlan_header;
-		strncpy(ipa_to_wlan_header.name, IPA_TO_WLAN_HEADER_NAME,
-			strlen(IPA_TO_WLAN_HEADER_NAME));
+		strlcpy(ipa_to_wlan_header.name, IPA_TO_WLAN_HEADER_NAME,
+			sizeof(ipa_to_wlan_header.name));
 		if (!m_HeaderInsertion.CopyHeader(&ipa_to_wlan_header)) {
 			LOG_MSG_ERROR("Failed copying header");
 			return false;
@@ -196,7 +196,7 @@ private:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v4;
-		strcpy(rt_rule->rt_tbl_name, LAN_ROUTING_TABLE_NAME);
+		strlcpy(rt_rule->rt_tbl_name, LAN_ROUTING_TABLE_NAME, sizeof(rt_rule->rt_tbl_name));
 
 		// Set the parameters for all the rules
 		for (int i = 0; i < NUM_RULES; i++) {
@@ -244,7 +244,7 @@ private:
 		rt_rule->commit = 1;
 		rt_rule->num_rules = NUM_RULES;
 		rt_rule->ip = IPA_IP_v4;
-		strcpy(rt_rule->rt_tbl_name, WAN_ROUTING_TABLE_NAME);
+		strlcpy(rt_rule->rt_tbl_name, WAN_ROUTING_TABLE_NAME, sizeof(rt_rule->rt_tbl_name));
 
 		rt_rule->rules[0].rule.hdr_hdl = m_ipa_to_wlan_hdr_hdl;
 
@@ -288,14 +288,14 @@ private:
 
 		// Get the needed routing tables handles
 		lan_routing_table.ip = IPA_IP_v4;
-		strcpy (lan_routing_table.name, LAN_ROUTING_TABLE_NAME);
+		strlcpy(lan_routing_table.name, LAN_ROUTING_TABLE_NAME, sizeof(lan_routing_table.name));
 		if (!m_Routing.GetRoutingTable(&lan_routing_table)) {
 			LOG_MSG_ERROR("Failed getting LAN_RT routing table");
 			return false;
 		}
 
 		wan_routing_table.ip = IPA_IP_v4;
-		strcpy (wan_routing_table.name, WAN_ROUTING_TABLE_NAME);
+		strlcpy(wan_routing_table.name, WAN_ROUTING_TABLE_NAME, sizeof(wan_routing_table.name));
 		if (!m_Routing.GetRoutingTable(&wan_routing_table)) {
 			LOG_MSG_ERROR("Failed getting WAN_RT routing table");
 			return false;
@@ -347,7 +347,7 @@ private:
 
 		// Get the needed routing tables handles
 		lan_routing_table.ip = IPA_IP_v4;
-		strcpy (lan_routing_table.name, LAN_ROUTING_TABLE_NAME);
+		strlcpy(lan_routing_table.name, LAN_ROUTING_TABLE_NAME, sizeof(lan_routing_table.name));
 		if (!m_Routing.GetRoutingTable(&lan_routing_table)) {
 			LOG_MSG_ERROR("Failed getting LAN_RT routing table");
 			return false;

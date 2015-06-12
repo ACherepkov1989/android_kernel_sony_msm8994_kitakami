@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -181,7 +181,7 @@ public:
 		}
 		LOG_MSG_INFO("CreateBypassRoutingTable completed successfully");
 		sRoutingTable.ip = m_eIP;
-		strcpy(sRoutingTable.name, bypass0);
+		strlcpy(sRoutingTable.name, bypass0, sizeof(sRoutingTable.name));
 		if (!m_Routing.GetRoutingTable(&sRoutingTable)) {
 			LOG_MSG_ERROR(
 					"m_routing.GetRoutingTable(&sRoutingTable=0x%p) Failed.", &sRoutingTable);
@@ -303,7 +303,7 @@ public:
 		}
 		LOG_MSG_INFO("CreateBypassRoutingTable completed successfully");
 		sRoutingTable.ip = m_eIP;
-		strcpy(sRoutingTable.name, bypass0);
+		strlcpy(sRoutingTable.name, bypass0, sizeof(sRoutingTable.name));
 		if (!m_Routing.GetRoutingTable(&sRoutingTable)) {
 			LOG_MSG_ERROR(
 					"m_routing.GetRoutingTable(&sRoutingTable=0x%p) Failed.", &sRoutingTable);
@@ -402,7 +402,7 @@ public:
 		}
 		LOG_MSG_INFO("CreateBypassRoutingTable completed successfully");
 		sRoutingTable.ip = m_eIP;
-		strcpy(sRoutingTable.name, bypass0);
+		strlcpy(sRoutingTable.name, bypass0, sizeof(sRoutingTable.name));
 		if (!m_Routing.GetRoutingTable(&sRoutingTable)) {
 			LOG_MSG_ERROR(
 					"m_routing.GetRoutingTable(&sRoutingTable=0x%p) Failed.", &sRoutingTable);

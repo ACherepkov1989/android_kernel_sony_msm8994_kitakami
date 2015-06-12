@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -131,7 +131,7 @@ public:
 #endif
 		// Fetch Header Insertion Entries (these were added by USB driver)
 		memset(&sGetIPv4Header, 0, sizeof(sGetIPv4Header));
-		strcpy(sGetIPv4Header.name, "USB_ETHER_IPV4");//IPv4 Ethertype Header
+		strlcpy(sGetIPv4Header.name, "USB_ETHER_IPV4", sizeof(sGetIPv4Header.name));//IPv4 Ethertype Header
 		if (!m_HeaderInsertion.GetHeaderHandle(&sGetIPv4Header))
 		{
 			LOG_MSG_ERROR(" Failed");
@@ -151,7 +151,7 @@ public:
 #ifdef IPV6_ENABLED
 		// Fetch Header Insertion Entries (these were added by USB driver)
 		memset(&sGetIPv6Header, 0, sizeof(sGetIPv6Header));
-		strcpy(sGetIPv6Header.name, "USB_ETHER_IPV6");//IPv6 Ethertype Header
+		strlcpy(sGetIPv6Header.name, "USB_ETHER_IPV6", sizeof(sGetIPv6Header.name));//IPv6 Ethertype Header
 		if (!m_HeaderInsertion.GetHeaderHandle(&sGetIPv6Header))
 		{
 			LOG_MSG_ERROR(" Failed");

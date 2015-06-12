@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -3017,7 +3017,7 @@ public:
 		pHeaderDescriptor->commit = true;
 		pHeaderDescriptor->num_hdrs = NUM_PACKETS;
 		// Adding Header No1.
-		strcpy(pHeaderDescriptor->hdr[0].name, "StreamId0\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[0].name, "StreamId0", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&aHeadertoAdd[0],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[0].hdr_len    = sizeof(uint8_t);
@@ -3026,7 +3026,7 @@ public:
 		pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
 		// Adding Header No2.
-		strcpy(pHeaderDescriptor->hdr[1].name, "StreamId1\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[1].name, "StreamId1", sizeof(pHeaderDescriptor->hdr[1].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[1].hdr, (void*)&aHeadertoAdd[1],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[1].hdr_len    = sizeof(uint8_t);
@@ -3035,7 +3035,7 @@ public:
 		pHeaderDescriptor->hdr[1].status     = -1; // Return Parameter
 
 		// Adding Header No3.
-		strcpy(pHeaderDescriptor->hdr[2].name, "StreamId2\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[2].name, "StreamId2", sizeof(pHeaderDescriptor->hdr[2].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[2].hdr, (void*)&aHeadertoAdd[2],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[2].hdr_len    = sizeof(uint8_t);
@@ -3044,7 +3044,7 @@ public:
 		pHeaderDescriptor->hdr[2].status     = -1; // Return Parameter
 
 		// Adding Header No4.
-		strcpy(pHeaderDescriptor->hdr[3].name, "StreamId3\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[3].name, "StreamId3", sizeof(pHeaderDescriptor->hdr[3].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[3].hdr, (void*)&aHeadertoAdd[3],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[3].hdr_len    = sizeof(uint8_t);
@@ -3053,7 +3053,7 @@ public:
 		pHeaderDescriptor->hdr[3].status     = -1; // Return Parameter
 
 		// Adding Header No5.
-		strcpy(pHeaderDescriptor->hdr[4].name, "StreamId4\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[4].name, "StreamId4", sizeof(pHeaderDescriptor->hdr[4].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[4].hdr, (void*)&aHeadertoAdd[4],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[4].hdr_len    = sizeof(uint8_t);
@@ -3062,7 +3062,7 @@ public:
 		pHeaderDescriptor->hdr[4].status     = -1; // Return Parameter
 
 		for (int i = 0; i < NUM_PACKETS; i++)
-			strcpy(sGetHeader[i].name, pHeaderDescriptor->hdr[i].name);
+			strlcpy(sGetHeader[i].name, pHeaderDescriptor->hdr[i].name, sizeof(sGetHeader[i].name));
 
 
 		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
@@ -3284,7 +3284,7 @@ public:
 		pHeaderDescriptor->commit = true;
 		pHeaderDescriptor->num_hdrs = 2;
 		// Adding Header No1.
-		strcpy(pHeaderDescriptor->hdr[0].name, "StreamId0\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[0].name, "StreamId0", sizeof(pHeaderDescriptor->hdr[0].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[0].hdr, (void*)&aHeadertoAdd[0],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[0].hdr_len    = sizeof(uint8_t);
@@ -3293,7 +3293,7 @@ public:
 		pHeaderDescriptor->hdr[0].status     = -1; // Return Parameter
 
 		// Adding Header No2.
-		strcpy(pHeaderDescriptor->hdr[1].name, "StreamId1\0"); // Header's Name
+		strlcpy(pHeaderDescriptor->hdr[1].name, "StreamId1", sizeof(pHeaderDescriptor->hdr[1].name)); // Header's Name
 		memcpy(pHeaderDescriptor->hdr[1].hdr, (void*)&aHeadertoAdd[1],
 				sizeof(uint8_t)); //Header's Data
 		pHeaderDescriptor->hdr[1].hdr_len    = sizeof(uint8_t);
@@ -3302,7 +3302,7 @@ public:
 		pHeaderDescriptor->hdr[1].status     = -1; // Return Parameter
 
 		for (int i = 0; i < 2; i++)
-			strcpy(sGetHeader[i].name, pHeaderDescriptor->hdr[i].name);
+			strlcpy(sGetHeader[i].name, pHeaderDescriptor->hdr[i].name, sizeof(sGetHeader[i].name));
 
 
 		if (!m_HeaderInsertion.AddHeader(pHeaderDescriptor))
