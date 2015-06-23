@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
+#include "hton.h" // for htonl
+
 
 #include "InterfaceAbstraction.h"
 #include "Constants.h"
@@ -51,6 +53,8 @@
 #define FLOW_CLASS_MSB_OFFSET_IPV6 (1)
 #define FLOW_CLASS_MB_OFFSET_IPV6 (2)
 #define FLOW_CLASS_LSB_OFFSET_IPV6 (3)
+#define IPV4_DST_PORT_OFFSET (20+2)
+
 
 extern Logger g_Logger;
 
@@ -70,7 +74,7 @@ public:
 	}
 
 
-	static int SetupKernelModule(void)
+	static int SetupKernelModule(bool en_status = false)
 	{
 		int retval;
 		struct ipa_channel_config from_ipa_channels[3];
@@ -88,7 +92,7 @@ public:
 				header.from_ipa_channels_num++,
 				IPA_CLIENT_TEST2_CONS,
 				(void *)&from_ipa_cfg[0],
-				sizeof(from_ipa_cfg[0]));
+				sizeof(from_ipa_cfg[0]), en_status);
 		from_ipa_array[0] = &from_ipa_channels[0];
 
 		memset(&from_ipa_cfg[1], 0, sizeof(from_ipa_cfg[1]));
@@ -96,7 +100,7 @@ public:
 				header.from_ipa_channels_num++,
 				IPA_CLIENT_TEST3_CONS,
 				(void *)&from_ipa_cfg[1],
-				sizeof(from_ipa_cfg[1]));
+				sizeof(from_ipa_cfg[1]), en_status);
 		from_ipa_array[1] = &from_ipa_channels[1];
 
 		memset(&from_ipa_cfg[2], 0, sizeof(from_ipa_cfg[2]));
@@ -104,7 +108,7 @@ public:
 				header.from_ipa_channels_num++,
 				IPA_CLIENT_TEST4_CONS,
 				(void *)&from_ipa_cfg[2],
-				sizeof(from_ipa_cfg[2]));
+				sizeof(from_ipa_cfg[2]), en_status);
 		from_ipa_array[2] = &from_ipa_channels[2];
 
 		/* To ipa configurations - 1 pipes */
@@ -123,11 +127,11 @@ public:
 		return retval;
 	}
 
-	bool Setup()
+	bool Setup(bool en_status)
 	{
 		bool bRetVal = true;
 
-		bRetVal = SetupKernelModule();
+		bRetVal = SetupKernelModule(en_status);
 		if (bRetVal != true) {
 			return bRetVal;
 		}
@@ -151,6 +155,11 @@ public:
 
 		return true;
 	} /* Setup()*/
+
+	bool Setup()
+	{
+		return Setup(false);
+	}
 
 	bool Teardown()
 	{
@@ -329,6 +338,52 @@ public:
 		m_filtering.AddFilteringRule(fltTable.GetFilteringTable());
 	}
 
+	inline bool VerifyStatusReceived(size_t SendSize, size_t RecvSize)
+	{
+		if ((RecvSize <= SendSize) ||
+			((RecvSize - SendSize) != sizeof(struct ipa3_hw_pkt_status))){
+			printf("received buffer size does not match! sent:receive [%d]:[%d]\n",SendSize,RecvSize);
+			return false;
+		}
+
+		return true;
+	}
+
+	inline bool IsCacheHit(size_t SendSize, size_t RecvSize, void *Buff)
+	{
+		struct ipa3_hw_pkt_status *pStatus = (struct ipa3_hw_pkt_status *)Buff;
+
+		if (VerifyStatusReceived(SendSize,RecvSize) == false){
+			return false;
+		}
+
+		if((bool)pStatus->route_hash){
+			printf ("%s::cache hit!! \n",__FUNCTION__);
+			return true;
+		}
+
+		printf ("%s::cache miss!! \n",__FUNCTION__);
+		return false;
+
+	}
+
+	inline bool IsCacheMiss(size_t SendSize, size_t RecvSize, void *Buff)
+	{
+		struct ipa3_hw_pkt_status *pStatus = (struct ipa3_hw_pkt_status *)Buff;
+
+		if (VerifyStatusReceived(SendSize,RecvSize) == false){
+			return false;
+		}
+
+		if(!((bool)pStatus->route_hash)){
+			printf ("%s::cache miss!! \n",__FUNCTION__);
+			return true;
+		}
+
+		printf ("%s::cache hit!! \n",__FUNCTION__);
+		return false;
+	}
+
 	static RoutingDriverWrapper m_routing;
 	static Filtering m_filtering;
 
@@ -354,7 +409,7 @@ RoutingDriverWrapper IpaRoutingBlockTestFixture::m_routing;
 Filtering IpaRoutingBlockTestFixture::m_filtering;
 
 /*---------------------------------------------------------------------------*/
-/* Test1: Tests routing by destination address */
+/* Test1: Tests routing by destination address				     */
 /*---------------------------------------------------------------------------*/
 class IpaRoutingBlockTest1 : public IpaRoutingBlockTestFixture
 {
@@ -434,7 +489,7 @@ public:
 			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
 
 		if(!rt_rule) {
-			printf("fail\n");
+			printf("Failed memory allocation for rt_rule\n");
 			return false;
 		}
 
@@ -1577,6 +1632,1403 @@ public:
 	}
 };
 
+/*--------------------------------------------------------------------------*/
+/* Test10: IPv4 - Tests routing hashable vs non hashable priorities	    */
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest010 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest010()
+	{
+		m_name = "IpaRoutingBlockTest10";
+		m_description =" \
+		Routing block test 010 - Destination address exact match non hashable priority higher than hashable \
+		both match the packet but only non hashable should hit\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("fail\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer2.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+};
+
+/*--------------------------------------------------------------------------*/
+/* Test11: IPv4 - Tests routing hashable vs non hashable priorities			*/
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest011 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest011()
+	{
+		m_name = "IpaRoutingBlockTest011";
+		m_description =" \
+		Routing block test 011 - Destination address exact match hashable priority higher than non hashable \
+		both match the packet but only hashable should hit, second packet should get cache hit\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool Setup()
+	{
+		return IpaRoutingBlockTestFixture:: Setup(true);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("fail\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer2.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+		isSuccess &= IsCacheHit(m_sendSize2,receivedSize2,rxBuff2);
+		isSuccess &= IsCacheMiss(m_sendSize3,receivedSize3,rxBuff3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+};
+
+/*--------------------------------------------------------------------------*/
+/* Test12: IPv4 - Tests routing hashable vs non hashable priorities	    */
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest012 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest012()
+	{
+		m_name = "IpaRoutingBlockTest012";
+		m_description =" \
+		Routing block test 012 - Destination address exact match hashable priority lower than non hashable \
+		no match on non hashable rule (with higher priority), match on hashable rule. two packets with\
+		different tuple are sent (but match the rule) cache miss expected\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.171 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool Setup()
+	{
+		return IpaRoutingBlockTestFixture:: Setup(true);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("fail\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AB; //192.168.02.171
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+		unsigned short port;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		port = ntohs(547);//DHCP Client Port
+		memcpy (&m_sendBuffer[IPV4_DST_PORT_OFFSET], &port, sizeof(port));
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		port = ntohs(546);//DHCP Client Port
+		memcpy (&m_sendBuffer2[IPV4_DST_PORT_OFFSET], &port, sizeof(port));
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer2.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer2.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer2.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer2.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+		isSuccess &= IsCacheMiss(m_sendSize2,receivedSize2,rxBuff2);
+		isSuccess &= IsCacheMiss(m_sendSize3,receivedSize3,rxBuff3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+
+};
+
+/*--------------------------------------------------------------------------*/
+/* Test13: IPv4 - Tests routing hashable vs non hashable priorities	    */
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest013 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest013()
+	{
+		m_name = "IpaRoutingBlockTest013";
+		m_description =" \
+		Routing block test 013 - Destination address exact match \
+		no match on non hashable rule (with lower priority), match on hashable rule. two packets with\
+		different tuple are sent (but match the rule) cache miss expected\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.171 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool Setup()
+	{
+		return IpaRoutingBlockTestFixture:: Setup(true);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("fail\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AB; //192.168.02.171
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+		unsigned short port;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		port = ntohs(547);//DHCP Client Port
+		memcpy (&m_sendBuffer[IPV4_DST_PORT_OFFSET], &port, sizeof(port));
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		port = ntohs(546);//DHCP Client Port
+		memcpy (&m_sendBuffer2[IPV4_DST_PORT_OFFSET], &port, sizeof(port));
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+		isSuccess &= IsCacheMiss(m_sendSize2,receivedSize2,rxBuff2);
+		isSuccess &= IsCacheMiss(m_sendSize3,receivedSize3,rxBuff3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+
+};
+
+/*--------------------------------------------------------------------------*/
+/* Test14: IPv4 - Tests routing hashable vs non hashable priorities	    */
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest014 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest014()
+	{
+		m_name = "IpaRoutingBlockTest014";
+		m_description =" \
+		Routing block test 014 - Destination address exact match \
+		no match on non hashable rule(with higher priority) , match on hashable rule. two identical\
+		packets are sent cache hit expected on the second one\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.171 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool Setup()
+	{
+		return IpaRoutingBlockTestFixture:: Setup(true);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("Failed memory allocation for rt_rule\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AB; //192.168.02.171
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			free(rt_rule);
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer2.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer2.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer2.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer2.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+		isSuccess &= IsCacheHit(m_sendSize2,receivedSize2,rxBuff2);
+		isSuccess &= IsCacheMiss(m_sendSize3,receivedSize3,rxBuff3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+};
+
+
+/*--------------------------------------------------------------------------*/
+/* Test15: IPv4 - Tests routing hashable vs non hashable priorities	    */
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest015 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest015()
+	{
+		m_name = "IpaRoutingBlockTest015";
+		m_description =" \
+		Routing block test 015 - Destination address exact match \
+		no match on non hashable rule(with lower priority) , match on hashable rule. two identical\
+		packets are sent cache hit expected on the second one\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.171 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool Setup()
+	{
+		return IpaRoutingBlockTestFixture:: Setup(true);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("Failed memory allocation for rt_rule\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AB; //192.168.02.171
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+		isSuccess &= IsCacheHit(m_sendSize2,receivedSize2,rxBuff2);
+		isSuccess &= IsCacheMiss(m_sendSize3,receivedSize3,rxBuff3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+
+};
+
+/*--------------------------------------------------------------------------*/
+/* Test16: IPv4 - Tests routing hashable vs non hashable priorities	    */
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest016 : public IpaRoutingBlockTestFixture
+{
+public:
+
+	IpaRoutingBlockTest016()
+	{
+		m_name = "IpaRoutingBlockTest016";
+		m_description =" \
+		Routing block test 016 - Destination address exact match max priority for non hashable \
+		match on both rule, non hashable rule should win because max priority\
+		packets are sent. No cache hit is expected\
+		2. Generate and commit Three routing rules: (DST & Mask Match). \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST2_CONS \
+			All DST_IP == (192.168.2.170 & 255.255.255.255)traffic goes to pipe IPA_CLIENT_TEST3_CONS\
+			All other traffic goes to pipe IPA_CLIENT_TEST4_CONS";
+		m_IpaIPType = IPA_IP_v4;
+		m_minIPAHwType = IPA_HW_v3_0;
+		Register(*this);
+	}
+
+	bool AddRules()
+	{
+		struct ipa_ioc_add_rt_rule *rt_rule;
+		struct ipa_rt_rule_add *rt_rule_entry;
+		const int NUM_RULES = 3;
+
+		rt_rule = (struct ipa_ioc_add_rt_rule *)
+			calloc(1, sizeof(struct ipa_ioc_add_rt_rule) +
+			       NUM_RULES*sizeof(struct ipa_rt_rule_add));
+
+		if(!rt_rule) {
+			printf("fail\n");
+			return false;
+		}
+
+		rt_rule->commit = 1;
+		rt_rule->num_rules = NUM_RULES;
+		rt_rule->ip = IPA_IP_v4;
+		strcpy(rt_rule->rt_tbl_name, "LAN");
+
+		rt_rule_entry = &rt_rule->rules[0];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST2_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 1; // hashable
+
+		rt_rule_entry = &rt_rule->rules[1];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST3_CONS;
+		rt_rule_entry->rule.attrib.attrib_mask = IPA_FLT_DST_ADDR;
+		rt_rule_entry->rule.attrib.u.v4.dst_addr      = 0xC0A802AA; //192.168.02.170
+		rt_rule_entry->rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF;
+		rt_rule_entry->rule.hashable = 0; // non hashable
+		rt_rule_entry->rule.max_prio =  1; // max priority
+
+		rt_rule_entry = &rt_rule->rules[2];
+		rt_rule_entry->at_rear = 1;
+		rt_rule_entry->rule.dst = IPA_CLIENT_TEST4_CONS;
+
+		if (false == m_routing.AddRoutingRule(rt_rule))
+		{
+			printf("Routing rule addition failed!\n");
+			return false;
+		}
+
+		printf("rt rule hdl1=%x\n", rt_rule_entry->rt_rule_hdl);
+
+		free(rt_rule);
+
+		InitFilteringBlock();
+
+		return true;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		return isSuccess;
+	} // Run()
+
+	bool ReceivePacketsAndCompare()
+	{
+		size_t receivedSize = 0;
+		size_t receivedSize2 = 0;
+		size_t receivedSize3 = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+		Byte *rxBuff2 = new Byte[0x400];
+		Byte *rxBuff3 = new Byte[0x400];
+
+		if (NULL == rxBuff1 || NULL == rxBuff2 || NULL == rxBuff3)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer2.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize2 = m_consumer2.ReceiveData(rxBuff2, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize2, m_consumer.m_fromChannelName.c_str());
+
+		receivedSize3 = m_defaultConsumer.ReceiveData(rxBuff3, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize3, m_defaultConsumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+		isSuccess &= CompareResultVsGolden(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		for(j = 0; j < m_sendSize2; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer2[j]);
+		for(j = 0; j < receivedSize2; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff2[j]);
+		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
+
+		for(j = 0; j < m_sendSize3; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer3[j]);
+		for(j = 0; j < receivedSize3; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff3[j]);
+		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
+
+		delete[] rxBuff1;
+		delete[] rxBuff2;
+		delete[] rxBuff3;
+
+		return isSuccess;
+	}
+
+};
+
 static class IpaRoutingBlockTest1 ipaRoutingBlockTest1;
 static class IpaRoutingBlockTest2 ipaRoutingBlockTest2;
 static class IpaRoutingBlockTest3 ipaRoutingBlockTest3;
@@ -1587,4 +3039,11 @@ static class IpaRoutingBlockTest007 ipaRoutingBlockTest007;
 static class IpaRoutingBlockTest008 ipaRoutingBlockTest008;
 static class IpaRoutingBlockTest009 ipaRoutingBlockTest009;
 
+static class IpaRoutingBlockTest010 ipaRoutingBlockTest010;
+static class IpaRoutingBlockTest011 ipaRoutingBlockTest011;
+static class IpaRoutingBlockTest012 ipaRoutingBlockTest012;
+static class IpaRoutingBlockTest013 ipaRoutingBlockTest013;
+static class IpaRoutingBlockTest014 ipaRoutingBlockTest014;
+static class IpaRoutingBlockTest015 ipaRoutingBlockTest015;
+static class IpaRoutingBlockTest016 ipaRoutingBlockTest016;
 
