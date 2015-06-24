@@ -110,11 +110,11 @@ bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
 		err(1, "Couldn't duplicate string %s. %s:%d", src, file, line);	\
 	} while(0)
 
-#define _ASPRINTF(dst, src, pid, file, line) do {			\
-	char **d = dst;				\
-	asprintf(d, src, pid);			\
-	if (!d)								\
-		err(1, "Couldn't copy the string %s. %s:%d", src, file, line); \
+#define _ASPRINTF(dst, fmt, file, line, ...) do {			\
+		char **d = dst;						\
+		asprintf(d, fmt, __VA_ARGS__);				\
+		if (!d)							\
+			err(1, "asprintf failed at %s:%d", file, line);	\
 	} while(0)
 
 #define _OPEN(path, flags, fd, file, line) do {				\
@@ -127,7 +127,7 @@ bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
 #define REALLOC(ptr_type, ptr, size) _REALLOC(ptr_type, ptr, size, __FILE__, __LINE__)
 #define STRTOL(var, word, base) _STRTOL(var, word, base, __FILE__, __LINE__)
 #define STRDUP(dst, src) _STRDUP(dst, src, __FILE__, __LINE__)
-#define ASPRINTF(dst, src, pid) _ASPRINTF(dst, src, pid, __FILE__, __LINE__)
+#define ASPRINTF(dst, fmt, ...) _ASPRINTF(dst, fmt, __FILE__, __LINE__, __VA_ARGS__)
 #define OPEN(path, flags, fd) _OPEN(path, flags, fd, __FILE__, __LINE__)
 
 /*
