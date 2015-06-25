@@ -44,6 +44,7 @@ double timeval_ms_diff(struct timeval t1, struct timeval t2);
 void mprof_tick(struct timeval *tv);
 double mprof_tock(struct timeval *tv);
 bool buffers_are_equal(char *src, char *dst, size_t len, int *fail_index);
+int file_exists(const char const *fname);
 
 #define US_TO_MS(us) (us / 1000.0)
 #define MS_TO_S(ms) (ms / 1000.0)

@@ -742,6 +742,7 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	struct alloc_profile_entry *alloc_profile;
 	struct file_reader_getline_data reader_data;
 	struct alloc_profile_reader reader;
+	char *path = NULL;
 	bool using_stdin = alloc_profile_path &&
 		!strcmp(alloc_profile_path, "-");
 	int rc = 0;
@@ -751,20 +752,32 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	reader_data.linum = 1;
 	reader_data.path = alloc_profile_path;
 
-	if (!alloc_profile_path)
-		alloc_profile_path = ALLOC_PROFILES_PATH_STRING "/builtin.txt";
+	if (alloc_profile_path) {
+		if (!file_exists(alloc_profile_path)) {
+			ASPRINTF(&path, "%s/%s", ALLOC_PROFILES_PATH_STRING,
+				 alloc_profile_path);
+			if (!file_exists(path)) {
+				err(1, "Couldn't read alloc profile: %s",
+				    alloc_profile_path);
+			}
+		} else {
+			ASPRINTF(&path, "%s", alloc_profile_path);
+		}
+	} else {
+		ASPRINTF(&path, "%s/builtin.txt", ALLOC_PROFILES_PATH_STRING);
+	}
 
 	printf("Using allocation profile: %s\n",
-		using_stdin ? "(STDIN)" : alloc_profile_path);
+		using_stdin ? "(STDIN)" : path);
 
 	MALLOC(char *, reader_data.buf, MAX_ALLOC_PROFILE_LINE_LEN);
 
 	if (using_stdin) {
 		reader_data.fp = stdin;
 	} else {
-		reader_data.fp = fopen(alloc_profile_path, "r");
+		reader_data.fp = fopen(path, "r");
 		if (!reader_data.fp)
-			err(1, "Couldn't read %s\n", alloc_profile_path);
+			err(1, "Couldn't read %s\n", path);
 	}
 
 	/**
@@ -775,12 +788,12 @@ static struct alloc_profile_entry *get_alloc_profile_from_file(
 	alloc_profile = get_alloc_profile(&reader);
 
 	if (!alloc_profile)
-		errx(1, "Couldn't parse allocation profile: %s\n",
-			alloc_profile_path);
+		errx(1, "Couldn't parse allocation profile: %s\n", path);
 
 	if (!using_stdin)
 		fclose(reader_data.fp);
 
+	free(path);
 	return alloc_profile;
 }
 
@@ -1226,12 +1239,6 @@ free_data_rates:
 	return rc;
 }
 
-static int file_exists(const char const *fname)
-{
-	struct stat tmp;
-	return stat(fname, &tmp) == 0;
-}
-
 #define USAGE_STRING							\
 	"Usage: %s [options]\n"						\
 	"\n"								\
@@ -1338,10 +1345,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			STRDUP(alloc_profile_path, optarg);
-			if (strcmp(alloc_profile_path, "-") &&
-				!file_exists(alloc_profile_path))
-				err(1, "Can't read alloc profile file: %s",
-					alloc_profile_path);
 			break;
 		case 'k':
 			do_kernel_alloc_profiling = true;
