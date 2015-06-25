@@ -39,7 +39,7 @@ module_param_named(iterations, ut_iterations,
 static int ut_vector_buf_count = 1;
 module_param_named(vector_buf_count, ut_vector_buf_count,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-static int ut_tracer_pkt_size = 128;
+static int ut_tracer_pkt_size = 256;
 module_param_named(tracer_pkt_size, ut_tracer_pkt_size,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
