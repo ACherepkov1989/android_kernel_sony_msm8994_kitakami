@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,8 +16,10 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/of.h>
 
-#define MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL(n) (0x004A8008 + 0x4 * n)
+#define V1_MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL(n) (0x004A8008 + 0x4 * n)
+#define V2_MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL(n) (0x004A800C + 0x4 * n)
 
 static int tsense_reset;
 
@@ -28,6 +30,7 @@ static int tsense_crash_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
 	void *mpm2_tsens_min_max_status_ctrl;
+	phys_addr_t addr;
 
 	if((ret = param_set_int(val, kp)))
 		return ret;
@@ -35,8 +38,14 @@ static int tsense_crash_set(const char *val, struct kernel_param *kp)
 	if (tsense_reset != 1)
 		return -EPERM;
 
-	mpm2_tsens_min_max_status_ctrl = ioremap(
-				MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL(0), 0x4);
+	if (of_machine_is_compatible("qcom,msm8916") ||
+		of_machine_is_compatible("qcom,msm8939") ||
+		of_machine_is_compatible("qcom,msm8909"))
+		addr = V1_MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL(0);
+	else
+		addr = V2_MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL(0);
+
+	mpm2_tsens_min_max_status_ctrl = ioremap(addr, 0x4);
 
 	if (!mpm2_tsens_min_max_status_ctrl) {
 		pr_err("Abnormal reset test: Unable to map mpm2 register space\n");
