@@ -1,0 +1,10 @@
+# lat, test type, adj level, parallel writers, verbosity, repeat test "repeat" times, pages to be allocated (for test type 2), delay (for test type 2), count (for test type 2)
+
+lat,0,17,0,0,0,0,0,0
+lat,0,9,0,0,0,0,0,0
+lat,0,17,25,0,0,0,0,0
+lat,0,9,25,0,0,0,0,0
+lat,1,17,0,0,0,0,0,0
+lat,1,9,0,0,0,0,0,0
+lat,1,17,25,0,0,0,0,0
+lat,1,9,25,0,0,0,0,0

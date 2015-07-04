@@ -1,0 +1,10 @@
+# conc, test type, adj level, parallel writers, verbosity, repeat test "repeat" times, NA, NA, NA
+
+conc,0,17,0,0,0,0,0,0
+conc,0,9,0,0,0,0,0,0
+conc,0,17,25,0,0,0,0,0
+conc,0,9,25,0,0,0,0,0
+conc,1,17,0,0,0,0,0,0
+conc,1,9,0,0,0,0,0,0
+conc,1,17,25,0,0,0,0,0
+conc,1,9,25,0,0,0,0,0

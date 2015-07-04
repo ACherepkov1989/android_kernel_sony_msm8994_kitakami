@@ -62,10 +62,9 @@ Target support: All
 
 Appendix A: Allocation Profiles for memory_prof
 
-    The heap profiling test (-e) has support for custom "allocation
-    profile" input files (specified with -i). The format of the
-    allocation profile file is a comma-separated values file with the
-    following columns:
+    custom "allocation profile" input files can be specified with -i.
+    The format of the allocation profile file is a comma-separated values file
+    with the following columns:
 
         op
         [rest...]
@@ -85,6 +84,9 @@ Appendix A: Allocation Profiles for memory_prof
         - free_all_unused_clients
         - user_alloc
         - iommu_map_range
+	- conc
+	- lat
+	- stability
 
     Each operation is described in detail below.
 
@@ -458,3 +460,88 @@ Appendix A: Allocation Profiles for memory_prof
       Blank lines and lines beginning with '#' are skipped.
 
       See alloc_profiles/cache_ops.txt for a full example.
+
+   o `op' == conc
+
+      When `op' == conc, concurrency KPI tests are performed.
+
+      The following remaining fields are defined:
+
+          type
+          adj
+          writers
+          debug
+          repeat
+          pages
+          delay
+          count
+
+     - type :: Type of test. 0:geometric, 1:arithmetic
+
+     - adj :: the adj level to which a task is moved after allocation
+
+     - writers :: number of parallel file writers
+
+     - debug :: verbosity. 0 or 1
+
+     - repeat :: repeat the test "repeat" number of times
+
+     - pages :: NA, 0
+
+     - delay :: NA, 0
+
+     - count :: NA, 0
+
+   o `op' == lat
+
+      When `op' == lat, latency KPI tests are performed.
+
+      The following remaining fields are defined:
+
+          type
+          adj
+          writers
+          debug
+
+     - type :: Type of test. 0:geometric, 1:arithmetic, 2:constant
+
+     - adj :: the adj level to which a task is moved after allocation
+
+     - writers :: number of parallel file writers
+
+     - debug :: verbosity. 0 or 1
+
+     - repeat :: repeat the test "repeat" number of times
+
+     - pages :: The number of pages to be alocated when type is "constant"
+
+     - delay :: The delay between each "pages" allocation when type is "constant"
+
+     - count :: The number of "pages" allocation when type is "contant"
+
+   o `op' == stability
+
+      When `op' == stability, stability tests are performed.
+
+      The following remaining fields are defined:
+
+          type
+          adj
+          writers
+          debug
+
+     - type :: Type of test. 0:geometric, 1:arithmetic
+
+     - adj :: the adj level to which a task is moved after allocation
+
+     - writers :: number of parallel file writers
+
+     - debug :: verbosity. 0 or 1
+
+     - repeat :: NA, 0
+
+     - pages :: NA, 0
+
+     - delay :: NA, 0
+
+     - count :: NA, 0
