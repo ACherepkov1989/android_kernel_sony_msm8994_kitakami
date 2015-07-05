@@ -6337,7 +6337,143 @@ public:
 };
 
 /*----------------------------------------------------------------------------------------------*/
-/* Test070: IPV6 filtering test, non hashed priority higher than hashed priority		*/
+/* Test067: IPV4 filtering test, hash invalidation test 										*/
+/*----------------------------------------------------------------------------------------------*/
+class IpaFilteringBlockTest067 : public IpaFilteringBlockTest066
+{
+public:
+	IpaFilteringBlockTest067()
+	{
+		m_name = "IpaFilteringBlockTest067";
+		m_description =
+		"Filtering block test 067 - this test first perfroms test 066 and then commits another rule\
+		another identical packet is sent: DST_IP == 127.0.0.1 and expected to get cache miss";
+		m_minIPAHwType = IPA_HW_v3_0;
+	}
+
+	bool ReceiveAndCompareSpecial()
+	{
+		size_t receivedSize = 0;
+
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+
+		if (NULL == rxBuff1)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		// Compare results
+		if (!CompareResultVsGolden_w_Status(m_sendBuffer, m_sendSize, rxBuff1, receivedSize))
+		{
+			printf("Comparison of Buffer0 Failed!\n");
+			isSuccess = false;
+		}
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+		for(j = 0; j < m_sendSize; j++)
+			sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+			sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		delete[] rxBuff1;
+		return isSuccess;
+
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		printf("Entering %s, %s()\n",__FUNCTION__, __FILE__);
+
+		// Add the relevant filtering rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding filtering rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(m_IpaIPType);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		res = ModifyPackets();
+		if (false == res) {
+			printf("Failed to modify packets.\n");
+			return false;
+		}
+
+		// Send first packet
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+
+		// untill here test 066 was run, now let's test the invalidation
+
+		// commit the same rules again, this should clear the cache
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding filtering rules.\n");
+			return false;
+		}
+
+		// send packet again
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)	{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// receive and verify that cache was missed
+		isSuccess = ReceiveAndCompareSpecial();
+
+		printf("Leaving %s, %s(), Returning %d\n",__FUNCTION__, __FILE__,isSuccess);
+
+		return isSuccess;
+	} // Run()
+
+};
+
+/*----------------------------------------------------------------------------------------------*/
+/* Test070: IPV6 filtering test, non hashed priority higher than hashed priority				*/
 /*----------------------------------------------------------------------------------------------*/
 class IpaFilteringBlockTest070 : public IpaFilteringBlockTest060
 {
@@ -6386,8 +6522,8 @@ public:
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[1] = 0xFFFFFFFF;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[2] = 0x00000000;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[3] = 0x000000FF;// Exact Match
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]	 = 0XFF020000; // Filter DST_IP
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]	 = 0x00000000;
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]		 = 0XFF020000; // Filter DST_IP
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]		 = 0x00000000;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[2]      = 0x11223344;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[3]      = 0X556677AA;
 		flt_rule_entry.rule.hashable = 0; // non hashable
@@ -6503,8 +6639,8 @@ public:
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[1] = 0xFFFFFFFF;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[2] = 0x00000000;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[3] = 0x000000FF;// Exact Match
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]	 = 0XFF020000; // Filter DST_IP
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]	 = 0x00000000;
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]		 = 0XFF020000; // Filter DST_IP
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]		 = 0x00000000;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[2]      = 0x11223344;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[3]      = 0X556677AA;
 		flt_rule_entry.rule.hashable = 1; // hashable
@@ -6881,8 +7017,8 @@ public:
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[1] = 0xFFFFFFFF;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[2] = 0x00000000;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[3] = 0x000000FF;// Exact Match
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]	 = 0XFF020000; // Filter DST_IP
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]	 = 0x00000000;
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]		 = 0XFF020000; // Filter DST_IP
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]		 = 0x00000000;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[2]      = 0x11223344;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[3]      = 0X556677BB;
 		flt_rule_entry.rule.hashable = 0; // non hashable
@@ -6947,7 +7083,7 @@ public:
 };
 
 /*----------------------------------------------------------------------------------------------*/
-/* Test075: IPV6 filtering test, non hashable rule match with max priority vs hashable 		*/
+/* Test075: IPV6 filtering test, non hashable rule match with max priority vs hashable 		 	*/
 /*----------------------------------------------------------------------------------------------*/
 class IpaFilteringBlockTest075 : public IpaFilteringBlockTest065
 {
@@ -7122,8 +7258,8 @@ public:
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[1] = 0xFFFFFFFF;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[2] = 0x00000000;// Exact Match
 		flt_rule_entry.rule.attrib.u.v6.dst_addr_mask[3] = 0x000000FF;// Exact Match
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]	 = 0XFF020000; // Filter DST_IP
-		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]	 = 0x00000000;
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[0]		 = 0XFF020000; // Filter DST_IP
+		flt_rule_entry.rule.attrib.u.v6.dst_addr[1]		 = 0x00000000;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[2]      = 0x11223344;
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[3]      = 0X556677AA;
 		flt_rule_entry.rule.hashable = 1; // hashable
@@ -7216,13 +7352,14 @@ static class IpaFilteringBlockTest052 ipaFilteringBlockTest052;// IPv6 Test, Glo
 static class IpaFilteringBlockTest053 ipaFilteringBlockTest053;// IPv6 Test, End point Specific Filtering Table
 static class IpaFilteringBlockTest054 ipaFilteringBlockTest054;// IPv6 Test, End point Specific Filtering Table
 
-static class IpaFilteringBlockTest060 ipaFilteringBlockTest060; // Hashed non hashed tests
-static class IpaFilteringBlockTest061 ipaFilteringBlockTest061; // Hashed non hashed tests
-static class IpaFilteringBlockTest062 ipaFilteringBlockTest062; // Hashed non hashed tests
-static class IpaFilteringBlockTest063 ipaFilteringBlockTest063; // Hashed non hashed tests
-static class IpaFilteringBlockTest064 ipaFilteringBlockTest064; // Hashed non hashed tests
-static class IpaFilteringBlockTest065 ipaFilteringBlockTest065; // Hashed non hashed tests
-static class IpaFilteringBlockTest066 ipaFilteringBlockTest066; // Hashed non hashed tests
+static class IpaFilteringBlockTest060 ipaFilteringBlockTest060; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest061 ipaFilteringBlockTest061; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest062 ipaFilteringBlockTest062; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest063 ipaFilteringBlockTest063; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest064 ipaFilteringBlockTest064; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest065 ipaFilteringBlockTest065; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest066 ipaFilteringBlockTest066; // Hashed non hashed tests IPv4
+static class IpaFilteringBlockTest067 ipaFilteringBlockTest067; // Hash invalidation test
 
 static class IpaFilteringBlockTest070 ipaFilteringBlockTest070; // Hashed non hashed tests IPV6
 static class IpaFilteringBlockTest071 ipaFilteringBlockTest071; // Hashed non hashed tests IPV6

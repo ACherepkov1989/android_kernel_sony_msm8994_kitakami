@@ -3032,6 +3032,137 @@ public:
 };
 
 /*--------------------------------------------------------------------------*/
+/* Test17: IPv4 - Tests routing hashable, non hashable, hash invalidation test*/
+/*--------------------------------------------------------------------------*/
+class IpaRoutingBlockTest017 : public IpaRoutingBlockTest015
+{
+public:
+
+	IpaRoutingBlockTest017()
+	{
+		m_name = "IpaRoutingBlockTest017";
+		m_description =" \
+		Routing block test 017 - this test perform test 015 and then commits another rule\
+		another identical packet is sent: DST_IP == 192.168.02.170 and expected to get cache miss";
+	}
+
+	bool ReceivePacketsAndCompareSpecial()
+	{
+		size_t receivedSize = 0;
+		bool isSuccess = true;
+
+		// Receive results
+		Byte *rxBuff1 = new Byte[0x400];
+
+		if (NULL == rxBuff1)
+		{
+			printf("Memory allocation error.\n");
+			return false;
+		}
+
+		receivedSize = m_consumer.ReceiveData(rxBuff1, 0x400);
+		printf("Received %zu bytes on %s.\n", receivedSize, m_consumer.m_fromChannelName.c_str());
+
+		/* Compare results */
+		isSuccess &= CompareResultVsGolden_w_Status(m_sendBuffer,  m_sendSize,  rxBuff1, receivedSize);
+
+		isSuccess &= IsCacheMiss(m_sendSize,receivedSize,rxBuff1);
+
+		char recievedBuffer[256] = {0};
+		char SentBuffer[256] = {0};
+		size_t j;
+		for(j = 0; j < m_sendSize; j++)
+		    sprintf(&SentBuffer[3*j], " %02X", m_sendBuffer[j]);
+		for(j = 0; j < receivedSize; j++)
+		    sprintf(&recievedBuffer[3*j], " %02X", rxBuff1[j]);
+		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
+
+		delete[] rxBuff1;
+
+		return isSuccess;
+	}
+
+	bool Run()
+	{
+		bool res = false;
+		bool isSuccess = false;
+
+		// Add the relevant routing rules
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// Load input data (IP packet) from file
+		res = LoadFiles(IPA_IP_v4);
+		if (false == res) {
+			printf("Failed loading files.\n");
+			return false;
+		}
+
+		// Send first packet
+		m_sendBuffer[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send second packet
+		m_sendBuffer2[DST_ADDR_LSB_OFFSET_IPV4] = 0xAA;
+		isSuccess = m_producer.SendData(m_sendBuffer2, m_sendSize2);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Send third packet
+		isSuccess = m_producer.SendData(m_sendBuffer3, m_sendSize3);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// Receive packets from the channels and compare results
+		isSuccess = ReceivePacketsAndCompare();
+		if (false == isSuccess)
+		{
+			printf("ReceivePacketsAndCompare failure.\n");
+			return false;
+		}
+
+		// until here test 15 was run, now we test hash invalidation
+
+		// commit the rules again to clear the cache
+		res = AddRules();
+		if (false == res) {
+			printf("Failed adding routing rules.\n");
+			return false;
+		}
+
+		// send the packet again
+		isSuccess = m_producer.SendData(m_sendBuffer, m_sendSize);
+		if (false == isSuccess)
+		{
+			printf("SendData failure.\n");
+			return false;
+		}
+
+		// validate we got cache miss
+		isSuccess = ReceivePacketsAndCompareSpecial();
+		if (false == isSuccess)
+		{
+			printf("ReceivePacketsAndCompareSpecial failure.\n");
+		}
+		return isSuccess;
+	} // Run()
+};
+
+/*--------------------------------------------------------------------------*/
 /* Test20: IPv6 - Tests routing hashable vs non hashable priorities	    */
 /*--------------------------------------------------------------------------*/
 class IpaRoutingBlockTest020 : public IpaRoutingBlockTest010
