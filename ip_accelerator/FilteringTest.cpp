@@ -223,12 +223,10 @@ public:
 
 		char recievedBuffer[256] = {0};
 		char SentBuffer[256] = {0};
-//		char * p = recievedBuffer;
 		size_t j;
 		for(j = 0; j < m_sendSize; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", send[j]);
 		for(j = 0; j < receivedSize; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 		printf("Expected Value (%zu)\n%s\n, Received Value1(%zu)\n%s\n",send_sz,SentBuffer,receivedSize,recievedBuffer);
 
@@ -273,34 +271,31 @@ public:
 			printf("Comparison of Buffer0 Failed!\n");
 			isSuccess = false;
 		}
+		isSuccess &= CompareResultVsGolden(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
+		isSuccess &= CompareResultVsGolden(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
 
 		char recievedBuffer[256] = {0};
 		char SentBuffer[256] = {0};
-//		char * p = recievedBuffer;
 		size_t j;
 		for(j = 0; j < m_sendSize; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer[j]);
 		for(j = 0; j < receivedSize; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
 
+		recievedBuffer[0] = '\0';
 		for(j = 0; j < m_sendSize2; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer2[j]);
 		for(j = 0; j < receivedSize2; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff2[j]);
 		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
 
+		recievedBuffer[0] = '\0';
 		for(j = 0; j < m_sendSize3; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer3[j]);
 		for(j = 0; j < receivedSize3; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff3[j]);
 		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
-
-		isSuccess &= CompareResultVsGolden(m_sendBuffer2, m_sendSize2, rxBuff2, receivedSize2);
-		isSuccess &= CompareResultVsGolden(m_sendBuffer3, m_sendSize3, rxBuff3, receivedSize3);
 
 		delete[] rxBuff1;
 		delete[] rxBuff2;
@@ -660,6 +655,7 @@ public:
 			All DST_IP == (127.0.0.1 & 255.0.0.255)traffic goes to routing table 0 \
 			All DST_IP == (192.169.1.1 & 255.0.0.255)traffic goes to routing table 1 \
 			All DST_IP == (192.169.1.2 & 255.0.0.255)traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -809,6 +805,7 @@ public:
 			All DST_IP == 127.0.0.1 traffic goes to routing table 0 \
 			All DST_IP == 192.169.1.1 traffic goes to routing table 1 \
 			All DST_IP == 192.169.1.2 traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -957,6 +954,7 @@ public:
 			All DST_UDP_PORT == 546 (DHCP Client)traffic goes to routing table 0 \
 			All DST_UDP_PORT == 547 (DHCP Server) traffic goes to routing table 1 \
 			All DST_UDP_PORT == 500 (Non DHCP) traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -1101,6 +1099,7 @@ public:
 			All (5 >= SRC_PORT_RANGE >= 15) & (50 >= DST_PORT_RANGE >= 150) traffic goes to routing table 0 \
 			All (15 >= SRC_PORT_RANGE >= 25) & (150 >= DST_PORT_RANGE >= 250) traffic goes to routing table 1 \
 			All (25 >= SRC_PORT_RANGE >= 35) & (250 >= DST_PORT_RANGE >= 350) traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -1262,6 +1261,7 @@ public:
 			All UDP traffic goes to routing table 0 \
 			All TCP traffic goes to routing table 1 \
 			All ICMP traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -1295,7 +1295,7 @@ public:
 			return false;
 		}
 		routing_table1.ip = IPA_IP_v4;
-		strlcpy(routing_table1.name, bypass1, sizeof(routing_table1.name));
+		strlcpy(routing_table1.name,bypass1, sizeof(routing_table1.name));
 		if (!m_routing.GetRoutingTable(&routing_table1))
 		{
 			printf("m_routing.GetRoutingTable(&routing_table1=0x%p) Failed.\n",&routing_table1);
@@ -1406,6 +1406,7 @@ public:
 			All DST_IP == (127.0.0.1 & 255.0.0.255)traffic goes to routing table 0 \
 			All DST_IP == (192.169.1.1 & 255.0.0.255)traffic goes to routing table 1 \
 			All DST_IP == (192.169.1.2 & 255.0.0.255)traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -1557,6 +1558,7 @@ public:
 			All DST_IP == 127.0.0.1 traffic goes to routing table 0 \
 			All DST_IP == 192.169.1.1 traffic goes to routing table 1 \
 			All DST_IP == 192.169.1.2 traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -1600,7 +1602,7 @@ public:
 		}
 
 		routing_table2.ip = IPA_IP_v4;
-		strlcpy(routing_table2.name, bypass2, sizeof(routing_table2.name));
+		strlcpy(routing_table2.name, bypass2,sizeof(routing_table2.name) );
 		if (!m_routing.GetRoutingTable(&routing_table2))
 		{
 			printf("m_routing.GetRoutingTable(&routing_table2=0x%p) Failed.\n",&routing_table2);
@@ -1714,6 +1716,7 @@ public:
 			All DST_UDP_PORT == 546 (DHCP Client)traffic goes to routing table 0 \
 			All DST_UDP_PORT == 547 (DHCP Server) traffic goes to routing table 1 \
 			All DST_UDP_PORT == 500 (Non DHCP) traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -1868,6 +1871,7 @@ public:
 			All (5 >= SRC_PORT_RANGE >= 15) & (50 >= DST_PORT_RANGE >= 150) traffic goes to routing table 0 \
 			All (15 >= SRC_PORT_RANGE >= 25) & (150 >= DST_PORT_RANGE >= 250) traffic goes to routing table 1 \
 			All (25 >= SRC_PORT_RANGE >= 35) & (250 >= DST_PORT_RANGE >= 350) traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -2037,6 +2041,7 @@ public:
 			All UDP traffic goes to routing table 0 \
 			All TCP traffic goes to routing table 1 \
 			All ICMP traffic goes to routing table 2";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -2063,7 +2068,7 @@ public:
 
 		printf("CreateThreeBypassRoutingTables completed successfully\n");
 		routing_table0.ip = IPA_IP_v4;
-		strlcpy(routing_table0.name,bypass0, sizeof(routing_table0.name));
+		strlcpy(routing_table0.name, bypass0, sizeof(routing_table0.name));
 		if (!m_routing.GetRoutingTable(&routing_table0))
 		{
 			printf("m_routing.GetRoutingTable(&routing_table0=0x%p) Failed.\n",&routing_table0);
@@ -2210,6 +2215,8 @@ public:
 			printf("m_routing.GetRoutingTable(&routing_table0=0x%p) Failed.\n",&routing_table0);
 			return false;
 		}
+		printf("%s route table handle = %u\n", bypass0, routing_table0.hdl);
+
 		routing_table1.ip = IPA_IP_v4;
 		strlcpy(routing_table1.name, bypass1, sizeof(routing_table1.name));
 		if (!m_routing.GetRoutingTable(&routing_table1))
@@ -2217,6 +2224,7 @@ public:
 			printf("m_routing.GetRoutingTable(&routing_table1=0x%p) Failed.\n",&routing_table1);
 			return false;
 		}
+		printf("%s route table handle = %u\n", bypass1, routing_table1.hdl);
 
 		routing_table2.ip = IPA_IP_v4;
 		strlcpy(routing_table2.name, bypass2, sizeof(routing_table2.name));
@@ -2225,6 +2233,7 @@ public:
 			printf("m_routing.GetRoutingTable(&routing_table2=0x%p) Failed.\n",&routing_table2);
 			return false;
 		}
+		printf("%s route table handle = %u\n", bypass2, routing_table2.hdl);
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
@@ -2242,32 +2251,20 @@ public:
 		flt_rule_entry.rule.attrib.attrib_mask = IPA_FLT_DST_ADDR; // TODO: Fix this, doesn't match the Rule's Requirements
 		flt_rule_entry.rule.attrib.u.v4.dst_addr_mask = 0xFF0000FF; // Mask
 		flt_rule_entry.rule.attrib.u.v4.dst_addr = 0x7F000001; // Filter DST_IP == 127.0.0.1.
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1 // TODO: Fix this, doesn't match the Rule's Requirements
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table1.hdl; //put here the handle corresponding to Routing Rule 2
 		// TODO: Fix this, doesn't match the Rule's Requirements
 		flt_rule_entry.rule.attrib.u.v4.dst_addr = 0xC0A80101; // Filter DST_IP == 192.168.1.1.
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2 // TODO: Fix this, doesn't match the Rule's Requirements
@@ -2280,15 +2277,17 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(2) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
+
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
-
 	}// AddRules()
 
 	virtual bool ModifyPackets()
@@ -2391,31 +2390,19 @@ public:
 		flt_rule_entry.rule.attrib.u.v4.dst_addr_mask = 0xFFFFFFFF; // Exact Match
 		flt_rule_entry.rule.attrib.u.v4.dst_addr = 0x7F000001; // Filter DST_IP == 127.0.0.1.
 		printf ("flt_rule_entry was set successfully, preparing for insertion....\n");
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table1.hdl; //put here the handle corresponding to Routing Rule 2
 		flt_rule_entry.rule.attrib.u.v4.dst_addr = 0xC0A80101; // Filter DST_IP == 192.168.1.1.
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -2427,11 +2414,12 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(2) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+		} else {
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -2538,31 +2526,19 @@ public:
 		flt_rule_entry.rule.attrib.attrib_mask = IPA_FLT_DST_PORT;
 		flt_rule_entry.rule.attrib.dst_port = 546; // DHCP Client Port No 546
 
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table1.hdl; //put here the handle corresponding to Routing Rule 2
 		flt_rule_entry.rule.attrib.dst_port = 547; // DHCP Server Port No 547
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -2574,11 +2550,12 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(2) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+		} else {
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -2687,16 +2664,10 @@ public:
 		flt_rule_entry.rule.attrib.dst_port_hi =150;
 
 		printf ("flt_rule_entry was set successfully, preparing for insertion....\n");
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
@@ -2706,16 +2677,10 @@ public:
 		flt_rule_entry.rule.attrib.dst_port_lo = 150;
 		flt_rule_entry.rule.attrib.dst_port_hi = 250;
 
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -2730,11 +2695,13 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(2) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -2848,31 +2815,19 @@ public:
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table0.hdl; //put here the handle corresponding to Routing Rule 1
 		flt_rule_entry.rule.attrib.attrib_mask = IPA_FLT_PROTOCOL;
 		flt_rule_entry.rule.attrib.u.v4.protocol = 17; // Filter only UDP Packets.
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table1.hdl; //put here the handle corresponding to Routing Rule 2
 		flt_rule_entry.rule.attrib.u.v4.protocol = 6; // Filter only TCP Packets.
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -2884,11 +2839,13 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(2) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -3760,16 +3717,10 @@ public:
 		flt_rule_entry.rule.action=IPA_PASS_TO_ROUTING;
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table0.hdl; //put here the handle corresponding to Routing Rule 1
 		flt_rule_entry.rule.attrib.attrib_mask = IPA_FLT_FRAGMENT;
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
@@ -3783,11 +3734,12 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -3849,26 +3801,22 @@ public:
 
 		char recievedBuffer[256] = {0};
 		char SentBuffer[256] = {0};
-//		char * p = recievedBuffer;
 		size_t j;
 		for(j = 0; j < m_sendSize; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer[j]);
 		for(j = 0; j < receivedSize; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
 
 		for(j = 0; j < m_sendSize2; j++)
-			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) -(3*j + 1), " %02X", m_sendBuffer2[j]);
+			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer2[j]);
 		for(j = 0; j < receivedSize2; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff2[j]);
 		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
 
 		for(j = 0; j < m_sendSize3; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer3[j]);
 		for(j = 0; j < receivedSize3; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff3[j]);
 		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
 
@@ -3901,6 +3849,7 @@ public:
 			All DST_IPv6 == 0x...BB traffic goes to routing table 2 \
 			All DST_IPv6 == 0x...CC traffic goes to routing table 3";
 		m_IpaIPType = IPA_IP_v6;
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -4116,31 +4065,18 @@ public:
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[3]      = 0X556677AA;
 
 		printf ("flt_rule_entry was set successfully, preparing for insertion....\n");
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
-
 		// Configuring Filtering Rule No.1
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table1.hdl; //put here the handle corresponding to Routing Rule 1
 		flt_rule_entry.rule.attrib.u.v6.dst_addr[3]      = 0X556677BB;
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -4152,11 +4088,13 @@ public:
 				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(2) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -4202,6 +4140,7 @@ public:
 		m_IpaIPType = IPA_IP_v6;
 		m_extHdrType = FRAGMENT;
 		m_minIPAHwType = IPA_HW_v2_5;
+		m_maxIPAHwType = IPA_HW_v2_6L;
 		Register(*this);
 	}
 
@@ -4388,7 +4327,7 @@ public:
 
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v6,IPA_CLIENT_TEST_PROD,false,3);
+		FilterTable0.Init(IPA_IP_v6,IPA_CLIENT_TEST_PROD,false,2);
 
 		// Configuring Filtering Rule No.0
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -4398,16 +4337,10 @@ public:
 		flt_rule_entry.rule.action=IPA_PASS_TO_ROUTING;
 		flt_rule_entry.rule.rt_tbl_hdl=routing_table0.hdl; //put here the handle corresponding to Routing Rule 1
 		flt_rule_entry.rule.attrib.attrib_mask = IPA_FLT_FRAGMENT;
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
@@ -4426,11 +4359,12 @@ public:
 			!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
 			)
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -4493,26 +4427,22 @@ public:
 
 		char recievedBuffer[256] = {0};
 		char SentBuffer[256] = {0};
-//		char * p = recievedBuffer;
 		size_t j;
 		for(j = 0; j < m_sendSize; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer[j]);
 		for(j = 0; j < receivedSize; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff1[j]);
 		printf("Expected Value1 (%zu)\n%s\n, Received Value1(%zu)\n%s\n",m_sendSize,SentBuffer,receivedSize,recievedBuffer);
 
 		for(j = 0; j < m_sendSize2; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer2[j]);
 		for(j = 0; j < receivedSize2; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff2[j]);
 		printf("Expected Value2 (%zu)\n%s\n, Received Value2(%zu)\n%s\n",m_sendSize2,SentBuffer,receivedSize2,recievedBuffer);
 
 		for(j = 0; j < m_sendSize3; j++)
 			snprintf(&SentBuffer[3*j], sizeof(SentBuffer) - (3*j + 1), " %02X", m_sendBuffer3[j]);
 		for(j = 0; j < receivedSize3; j++)
-//			recievedBuffer += sprintf(recievedBuffer, "%02X", rxBuff1[i]);
 			snprintf(&recievedBuffer[3*j], sizeof(recievedBuffer) - (3*j + 1), " %02X", rxBuff3[j]);
 		printf("Expected Value3 (%zu)\n%s\n, Received Value3(%zu)\n%s\n",m_sendSize3,SentBuffer,receivedSize3,recievedBuffer);
 
@@ -4603,16 +4533,10 @@ public:
 		flt_rule_entry.rule.attrib.src_port = 1000;
 
 		printf ("flt_rule_entry was set successfully, preparing for insertion....\n");
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(0) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.1
@@ -4620,16 +4544,10 @@ public:
 		flt_rule_entry.rule.attrib.attrib_mask = IPA_FLT_DST_PORT;
 		flt_rule_entry.rule.attrib.dst_port = 100;
 
-		if (
-				((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry)) ||
-				!m_filtering.AddFilteringRule(FilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == FilterTable0.AddRuleToTable(flt_rule_entry))
 		{
-			printf ("%s::Error Adding RuleTable(1) to Filtering, aborting...\n",__FUNCTION__);
+			printf ("%s::Error Adding Rule to Filter Table, aborting...\n",__FUNCTION__);
 			return false;
-		} else
-		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -4647,7 +4565,9 @@ public:
 			return false;
 		} else
 		{
-			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
+			printf("flt rule hdl0=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(0)->status);
+			printf("flt rule hdl1=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(1)->status);
+			printf("flt rule hdl2=0x%x, status=0x%x\n", FilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,FilterTable0.ReadRuleFromTable(2)->status);
 		}
 		printf("Leaving %s, %s()\n",__FUNCTION__, __FILE__);
 		return true;
@@ -4689,17 +4609,17 @@ static class IpaFilteringBlockTest008 ipaFilteringBlockTest008;//Global Filterin
 static class IpaFilteringBlockTest009 ipaFilteringBlockTest009;//Global Filtering Test
 static class IpaFilteringBlockTest010 ipaFilteringBlockTest010;//Global Filtering Test
 
-static class IpaFilteringBlockTest021 ipaFilteringBlockTest021;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest022 ipaFilteringBlockTest022;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest023 ipaFilteringBlockTest023;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest024 ipaFilteringBlockTest024;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest025 ipaFilteringBlockTest025;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest026 ipaFilteringBlockTest026;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest027 ipaFilteringBlockTest027;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest028 ipaFilteringBlockTest028;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest029 ipaFilteringBlockTest029;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest030 ipaFilteringBlockTest030;//Global Filtering Test, End point Specific Filtering Table
-static class IpaFilteringBlockTest031 ipaFilteringBlockTest031;//Global Filtering Test, End point Specific Filtering Table
+static class IpaFilteringBlockTest021 ipaFilteringBlockTest021;//End point Specific Filtering Table
+static class IpaFilteringBlockTest022 ipaFilteringBlockTest022;//End point Specific Filtering Table
+static class IpaFilteringBlockTest023 ipaFilteringBlockTest023;//End point Specific Filtering Table
+static class IpaFilteringBlockTest024 ipaFilteringBlockTest024;//End point Specific Filtering Table
+static class IpaFilteringBlockTest025 ipaFilteringBlockTest025;//End point Specific Filtering Table
+static class IpaFilteringBlockTest026 ipaFilteringBlockTest026;//End point Specific Filtering Table
+static class IpaFilteringBlockTest027 ipaFilteringBlockTest027;//End point Specific Filtering Table
+static class IpaFilteringBlockTest028 ipaFilteringBlockTest028;//End point Specific Filtering Table
+static class IpaFilteringBlockTest029 ipaFilteringBlockTest029;//End point Specific Filtering Table
+static class IpaFilteringBlockTest030 ipaFilteringBlockTest030;//End point Specific Filtering Table
+static class IpaFilteringBlockTest031 ipaFilteringBlockTest031;//End point Specific Filtering Table
 
 static class IpaFilteringBlockTest050 ipaFilteringBlockTest050;// IPv6 Test, Global Filtering Table
 static class IpaFilteringBlockTest051 ipaFilteringBlockTest051;// IPv6 Test, End point Specific Filtering Table

@@ -64,7 +64,12 @@ const char *ipa_hw_type_name[] = {
 	"1.1",
 	"2.0",
 	"2.1",
-	"2.5",
+	"2.5/2.6",
+	"2.6L",
+	"Unused",
+	"Unused",
+	"Unused",
+	"3.0",
 	"MAX"
 };
 

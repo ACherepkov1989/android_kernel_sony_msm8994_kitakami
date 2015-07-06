@@ -322,7 +322,7 @@ public:
 		memset(&flt_rule_entry, 0, sizeof(flt_rule_entry));
 		strlcpy(st_rt_tbl.name, "LAN", sizeof(st_rt_tbl.name));
 		st_rt_tbl.ip = m_IpaIPType;
-		fltTable.Init(m_IpaIPType, IPA_CLIENT_TEST_PROD, true, 1);
+		fltTable.Init(m_IpaIPType, IPA_CLIENT_TEST_PROD, false, 1);
 		m_routing.GetRoutingTable(&st_rt_tbl);
 		flt_rule_entry.rule.rt_tbl_hdl = st_rt_tbl.hdl;
 		fltTable.AddRuleToTable(flt_rule_entry);
