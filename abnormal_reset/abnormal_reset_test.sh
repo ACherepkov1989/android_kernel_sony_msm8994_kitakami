@@ -44,7 +44,7 @@ fi
 tsensor_reset_mod=${modpath}/tsensor_reset_mod.ko
 
 case "$TARGET_TYPE" in
-	"8916" | "8939" | "8909" | "8952")
+	"8916" | "8939" | "8909" | "8952" | "8976")
 		SPMI_PON_BASE=0x800;
 		SID=0x0;
 	;;
