@@ -1904,54 +1904,53 @@ static void update_history(struct rq *rq, struct task_struct *p,
 
 	p->ravg.sum = 0;
 
+	if (sched_window_stats_policy == WINDOW_STATS_RECENT) {
+		demand = runtime;
+	} else if (sched_window_stats_policy == WINDOW_STATS_MAX) {
+		demand = max;
+	} else {
+		avg = div64_u64(sum, sched_ravg_hist_size);
+		wma = div64_u64(wma, (sched_ravg_hist_size * (sched_ravg_hist_size + 1)) / 2);
+		ewa = div64_u64(ewa, (1 << sched_ravg_hist_size) - 1);
+
+		if (sched_window_stats_policy == WINDOW_STATS_AVG)
+			demand = avg;
+		else if (sched_window_stats_policy == WINDOW_STATS_MAX_RECENT_WMA)
+			/*
+			 * WMA stands for weighted moving average. It helps
+			 * to smooth load curve and react faster while ramping
+			 * down comparing with basic averaging. We do it only
+			 * when load trend goes down. See below example (4 HS):
+			 *
+			 * WMA = (P0 * 4 + P1 * 3 + P2 * 2 + P3 * 1) / (4 + 3 + 2 + 1)
+			 *
+			 * This is done for power saving. Means when load disappears
+			 * or becomes low, this algorithm caches real bottom load faster
+			 * (because of weights) then taking AVG values.
+			 */
+			demand = max((u32) wma, runtime);
+		else if (sched_window_stats_policy == WINDOW_STATS_WMA)
+			demand = (u32) wma;
+		else if (sched_window_stats_policy == WINDOW_STATS_MAX_RECENT_EWA)
+			/*
+			 * EWA stands for exponential weighted average
+			 */
+			demand = max((u32) ewa, runtime);
+		else if (sched_window_stats_policy == WINDOW_STATS_EWA)
+			demand = (u32) ewa;
+		else
+			demand = max(avg, runtime);
+	}
+
 	/*
 	 * A throttled deadline sched class task gets dequeued without
 	 * changing p->on_rq. Since the dequeue decrements hmp stats
 	 * avoid decrementing it here again.
 	 */
 	if (p->on_rq && (!task_has_dl_policy(p) || !p->dl.dl_throttled))
-		p->sched_class->dec_hmp_sched_stats(rq, p);
-
-	avg = div64_u64(sum, sched_ravg_hist_size);
-	wma = div64_u64(wma, (sched_ravg_hist_size * (sched_ravg_hist_size + 1)) / 2);
-	ewa = div64_u64(ewa, (1 << sched_ravg_hist_size) - 1);
-
-	if (sched_window_stats_policy == WINDOW_STATS_RECENT)
-		demand = runtime;
-	else if (sched_window_stats_policy == WINDOW_STATS_MAX)
-		demand = max;
-	else if (sched_window_stats_policy == WINDOW_STATS_AVG)
-		demand = avg;
-	else if (sched_window_stats_policy == WINDOW_STATS_MAX_RECENT_WMA)
-		/*
-		 * WMA stands for weighted moving average. It helps
-		 * to smooth load curve and react faster while ramping
-		 * down comparing with basic averaging. We do it only
-		 * when load trend goes down. See below example (4 HS):
-		 *
-		 * WMA = (P0 * 4 + P1 * 3 + P2 * 2 + P3 * 1) / (4 + 3 + 2 + 1)
-		 *
-		 * This is done for power saving. Means when load disappears
-		 * or becomes low, this algorithm caches real bottom load faster
-		 * (because of weights) then taking AVG values.
-		 */
-		demand = max((u32) wma, runtime);
-	else if (sched_window_stats_policy == WINDOW_STATS_WMA)
-		demand = (u32) wma;
-	else if (sched_window_stats_policy == WINDOW_STATS_MAX_RECENT_EWA)
-		/*
-		 * EWA stands for exponential weighted average
-		 */
-		demand = max((u32) ewa, runtime);
-	else if (sched_window_stats_policy == WINDOW_STATS_EWA)
-		demand = (u32) ewa;
+		p->sched_class->fixup_hmp_sched_stats(rq, p, demand);
 	else
-		demand = max(avg, runtime);
-
-	p->ravg.demand = demand;
-
-	if (p->on_rq && (!task_has_dl_policy(p) || !p->dl.dl_throttled))
-		p->sched_class->inc_hmp_sched_stats(rq, p);
+		p->ravg.demand = demand;
 
 done:
 	trace_sched_update_history(rq, p, runtime, samples, event);
