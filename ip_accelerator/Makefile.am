@@ -20,10 +20,10 @@ install-exec-local: $(module)
 clean-local:
 	-test ! -d "$(KERNEL_DIR)" || $(kmake) clean
 
+
 if USE_GLIB
-	AM_CXXFLAGS += -Dstrlcpy=g_strlcpy -DUSE_GLIB @GLIB_CFLAGS@
-	requiredlibs = -lrt @GLIB_LIBS@
-	ip_accelerator_LDADD = $(requiredlibs)
+    ip_accelerator_CPPFLAGS  = $(AM_CFLAGS) -DUSE_GLIB -Dstrlcpy=g_strlcpy @GLIB_CFLAGS@
+    ip_accelerator_LDFLAGS = -lpthread @GLIB_LIBS@
 endif
 
 ip_acceleratordir            = $(prefix)/ip_accelerator
