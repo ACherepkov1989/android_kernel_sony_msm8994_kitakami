@@ -533,14 +533,16 @@ static void report_conc_kpi_test(int num_children,
 		int actual_arithmetic_sum;
 		/* Sum of arithmetic series */
 		actual_arithmetic_sum =
-			(num_children / 2) * ((2 * TEST_ARITHMETIC_START_PAGES)
-			+ ((num_children - 1) * TEST_ARITHMETIC_COMMON_DIFF));
+			(num_children * ((2 * TEST_ARITHMETIC_START_PAGES)
+			+ ((num_children - 1) *
+			TEST_ARITHMETIC_COMMON_DIFF))) / 2;
 
 		/* Sum excluding the last process */
 		total_pages =
-			((num_children - 1) / 2) *
+			((num_children - 1) *
 			((2 * TEST_ARITHMETIC_START_PAGES) +
-			((num_children - 2) * TEST_ARITHMETIC_COMMON_DIFF));
+			((num_children - 2) *
+			TEST_ARITHMETIC_COMMON_DIFF))) / 2;
 
 		if (!failed_alloc_pages)
 			total_pages = actual_arithmetic_sum;
@@ -599,14 +601,16 @@ static void report_lat_kpi_test(int num_children,
 		int actual_arithmetic_sum;
 		/* Sum of arithmetic series */
 		actual_arithmetic_sum =
-			(num_children / 2) * ((2 * TEST_ARITHMETIC_START_PAGES)
-			+ ((num_children - 1) * TEST_ARITHMETIC_COMMON_DIFF));
+			(num_children * ((2 * TEST_ARITHMETIC_START_PAGES)
+			+ ((num_children - 1) *
+			TEST_ARITHMETIC_COMMON_DIFF))) / 2;
 
 		/* Sum excluding the last process */
 		total_pages =
-			((num_children - 1) / 2) *
+			((num_children - 1) *
 			((2 * TEST_ARITHMETIC_START_PAGES) +
-			((num_children - 2) * TEST_ARITHMETIC_COMMON_DIFF));
+			((num_children - 2) *
+			TEST_ARITHMETIC_COMMON_DIFF))) / 2;
 
 		if (!failed_alloc_pages)
 			total_pages = actual_arithmetic_sum;
