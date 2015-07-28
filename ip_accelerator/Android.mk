@@ -11,14 +11,13 @@ LOCAL_CFLAGS += -DIPA_ON_R3PC
 include $(DLKM_DIR)/AndroidKernelModule.mk
 
 include $(CLEAR_VARS)
-LOCAL_C_INCLUDES := external/connectivity/stlport/stlport
 ifeq ($(TARGET_ARCH),aarch64)
 LOCAL_CFLAGS += -include build/core/combo/include/arch/linux-aarch64/AndroidConfig.h
 else
 LOCAL_CFLAGS += -include build/core/combo/include/arch/linux-arm/AndroidConfig.h
 endif
 LOCAL_CFLAGS += -I$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-LOCAL_C_INCLUDES :=   external/stlport/stlport bionic/ bionic/libstdc++/include
+LOCAL_C_INCLUDES := external/libcxx/include bionic/ bionic/libstdc++/include
 # For APQ8064
 LOCAL_CFLAGS += -I$(TOP)/kernel/include
 LOCAL_CFLAGS += -DIPA_ON_R3PC
@@ -67,7 +66,7 @@ LOCAL_SRC_FILES   := \
 		FilteringEthernetBridgingTests.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-		libstlport \
+	libc++
 
 LOCAL_MODULE_TAGS := debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests/ip_accelerator
