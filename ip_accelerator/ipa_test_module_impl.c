@@ -90,7 +90,7 @@
 #define SAVE_HEADER 1
 
 int ipa_sys_setup(struct ipa_sys_connect_params *sys_in, unsigned long *ipa_bam_hdl,
-		  u32 *ipa_pipe_num, u32 *clnt_hdl);
+		  u32 *ipa_pipe_num, u32 *clnt_hdl, bool en_status);
 int ipa_sys_teardown(u32 clnt_hdl);
 
 enum fops_type {
@@ -1356,7 +1356,7 @@ int configure_system_1(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -1375,7 +1375,7 @@ int configure_system_1(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1412,7 +1412,7 @@ int configure_system_2(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -1427,7 +1427,7 @@ int configure_system_2(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[1]->ipa_client_hdl))
+			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -1442,7 +1442,7 @@ int configure_system_2(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -1458,7 +1458,7 @@ int configure_system_2(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1484,7 +1484,7 @@ int configure_system_2(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[1]->ipa_client_hdl))
+			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1516,7 +1516,7 @@ int configure_system_3(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -1532,7 +1532,7 @@ int configure_system_3(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[1]->ipa_client_hdl))
+			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -1548,7 +1548,7 @@ int configure_system_3(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -1578,7 +1578,7 @@ int configure_system_3(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1673,7 +1673,7 @@ int configure_system_5(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -1712,7 +1712,8 @@ int configure_system_5(void)
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
 				&ipa_pipe_num,
-				&from_ipa_devs[1]->ipa_client_hdl))
+				&from_ipa_devs[1]->ipa_client_hdl,
+				false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -1752,7 +1753,7 @@ int configure_system_5(void)
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl))
+			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -1774,7 +1775,7 @@ int configure_system_5(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1806,7 +1807,7 @@ int configure_system_6(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
 				  ipa_pipe_num,
@@ -1822,7 +1823,7 @@ int configure_system_6(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 	/* Connect A5 MEM --> Tx IPA */
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
@@ -1891,7 +1892,7 @@ int configure_system_8(void)
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -1906,7 +1907,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[1]->ipa_client_hdl))
+			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -1928,7 +1929,7 @@ int configure_system_8(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -1948,7 +1949,7 @@ int configure_system_8(void)
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1970,7 +1971,7 @@ int configure_system_8(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[1]->ipa_client_hdl))
+			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -1992,7 +1993,7 @@ int configure_system_8(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[2]->ipa_client_hdl))
+			&to_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2012,7 +2013,7 @@ int configure_system_8(void)
 	sys_in.client = IPA_CLIENT_TEST4_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[3]->ipa_client_hdl))
+			&to_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2093,7 +2094,7 @@ int configure_system_9(void)
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -2108,7 +2109,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[1]->ipa_client_hdl))
+			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -2131,7 +2132,7 @@ int configure_system_9(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -2151,7 +2152,7 @@ int configure_system_9(void)
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2173,7 +2174,7 @@ int configure_system_9(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[1]->ipa_client_hdl))
+			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2195,7 +2196,7 @@ int configure_system_9(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[2]->ipa_client_hdl))
+			&to_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2215,7 +2216,7 @@ int configure_system_9(void)
 	sys_in.client = IPA_CLIENT_TEST4_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[3]->ipa_client_hdl))
+			&to_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2278,7 +2279,7 @@ int configure_system_10(void)
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -2298,7 +2299,7 @@ int configure_system_10(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
+			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2348,7 +2349,7 @@ int configure_system_11(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -2366,7 +2367,7 @@ int configure_system_11(void)
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl))
+			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -2390,7 +2391,7 @@ int configure_system_11(void)
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -2414,7 +2415,7 @@ int configure_system_11(void)
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[3]->ipa_client_hdl))
+			&from_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[3]->ep,
@@ -2435,7 +2436,7 @@ int configure_system_11(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
+			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2459,7 +2460,7 @@ int configure_system_11(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl))
+			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 	/* Connect A5 MEM --> Tx IPA */
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
@@ -2514,7 +2515,7 @@ int configure_system_12(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &from_ipa_devs[0]->ipa_client_hdl))
+			&ipa_pipe_num, &from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -2532,7 +2533,7 @@ int configure_system_12(void)
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl))
+			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -2556,7 +2557,7 @@ int configure_system_12(void)
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl))
+			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -2580,7 +2581,7 @@ int configure_system_12(void)
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &from_ipa_devs[3]->ipa_client_hdl))
+			&ipa_pipe_num, &from_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[3]->ep,
@@ -2601,7 +2602,7 @@ int configure_system_12(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
+			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2625,7 +2626,7 @@ int configure_system_12(void)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl))
+			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2675,7 +2676,8 @@ int configure_system_17(void)
 	if (ipa_sys_setup(&sys_in,
 				&ipa_bam_hdl,
 				&ipa_pipe_num,
-				&from_ipa_devs[0]->ipa_client_hdl))
+				&from_ipa_devs[0]->ipa_client_hdl,
+				false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -2698,7 +2700,8 @@ int configure_system_17(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[1]->ipa_client_hdl))
+			&from_ipa_devs[1]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -2731,7 +2734,8 @@ int configure_system_17(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(
@@ -2770,7 +2774,8 @@ int configure_system_17(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[3]->ipa_client_hdl))
+			&from_ipa_devs[3]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[3]->ep,
@@ -2800,7 +2805,8 @@ int configure_system_17(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2820,7 +2826,8 @@ int configure_system_17(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&to_ipa_devs[1]->ipa_client_hdl))
+			&to_ipa_devs[1]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2858,7 +2865,8 @@ int configure_system_17(void)
 			&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&to_ipa_devs[2]->ipa_client_hdl))
+			&to_ipa_devs[2]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -2993,7 +3001,8 @@ int configure_system_18(void)
 	if (ipa_sys_setup(&sys_in,
 				&ipa_bam_hdl,
 				&ipa_pipe_num,
-				&from_ipa_devs[0]->ipa_client_hdl))
+				&from_ipa_devs[0]->ipa_client_hdl,
+				false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -3021,7 +3030,8 @@ int configure_system_18(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -3305,7 +3315,8 @@ int configure_system_7(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -3320,7 +3331,8 @@ int configure_system_7(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[1]->ipa_client_hdl))
+			&from_ipa_devs[1]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[1]->ep,
@@ -3335,7 +3347,8 @@ int configure_system_7(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[2]->ipa_client_hdl))
+			&from_ipa_devs[2]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[2]->ep,
@@ -3360,7 +3373,8 @@ int configure_system_7(void)
 	sys_in.priv = &(p_exception_hdl_data->notify_cb_data);
 
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -3707,7 +3721,8 @@ int configure_system_14(void)
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[index]->ipa_client_hdl))
+			&from_ipa_devs[index]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
@@ -3725,7 +3740,8 @@ index++;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[index]->ipa_client_hdl))
+			&from_ipa_devs[index]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
@@ -3743,7 +3759,8 @@ index++;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[index]->ipa_client_hdl))
+			&from_ipa_devs[index]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
@@ -3761,7 +3778,8 @@ index++;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&from_ipa_devs[index]->ipa_client_hdl))
+			&from_ipa_devs[index]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
@@ -3787,7 +3805,8 @@ index = 0;
 	if (ipa_sys_setup(&sys_in,
 					&ipa_bam_hdl,
 					&ipa_pipe_num,
-					&to_ipa_devs[index]->ipa_client_hdl))
+					&to_ipa_devs[index]->ipa_client_hdl,
+					false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -3809,7 +3828,8 @@ index++;
 	if (ipa_sys_setup(&sys_in,
 			&ipa_bam_hdl,
 			&ipa_pipe_num,
-			&to_ipa_devs[index]->ipa_client_hdl))
+			&to_ipa_devs[index]->ipa_client_hdl,
+			false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -3886,7 +3906,7 @@ int configure_system_15(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[0]->ipa_client_hdl))
+			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
@@ -3906,7 +3926,7 @@ int configure_system_15(void)
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
-			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl))
+			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect A5 MEM --> Tx IPA */
@@ -3946,7 +3966,7 @@ int configure_system_20(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in,
 		&ipa_bam_hdl, &ipa_pipe_num,
-		&from_ipa_devs[index]->ipa_client_hdl))
+		&from_ipa_devs[index]->ipa_client_hdl, false))
 		goto fail;
 
 	res = connect_ipa_to_apps(&from_ipa_devs[index]->ep,
@@ -3984,7 +4004,8 @@ int configure_system_20(void)
 		&sys_in,
 		&ipa_bam_hdl,
 		&ipa_pipe_num,
-		&from_ipa_devs[index]->ipa_client_hdl))
+		&from_ipa_devs[index]->ipa_client_hdl,
+		false))
 		goto fail;
 
 	res = connect_ipa_to_apps(
@@ -4022,7 +4043,7 @@ int configure_system_20(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[0]->ipa_client_hdl))
+			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect AP MEM --> Tx IPA */
@@ -4048,7 +4069,7 @@ if (res)
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[1]->ipa_client_hdl))
+			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
 	/* Connect AP MEM --> Tx IPA */
@@ -5501,7 +5522,7 @@ static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_us
 		return -1;
 	}
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&to_ipa_devs[index]->ipa_client_hdl)) {
+			&to_ipa_devs[index]->ipa_client_hdl, false)) {
 		pr_err("setup sys pipe failed\n");
 		return -1;
 	}
@@ -5600,7 +5621,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = from_ipa_channel_config.client;
 	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
-			&from_ipa_devs[index]->ipa_client_hdl)) {
+			&from_ipa_devs[index]->ipa_client_hdl,from_ipa_user->en_status)) {
 			pr_err("setup sys pipe failed\n");
 			return -1;
 	}
@@ -5805,7 +5826,6 @@ static long ipa_test_ioctl(struct file *filp,
 	case IPA_TEST_IOC_GET_HW_TYPE:
 		retval = ipa_get_hw_type();
 		break;
-
 	default:
 		pr_err("ioctl is not supported (%d)\n", cmd);
 		return -ENOTTY;

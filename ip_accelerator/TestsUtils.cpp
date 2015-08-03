@@ -782,6 +782,8 @@ static bool is_reconfigure_required(struct ipa_test_config_header *header)
 		flag &= !memcmp(header->from_ipa_channel_config[i]->cfg,
 				current_configuration->from_ipa_channel_config[i]->cfg,
 				header->from_ipa_channel_config[i]->config_size);
+		flag &= (header->from_ipa_channel_config[i]->en_status ==
+				current_configuration->from_ipa_channel_config[i]->en_status);
 	}
 
 	if (flag == false) {
@@ -798,6 +800,8 @@ static bool is_reconfigure_required(struct ipa_test_config_header *header)
 		flag &= !memcmp(header->to_ipa_channel_config[i]->cfg,
 				current_configuration->to_ipa_channel_config[i]->cfg,
 				header->to_ipa_channel_config[i]->config_size);
+		flag &= (header->to_ipa_channel_config[i]->en_status ==
+				current_configuration->to_ipa_channel_config[i]->en_status);
 	}
 
 	if (flag == false) {
@@ -841,6 +845,9 @@ int GenericConfigureScenario(struct ipa_test_config_header *header)
 		g_Logger.AddMessage(LOG_DEVELOPMENT,
 				"header->from_ipa_channel_config[%d]->config_size=%d\n", i,
 				header->from_ipa_channel_config[i]->config_size);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+				"header->from_ipa_channel_config[%d]->en_status=%d\n", i,
+				header->from_ipa_channel_config[i]->en_status);
 	}
 
 	for (int i = 0 ; i < header->to_ipa_channels_num ; i++) {
@@ -856,6 +863,9 @@ int GenericConfigureScenario(struct ipa_test_config_header *header)
 		g_Logger.AddMessage(LOG_DEVELOPMENT,
 			"header->to_ipa_channel_config[%d]->config_size=%d\n", i,
 			header->to_ipa_channel_config[i]->config_size);
+		g_Logger.AddMessage(LOG_DEVELOPMENT,
+				"header->to_ipa_channel_config[%d]->en_status=%d\n", i,
+				header->to_ipa_channel_config[i]->en_status);
 	}
 
 	fd = open(CONFIGURATION_NODE_PATH,  O_RDWR);
@@ -924,7 +934,8 @@ void prepare_channel_struct(struct ipa_channel_config *channel,
 		int index,
 		enum ipa_client_type client,
 		void *cfg,
-		size_t config_size)
+		size_t config_size,
+		bool en_status)
 {
 	channel->head_marker = IPA_TEST_CHANNEL_CONFIG_MARKER;
 	channel->index = index;
@@ -932,6 +943,7 @@ void prepare_channel_struct(struct ipa_channel_config *channel,
 	channel->cfg = (char*)cfg;
 	channel->config_size = config_size;
 	channel->tail_marker = IPA_TEST_CHANNEL_CONFIG_MARKER;
+	channel->en_status = en_status;
 }
 
 void prepare_header_struct(struct ipa_test_config_header *header,
@@ -953,6 +965,21 @@ bool CompareResultVsGolden(Byte *goldenBuffer,   unsigned int goldenSize,
 	}
 	return !memcmp((void*)receivedBuffer, (void*)goldenBuffer, goldenSize);
 }
+
+bool CompareResultVsGolden_w_Status(Byte *goldenBuffer,   unsigned int goldenSize,
+			   Byte *receivedBuffer, unsigned int receivedSize)
+{
+	if ((receivedSize - sizeof(struct ipa3_hw_pkt_status)) != goldenSize) {
+		g_Logger.AddMessage(LOG_VERBOSE,  "%s Buffer sizes are different.\n", __FUNCTION__);
+		return false;
+	}
+
+	printf("comparison is made considering %d status bytes!\n",sizeof(struct ipa3_hw_pkt_status));
+
+	return !memcmp((void*)((unsigned char *)receivedBuffer +
+		sizeof(struct ipa3_hw_pkt_status)), (void*)goldenBuffer, goldenSize);
+}
+
 
 Byte *LoadFileToMemory(const string &name, unsigned int *sizeLoaded)
 {

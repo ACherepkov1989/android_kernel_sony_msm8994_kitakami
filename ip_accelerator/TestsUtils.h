@@ -260,7 +260,8 @@ void prepare_channel_struct(struct ipa_channel_config *channel,
 		int index,
 		enum ipa_client_type client,
 		void *cfg,
-		size_t config_size);
+		size_t config_size,
+		bool en_status = 0);
 
 void prepare_header_struct(struct ipa_test_config_header *header,
 		struct ipa_channel_config **from,
@@ -268,7 +269,7 @@ void prepare_header_struct(struct ipa_test_config_header *header,
 
 /**
 	@brief
-		Compares to data buffers.
+		Compares two data buffers.
 
 		@param [in] goldenBuffer - Pointer to the first data
 			buffer
@@ -287,6 +288,29 @@ bool CompareResultVsGolden(
 		unsigned int goldenSize,
 		unsigned char *receivedBuffer,
 		unsigned int receivedSize);
+
+/**
+	@brief
+		Compares two data buffers considering the returned status.
+
+		@param [in] goldenBuffer - Pointer to the first data
+			buffer
+		@param [in] goldenSize - First data buffer size
+		@param [in] receivedBuffer - Pointer to the second data
+			buffer
+		@param [in] receivedSize - Second data buffer size
+		@return True - the buffers are identical. False
+			otherwise.
+
+		@details
+	In case the sizes are differnt, false is returned.
+*/
+bool CompareResultVsGolden_w_Status(
+	Byte *goldenBuffer,
+	unsigned int goldenSize,
+	Byte *receivedBuffer,
+	unsigned int receivedSize);
+
 
 /**
 	@brief
@@ -583,5 +607,40 @@ struct test_ipa_ep_cfg {
 	struct ipa_ep_cfg_metadata_mask metadata_mask;
 	struct ipa_ep_cfg_metadata meta;
 };
+
+/*! @brief Struct for the IPAv3.0 UL packet status header */
+struct ipa3_hw_pkt_status {
+	uint64_t status_opcode:8;
+	uint64_t exception:8;
+	uint64_t status_mask:16;
+	uint64_t pkt_len:16;
+	uint64_t endp_src_idx:5;
+	uint64_t reserved_1:3;
+	uint64_t endp_dest_idx:5;
+	uint64_t reserved_2:3;
+	uint64_t metadata:32;
+	uint64_t filt_local:1;
+	uint64_t filt_hash:1;
+	uint64_t filt_global:1;
+	uint64_t ret_hdr:1;
+	uint64_t filt_rule_id:10;
+	uint64_t route_local:1;
+	uint64_t route_hash:1;
+	uint64_t ucp:1;
+	uint64_t route_tbl_idx:5;
+	uint64_t route_rule_id:10;
+	uint64_t nat_hit:1;
+	uint64_t nat_tbl_idx:13;
+	uint64_t nat_type:2;
+	uint64_t tag:48;
+	uint64_t seq_num:8;
+	uint64_t time_day_ctr:24;
+	uint64_t hdr_local:1;
+	uint64_t hdr_offset:10;
+	uint64_t frag_hit:1;
+	uint64_t frag_rule:4;
+	uint64_t reserved_4:16;
+};
+
 
 #endif
