@@ -1,3 +1,4 @@
+ifeq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) <= 22 ))" )))
 ifeq ($(call is-vendor-board-platform,QCOM),true)
 ifneq (, $(filter aarch64 arm arm64, $(TARGET_ARCH)))
 
@@ -86,4 +87,4 @@ $(foreach TEST,$(IP_ACCELERATOR_FILE_LIST),$(eval $(call ADD_TEST,$(TEST))))
 endif # $(TARGET_ARCH)
 endif
 
-
+endif # check PLATFORM_SDK_VERSION
