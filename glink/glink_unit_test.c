@@ -938,6 +938,7 @@ static void glink_ut0_mock_ssr(struct seq_file *s)
 
 		UT_ASSERT_INT(0, ==, do_mock_negotiation(s, 0x1, 0x0, MOCK));
 
+		memset(&open_cfg, 0, sizeof(struct glink_open_config));
 		open_cfg.transport = "mock";
 		open_cfg.edge = "local";
 		open_cfg.name = "loopback";
