@@ -1,6 +1,7 @@
 ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
 ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
 ifneq ($(wildcard kernel/include/soc/qcom/glink.h),)
+ifneq ($(wildcard kernel/include/soc/qcom/tracer_pkt.h),)
 LOCAL_PATH := $(call my-dir)
 
 # the dlkm
@@ -20,6 +21,7 @@ LOCAL_MODULE_TAGS := optional debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_PREBUILT)
 
+endif
 endif
 endif
 endif
