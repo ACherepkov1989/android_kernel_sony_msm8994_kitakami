@@ -433,6 +433,10 @@ static void glink_ut1_mock_rx_intent_req(struct seq_file *s)
 
 	ut_intent_req_workqueue =
 		create_singlethread_workqueue("ut_intent_req");
+	if (!ut_intent_req_workqueue) {
+		GLINK_STATUS(s, "\tfailed to create workqueue\n");
+		return;
+	}
 
 	do {
 		mock_ptr = mock_xprt_get(MOCK);
@@ -2517,11 +2521,13 @@ static void glink_ut_local_basic_core(struct seq_file *s)
 			cntl_ch_len = GLINK_NAME_SIZE + strlen(cntl_ch_pfix);
 			cntl_ch_name = kzalloc(cntl_ch_len,
 						GFP_KERNEL);
+			UT_ASSERT_ERR_PTR(cntl_ch_name);
 			snprintf(cntl_ch_name, cntl_ch_len,
 					"%s%s", cntl_ch_pfix, edge);
 			data_ch_len = GLINK_NAME_SIZE + strlen(data_ch_pfix);
 			data_ch_name = kzalloc(data_ch_len,
 						GFP_KERNEL);
+			UT_ASSERT_ERR_PTR(data_ch_name);
 			snprintf(data_ch_name, data_ch_len,
 					"%s%s", data_ch_pfix, edge);
 			b_ch_mem_alloc = true;
@@ -2895,6 +2901,7 @@ static void glink_ut_mt_test_core(struct seq_file *s)
 		mt_thread_info = kzalloc(sizeof(*mt_thread_info) *
 					(num_lat_clnts + num_tput_clnts),
 					GFP_KERNEL);
+		UT_ASSERT_ERR_PTR_MT(mt_thread_info);
 		for (i = 0; i < num_lat_clnts; i++) {
 			mt_thread_info[i].s = s;
 			mt_thread_info[i].cntl_handle = cntl_handle;
@@ -2948,6 +2955,7 @@ static void glink_ut_mt_test_core(struct seq_file *s)
 		mt_test_wq = kzalloc(sizeof(struct workqueue_struct *) *
 				     (num_lat_clnts + num_tput_clnts),
 				     GFP_KERNEL);
+		UT_ASSERT_ERR_PTR_MT(mt_test_wq);
 		for (i = 0; i < (num_lat_clnts + num_tput_clnts); i++) {
 			*(mt_test_wq + i) = create_singlethread_workqueue(
 							mt_thread_info[i].name);
@@ -3828,6 +3836,7 @@ static int glink_ut1_local_mt_test_1_thread(struct seq_file *s,
 		local_mt_test_thread_1_wq =
 			create_singlethread_workqueue(
 					"local_mt_test_thread_1_wq");
+		UT_ASSERT_ERR_PTR_MT(local_mt_test_thread_1_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &local_mt_thread_1_info.work);
 
 		queue_work(local_mt_test_thread_1_wq,
@@ -3958,16 +3967,19 @@ static int glink_ut1_local_mt_test_3_threads(struct seq_file *s,
 		local_mt_test_thread_1_wq =
 			create_singlethread_workqueue(
 					"local_mt_test_thread_1_wq");
+		UT_ASSERT_ERR_PTR_MT(local_mt_test_thread_1_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &local_mt_thread_1_info.work);
 
 		local_mt_test_thread_2_wq =
 			create_singlethread_workqueue(
 					"local_mt_test_thread_2_wq");
+		UT_ASSERT_ERR_PTR_MT(local_mt_test_thread_2_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &local_mt_thread_2_info.work);
 
 		local_mt_test_thread_3_wq =
 			create_singlethread_workqueue(
 					"local_mt_test_thread_3_wq");
+		UT_ASSERT_ERR_PTR_MT(local_mt_test_thread_3_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &local_mt_thread_3_info.work);
 
 		/* Queue the work */
@@ -4252,10 +4264,21 @@ static void glink_mpss_mt_core(struct seq_file *s)
 	glink_ut_to_upper(edge, ut_dfs_d->edge_name);
 	cntl_ch_name = kzalloc(cntl_ch_len,
 				GFP_KERNEL);
+	if (!cntl_ch_name) {
+		GLINK_STATUS(s, "%s:control channel name Allocation failed\n",
+								__func__);
+		return;
+	}
 	snprintf(cntl_ch_name, cntl_ch_len,
 			"%s%s", cntl_ch_pfix, edge);
 	data_ch_name = kzalloc(data_ch_len,
 				GFP_KERNEL);
+	if (!data_ch_name) {
+		GLINK_STATUS(s, "%s:Data channel name Allocation failed\n",
+								__func__);
+		kfree(cntl_ch_name);
+		return;
+	}
 	snprintf(data_ch_name, data_ch_len,
 			"%s%s", data_ch_pfix, edge);
 
@@ -4321,6 +4344,7 @@ static int glink_ut1_mpss_mt_test_1_thread(struct seq_file *s,
 		mpss_mt_test_thread_1_wq =
 			create_singlethread_workqueue(
 					"mpss_mt_test_thread_1_wq");
+		UT_ASSERT_ERR_PTR_MT(mpss_mt_test_thread_1_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &mpss_mt_thread_1_info.work);
 		wq_created = true;
 
@@ -4401,6 +4425,13 @@ static int glink_ut1_mpss_mt_test_3_threads(struct seq_file *s,
 	name1 = kzalloc(data_ch_len, GFP_KERNEL);
 	name2 = kzalloc(data_ch_len, GFP_KERNEL);
 	name3 = kzalloc(data_ch_len, GFP_KERNEL);
+	if (!name1 || !name2 || !name3) {
+		GLINK_STATUS_MT(s, "Allocation Failed %s\n", __func__);
+		kfree(name1);
+		kfree(name2);
+		kfree(name3);
+		return -ENOMEM;
+	}
 	snprintf(name1, data_ch_len, "%s%s", data_ch_name, "_1");
 	snprintf(name2, data_ch_len, "%s%s", data_ch_name, "_2");
 	snprintf(name3, data_ch_len, "%s%s", data_ch_name, "_3");
@@ -4455,16 +4486,19 @@ static int glink_ut1_mpss_mt_test_3_threads(struct seq_file *s,
 		mpss_mt_test_thread_1_wq =
 			create_singlethread_workqueue(
 					"mpss_mt_test_thread_1_wq");
+		UT_ASSERT_ERR_PTR_MT(mpss_mt_test_thread_1_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &mpss_mt_thread_1_info.work);
 
 		mpss_mt_test_thread_2_wq =
 			create_singlethread_workqueue(
 					"mpss_mt_test_thread_2_wq");
+		UT_ASSERT_ERR_PTR_MT(mpss_mt_test_thread_2_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &mpss_mt_thread_2_info.work);
 
 		mpss_mt_test_thread_3_wq =
 			create_singlethread_workqueue(
 					"mpss_mt_test_thread_3_wq");
+		UT_ASSERT_ERR_PTR_MT(mpss_mt_test_thread_3_wq);
 		UT_ASSERT_PTR_MT(NULL, !=, &mpss_mt_thread_3_info.work);
 
 		/* Queue the work */
@@ -5027,7 +5061,8 @@ static void glink_ut0_rwref_lock(struct seq_file *s)
 	if (write_wq) {
 		flush_workqueue(write_wq);
 		destroy_workqueue(write_wq);
-
+	}
+	if (read_wq) {
 		flush_workqueue(read_wq);
 		destroy_workqueue(read_wq);
 	}
@@ -5529,6 +5564,8 @@ void glink_ut_link_state_cb(struct glink_link_state_cb_info *cb_info,
 	if (!cb_info)
 		return;
 	ut_dfs_work = kzalloc(sizeof(struct glink_ut_dbgfs_work), GFP_KERNEL);
+	if (!ut_dfs_work)
+		return;
 	ut_dfs_work->xprt = cb_info->transport;
 	ut_dfs_work->edge = cb_info->edge;
 
@@ -5558,6 +5595,8 @@ static int __init glink_init(void)
 
 	ut_dbgfs_create_workqueue =
 		create_singlethread_workqueue("dbgfs_queue");
+	if (!ut_dbgfs_create_workqueue)
+		return -ENOMEM;
 
 	/* Initialize mutex for multithreaded locking test */
 	mutex_init(&multithread_test_mutex_lha0);
