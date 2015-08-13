@@ -37,6 +37,7 @@
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <float.h>
 #include <sys/select.h>
 #include <string.h>
 #include <err.h>
