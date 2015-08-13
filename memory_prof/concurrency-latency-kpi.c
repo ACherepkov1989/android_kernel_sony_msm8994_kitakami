@@ -359,9 +359,9 @@ static void stop_proc(int snum)
 	debug("%s, %d, %s\n", __func__, getpid(), strsignal(snum));
 
 	if (snum == SIGUSR1)
-		stop_stat = 1;
+		stop_stat += 1;
 	else if (snum == SIGUSR2)
-		stop_stat = 2;
+		stop_stat += 2;
 }
 
 pid_t stat_proc(void)
@@ -399,7 +399,7 @@ pid_t stat_proc(void)
 		if (stop_stat == 1) {
 			sleep(0);
 			continue;
-		} else if (stop_stat == 2) {
+		} else if (stop_stat >= 2) {
 			printf("[meminfo]{Max swap usage (kB): %ld,"
 				" Avg swap usage (kB): %ld}\n\n",
 				memi.swap_max, memi.swap_avg);
