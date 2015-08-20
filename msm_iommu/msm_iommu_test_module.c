@@ -108,8 +108,7 @@ static void free_iommu_list(struct msm_iommu_test *iommu_test)
 	}
 }
 
-#ifdef CONFIG_OF_DEVICE
-
+#ifdef CONFIG_OF
 static int parse_iommu_instance(struct msm_iommu_test *iommu_test,
 				struct device_node *iommu_node,
 				unsigned int iommu_idx)

@@ -41,12 +41,46 @@ static struct cats_reg cats_reg_v1 = {
 	.sid_mask = 0x3FF,
 };
 
+static struct cats_reg cats_reg_8937 = {
+	.phys_smmu_local_base = 0x1EE0000,
+	.cats_128_bit_base_addr = 0x0e000000,
+	.cats_64_bit_base_addr = 0x0f000000,
+	.tbu_id_shift = 0x1,
+	.va_remap_shift = 0x6,
+	.enable_sid_shift = 0xe,
+	.sid_shift = 0xf,
+	.sid_mask = 0x3FF,
+};
+
+static struct cats_reg cats_reg_titanium = {
+	.phys_smmu_local_base = 0x1EE0000,
+	.cats_128_bit_base_addr = 0x0e000000,
+	.cats_64_bit_base_addr = 0x0f000000,
+	.tbu_id_shift = 0x1,
+	.va_remap_shift = 0x6,
+	.enable_sid_shift = 0xe,
+	.sid_shift = 0xf,
+	.sid_mask = 0x3FF,
+};
+
 static struct target_config tc[] = {
 	{
 		.ts = {
 			.name = "msm8952",
 		},
 		.cr = &cats_reg_v1,
+	},
+	{
+		.ts = {
+			.name = "msm8937",
+		},
+		.cr = &cats_reg_8937,
+	},
+	{
+		.ts = {
+			.name = "msmtita",
+		},
+		.cr = &cats_reg_titanium,
 	},
 	{
 		.ts = {
