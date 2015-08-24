@@ -69,7 +69,7 @@ static int op_ion_cache_global_setup(struct alloc_profile_entry entries[])
 	 * will help keep things a little more equal during the actual
 	 * timings.
 	 */
-	for_each_alloc_profile_entry_op(entry, entries, "cache") {
+	for_each_alloc_profile_entry_op(entry, entries, "ion_cache") {
 		struct ion_cache_op *op = (struct ion_cache_op *) entry->priv;
 		max_reps = MAX(max_reps, op->reps);
 	}
