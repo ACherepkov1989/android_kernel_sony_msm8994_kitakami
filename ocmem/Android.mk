@@ -1,5 +1,6 @@
 ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
 ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
+ifneq ($(wildcard kernel/drivers/soc/qcom/ocmem.h),)
 
 DLKM_DIR := device/qcom/common/dlkm
 LOCAL_PATH := $(call my-dir)
@@ -28,5 +29,6 @@ LOCAL_MODULE_TAGS  := debug
 LOCAL_MODULE_PATH  := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_PREBUILT)
 
+endif
 endif
 endif
