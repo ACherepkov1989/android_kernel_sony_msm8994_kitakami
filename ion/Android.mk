@@ -1,5 +1,7 @@
 ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
 ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
+ifneq ($(call is-board-platform,msm8994),true)
+ifneq ($(call is-board-platform,msm8992),true)
 LOCAL_PATH := $(call my-dir)
 commonSources :=
 
@@ -37,5 +39,7 @@ LOCAL_MODULE_TAGS := optional debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_PREBUILT)
 
+endif
+endif
 endif
 endif
