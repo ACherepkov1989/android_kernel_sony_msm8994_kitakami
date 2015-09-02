@@ -222,6 +222,17 @@ struct qpnp_pin_chip {
 
 static LIST_HEAD(qpnp_pin_chips);
 static DEFINE_MUTEX(qpnp_pin_chips_lock);
+static bool display_on_in_boot;
+
+static int __init display_on_in_boot_setup(char *str)
+{
+	if (!str)
+		return 0;
+	if (!strncmp(str, "on", 2))
+		display_on_in_boot = true;
+	return 0;
+}
+__setup("display_status=", display_on_in_boot_setup);
 
 static inline void qpnp_pmic_pin_set_spec(struct qpnp_pin_chip *q_chip,
 					      uint32_t pmic_pin,
@@ -613,6 +624,8 @@ static int _qpnp_pin_config(struct qpnp_pin_chip *q_chip,
 
 	/* output specific configuration */
 	if (Q_HAVE_HW_SP(Q_PIN_CFG_INVERT, q_spec, param->invert)) {
+		if (display_on_in_boot && param->keep_high_at_init)
+			param->invert = 1;
 		if (is_gpio_lv_mv(q_spec)) {
 			shift = Q_REG_DIG_OUT_SRC_INVERT_SHIFT;
 			mask = Q_REG_DIG_OUT_SRC_INVERT_MASK;

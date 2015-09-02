@@ -1,0 +1,11 @@
+--- drivers/gpio/qpnp-pin.c
++++ drivers/gpio/qpnp-pin.c
+@@ -1070,6 +1083,8 @@ static int qpnp_pin_apply_config(struct qpnp_pin_chip *q_chip,
+ 		&param.cs_out);
+ 	of_property_read_u32(node, "qcom,apass-sel",
+ 		&param.apass_sel);
++	param.keep_high_at_init = of_property_read_bool(node,
++		"somc,keep_high_at_init");
+ 	rc = _qpnp_pin_config(q_chip, q_spec, &param);
+ 
+ 	return rc;
