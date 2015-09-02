@@ -1,0 +1,20 @@
+--- drivers/power/power_supply_sysfs.c
++++ drivers/power/power_supply_sysfs.c
+@@ -48,7 +48,7 @@ static ssize_t power_supply_show_property(struct device *dev,
+ 		"Unknown", "Battery", "UPS", "Mains", "USB",
+ 		"USB_DCP", "USB_CDP", "USB_ACA",
+ 		"USB_HVDCP", "USB_HVDCP_3", "Wireless", "BMS", "USB_Parallel",
+-		"Wipower"
++		"Wipower", "Dual_Wireless"
+ 	};
+ 	static char *status_text[] = {
+ 		"Unknown", "Charging", "Discharging", "Not charging", "Full"
+@@ -202,6 +202,8 @@ static struct device_attribute power_supply_attrs[] = {
+ 	POWER_SUPPLY_ATTR(temp_alert_max),
+ 	POWER_SUPPLY_ATTR(temp_cool),
+ 	POWER_SUPPLY_ATTR(temp_warm),
++	POWER_SUPPLY_ATTR(temp_cold),
++	POWER_SUPPLY_ATTR(temp_hot),
+ 	POWER_SUPPLY_ATTR(temp_ambient),
+ 	POWER_SUPPLY_ATTR(temp_ambient_alert_min),
+ 	POWER_SUPPLY_ATTR(temp_ambient_alert_max),
