@@ -600,6 +600,13 @@ config NFC_PN547_PMC8974_CLK_REQ
 	  Communication controller support.
 	  This option enables d1 clock for NFC.
 
+config NFC_PN544
+	tristate "NFC driver for PN544"
+	default n
+	depends on I2C
+	help
+	  This option enables support for PN544.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
