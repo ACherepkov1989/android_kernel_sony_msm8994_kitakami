@@ -1160,4 +1160,6 @@ config TOUCHSCREEN_MAXIM_STI
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
+source "drivers/input/touchscreen/cyttsp4/Kconfig"
+
 endif
