@@ -3096,7 +3096,7 @@ public:
 		LOG_MSG_INFO("Creation of 5 bypass routing tables completed successfully");
 
 		// Creating Filtering Rules
-		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, NUM_PACKETS);
+		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, false, NUM_PACKETS);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -3336,7 +3336,7 @@ public:
 		LOG_MSG_INFO("Creation of 2 bypass routing tables completed successfully");
 
 		// Creating Filtering Rules
-		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 2);
+		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, false, 2);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1

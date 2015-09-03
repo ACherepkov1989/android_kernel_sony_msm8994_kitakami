@@ -39,7 +39,7 @@ public:
 		m_name = "IpaFilterEthIPv4Test00";
 		m_description =
 		"Filtering block test 01 - Ethernet Bridge, ETH2 filters, \
-		IPv4 address (Global Filtering Table, \
+		IPv4 address (EP Filtering Table, \
 		Insert all rules in a single commit) \
 		1. Generate and commit three routing tables. \
 		Each table contains a single \"bypass\" rule \
@@ -101,7 +101,7 @@ public:
 		// Create 3 filter rules
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,false,3);
 
 		// Configuring Filtering Rule 0 - ETH2 DST
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -204,7 +204,7 @@ public:
 		m_name = "IpaFilterEthIPv4Test01";
 		m_description =
 			"Filtering block test 01 - Ethernet Bridge, ETH2 filters, \
-			IPv4 address (Global Filtering Table, \
+			IPv4 address (EP Filtering Table, \
 			Insert all rules in a single commit) \
 			1. Generate and commit three routing tables. \
 			Each table contains a single \"bypass\" rule \
@@ -266,7 +266,7 @@ public:
 		// Create 3 filter rules
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,false,3);
 
 		// Configuring Filtering Rule 0 - ETH2 DST
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -380,7 +380,7 @@ public:
 		m_name = "IpaFilterEthIPv4Test02";
 		m_description =
 			"Filtering block test 02 - Ethernet Bridge, ETH2 filters, \
-			IPv4 address (Global Filtering Table, \
+			IPv4 address (EP Filtering Table, \
 			Insert all rules in a single commit) \
 			1. Generate and commit three routing tables. \
 			Each table contains a single \"bypass\" rule \
@@ -443,7 +443,7 @@ public:
 		// Create 3 filter rules
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,false,3);
 
 		// Configuring Filtering Rule 0 - ETH2 SRC
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);
@@ -559,7 +559,7 @@ public:
 		m_name = "IpaFilterEthIPv4Test03";
 		m_description =
 			"Filtering block test 03 - Ethernet Bridge, ETH2 filters, \
-			IPv4 address (Global Filtering Table, \
+			IPv4 address (EP Filtering Table, \
 			Insert all rules in a single commit) \
 			1. Generate and commit three routing tables. \
 			Each table contains a single \"bypass\" rule \
@@ -623,7 +623,7 @@ public:
 		// Create 3 filter rules
 		IPAFilteringTable FilterTable0;
 		struct ipa_flt_rule_add flt_rule_entry;
-		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,true,3);
+		FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST2_PROD,false,3);
 
 		// Configuring Filtering Rule 0 - ETH2 DST
 		FilterTable0.GeneratePresetRule(1,flt_rule_entry);

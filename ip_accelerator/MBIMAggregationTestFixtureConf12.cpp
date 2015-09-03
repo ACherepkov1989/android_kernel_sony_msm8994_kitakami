@@ -201,7 +201,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -305,7 +305,7 @@ bool MBIMAggregationTestFixtureConf12::AddRulesDeaggregation() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST2_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST2_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -409,7 +409,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregationTime() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -513,7 +513,7 @@ bool MBIMAggregationTestFixtureConf12::AddRules1HeaderAggregation0Limits() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1

@@ -221,17 +221,18 @@ bail:
 /////////////////////////////////////////////////////////////////////////////////
 
 bool HeaderRemovalTestFixture::SetIPATablesToPassAllToSpecificClient(
-		enum ipa_client_type  nClientType)
+		enum ipa_client_type  nClientTypeSrc,
+		enum ipa_client_type nClientTypeDst)
 {
 	bool bRetVal = true;
 
-	bRetVal = SetRoutingTableToPassAllToSpecificClient(nClientType);
+	bRetVal = SetRoutingTableToPassAllToSpecificClient(nClientTypeDst);
 	if(false == bRetVal)
 		goto bail;
-	bRetVal = SetFilterTableToPassAllToSpecificClient(nClientType);
+	bRetVal = SetFilterTableToPassAllToSpecificClient(nClientTypeSrc);
 	if(false == bRetVal)
 		goto bail;
-	bRetVal = SetHeaderInsertionTableAddEmptyHeaderForTheClient(nClientType);
+	bRetVal = SetHeaderInsertionTableAddEmptyHeaderForTheClient(nClientTypeSrc);
 	if(false == bRetVal)
 		goto bail;
 /* fall through */
@@ -257,7 +258,7 @@ bool  HeaderRemovalTestFixture::SetFilterTableToPassAllToSpecificClient(
 	  return false;
 	}
 
-	FilterTable.Init(IPA_IP_v4, nClientType, true, 1);
+	FilterTable.Init(IPA_IP_v4, nClientType, false, 1);
 	FilterTable.GeneratePresetRule(0, flt_rule_entry);
 	flt_rule_entry.at_rear                        = true;
 	flt_rule_entry.flt_rule_hdl                   = -1;
@@ -374,7 +375,7 @@ bool HeaderRemovalTestFixture::ConfigureFilteringBlockWithMetaDataEq(
 		return false;
 	}
 
-	FilterTable0.Init(IPA_IP_v4, IPA_CLIENT_A2_TETHERED_PROD, true, 1);
+	FilterTable0.Init(IPA_IP_v4, IPA_CLIENT_TEST2_PROD, false, 1);
 
 	LOG_MSG_INFO("FilterTable*.Init Completed Successfully..");
 
