@@ -33,11 +33,7 @@
 #include <stdint.h>
 #include "linux/msm_ipa.h"
 
-#ifdef IPA_ON_R3PC
-#include <sys/endian.h>
-#else
 #include <netinet/in.h>
-#endif
 
 #endif
 

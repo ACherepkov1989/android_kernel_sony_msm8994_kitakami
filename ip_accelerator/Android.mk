@@ -8,7 +8,6 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE      := ipa_test_module.ko
 LOCAL_MODULE_TAGS  := debug
-LOCAL_CFLAGS += -DIPA_ON_R3PC
 include $(DLKM_DIR)/AndroidKernelModule.mk
 
 include $(CLEAR_VARS)
