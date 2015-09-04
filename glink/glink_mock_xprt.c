@@ -704,6 +704,7 @@ void mock_xprt_init(unsigned pr_index)
 	BUG_ON(pr_index >= ARRAY_SIZE(if_impl_array));
 	spin_lock_init(&if_impl_array[pr_index].mock_xprt_lists_lock_lha0);
 
+	memset(&cfg, 0, sizeof(cfg));
 	init_lists(&if_impl_array[pr_index]);
 	if_impl_array[pr_index].if_ptr.ssr = ssr;
 	if_impl_array[pr_index].if_ptr.tx = tx;
@@ -761,6 +762,7 @@ void mock_xprt_reinit(unsigned pr_index)
 	int ret;
 
 	BUG_ON(pr_index >= ARRAY_SIZE(if_impl_array));
+	memset(&cfg, 0, sizeof(cfg));
 	cfg.name = mock_xprt_names[pr_index];
 	cfg.edge = "local";
 	cfg.versions = versions;

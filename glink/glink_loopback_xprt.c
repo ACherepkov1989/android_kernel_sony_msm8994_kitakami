@@ -1263,6 +1263,7 @@ static int init_and_register_loopback_xprt_if(void)
 	struct glink_core_transport_cfg cfg;
 	int ret;
 
+	memset(&cfg, 0, sizeof(cfg));
 	loopback_xprt.if_ptr.ssr = ssr;
 	loopback_xprt.if_ptr.tx_cmd_version = tx_cmd_version;
 	loopback_xprt.if_ptr.tx_cmd_version_ack = tx_cmd_version_ack;
