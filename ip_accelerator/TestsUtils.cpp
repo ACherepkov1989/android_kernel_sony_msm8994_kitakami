@@ -884,8 +884,11 @@ int GenericConfigureScenario(struct ipa_test_config_header *header)
 	}
 
 	g_Logger.AddMessage(LOG_DEVELOPMENT ,"stashing new configuration\n");
-
 	stash_new_configuration(header);
+
+	g_Logger.AddMessage(LOG_DEVELOPMENT,
+			"Running mdev in order to create the device nodes.\n");
+	system("mdev -s");
 
 	return true;
 }
