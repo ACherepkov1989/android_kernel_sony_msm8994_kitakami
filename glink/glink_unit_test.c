@@ -31,6 +31,8 @@
 #include "glink_private.h"
 #include "glink_test_common.h"
 
+#define MAX_PERF_ITERATIONS 20
+
 static atomic_t local_mt_test_num_workers = ATOMIC_INIT(0);
 static atomic_t mpss_mt_test_num_workers = ATOMIC_INIT(0);
 static int ut_iterations = 5;
@@ -2027,6 +2029,10 @@ static int ut_loopback_performance_test(struct seq_file *s,
 		(struct loopback_channel *)*data_handle;
 	int len = strlen(lpb_ch->open_cfg.name);
 	int ut_iterations_temp = ut_iterations * 10;
+
+	if (ut_iterations_temp > MAX_PERF_ITERATIONS)
+		ut_iterations_temp = MAX_PERF_ITERATIONS;
+
 	GLINK_UT_INFO("%s: start for iterations[%d]\n", __func__,
 			ut_iterations_temp);
 
