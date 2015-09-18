@@ -1,0 +1,41 @@
+### NOP BUFFER USAGE ###
+
+print,mmap: full buffer usage: nop
+user_alloc,mmap,2MB,2MB,nop
+user_alloc,mmap,4MB,4MB,nop
+user_alloc,mmap,6MB,6MB,nop
+user_alloc,mmap,8MB,8MB,nop
+user_alloc,mmap,10MB,10MB,nop
+
+### FULL BUFFER USAGE ###
+
+print,mmap: full buffer usage: memset-0
+user_alloc,mmap,2MB,2MB,memset-0
+user_alloc,mmap,4MB,4MB,memset-0
+user_alloc,mmap,6MB,6MB,memset-0
+user_alloc,mmap,8MB,8MB,memset-0
+user_alloc,mmap,10MB,10MB,memset-0
+
+print,mmap: full buffer usage: memset-0xA5
+user_alloc,mmap,2MB,2MB,memset-0xA5
+user_alloc,mmap,4MB,4MB,memset-0xA5
+user_alloc,mmap,6MB,6MB,memset-0xA5
+user_alloc,mmap,8MB,8MB,memset-0xA5
+user_alloc,mmap,10MB,10MB,memset-0xA5
+
+
+### PARTIAL BUFFER USAGE ###
+
+print,mmap: partial buffer usage: memset-0
+user_alloc,mmap,2MB,1MB,memset-0
+user_alloc,mmap,4MB,3MB,memset-0
+user_alloc,mmap,6MB,5MB,memset-0
+user_alloc,mmap,8MB,7MB,memset-0
+user_alloc,mmap,10MB,9MB,memset-0
+
+print,mmap: partial buffer usage: memset-0xA5
+user_alloc,mmap,2MB,1MB,memset-0xA5
+user_alloc,mmap,4MB,3MB,memset-0xA5
+user_alloc,mmap,6MB,5MB,memset-0xA5
+user_alloc,mmap,8MB,7MB,memset-0xA5
+user_alloc,mmap,10MB,9MB,memset-0xA5
