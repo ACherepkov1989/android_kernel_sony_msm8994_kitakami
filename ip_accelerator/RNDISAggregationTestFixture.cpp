@@ -158,7 +158,7 @@ bool RNDISAggregationTestFixture::AddRulesNoAgg() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -214,7 +214,7 @@ bool RNDISAggregationTestFixture::AddRulesDeAggEther() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST2_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST2_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -319,7 +319,7 @@ bool RNDISAggregationTestFixture::AddRulesAggTimeLimit() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -425,7 +425,7 @@ bool RNDISAggregationTestFixture::AddRulesAggByteLimit() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1
@@ -531,7 +531,7 @@ bool RNDISAggregationTestFixture::AddRulesAggPacketLimit() {
 	LOG_MSG_INFO("Creation of bypass routing table completed successfully");
 
 	// Creating Filtering Rules
-	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, true, 1);
+	cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST3_PROD, false, 1);
 	LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 	// Configuring Filtering Rule No.1

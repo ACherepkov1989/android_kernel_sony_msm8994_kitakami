@@ -228,7 +228,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,false,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -373,7 +373,7 @@ public:
 			goto bail;
 		}
 		// Creating Filtering Rules
-		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,1);
+		cFilterTable.Init(m_eIP,IPA_CLIENT_TEST_PROD,false,1);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -564,7 +564,7 @@ public:
 				nTableHdl01,nTableHdl02,nTableHdl03);
 
 		// Creating Filtering Rules
-		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD,true,3);
+		cFilterTable0.Init(m_eIP,IPA_CLIENT_TEST_PROD,false,3);
 		LOG_MSG_INFO("Creation of filtering table completed successfully");
 
 		// Configuring Filtering Rule No.1
@@ -577,17 +577,11 @@ public:
 		sFilterRuleEntry.rule.attrib.attrib_mask = IPA_FLT_DST_ADDR; // Destination IP Based Filtering
 		sFilterRuleEntry.rule.attrib.u.v4.dst_addr_mask = 0xFF0000FF; // Mask
 		sFilterRuleEntry.rule.attrib.u.v4.dst_addr = 0x7F000001; // Filter DST_IP == 127.0.0.1.
-		if (
-				((uint8_t)-1 == cFilterTable0.AddRuleToTable(sFilterRuleEntry)) ||
-				!m_Filtering.AddFilteringRule(cFilterTable0.GetFilteringTable())
-				)
+		if ((uint8_t)-1 == cFilterTable0.AddRuleToTable(sFilterRuleEntry))
 		{
-			LOG_MSG_ERROR ("Adding Rule (0) to Filtering block Failed.");
+			LOG_MSG_ERROR ("Adding Rule (0) to Filtering table Failed.");
 			bRetVal = false;
 			goto bail;
-		} else
-		{
-			LOG_MSG_DEBUG("flt rule hdl0=0x%x, status=0x%x\n", cFilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,cFilterTable0.ReadRuleFromTable(0)->status);
 		}
 
 		// Configuring Filtering Rule No.2
@@ -595,17 +589,11 @@ public:
 		sFilterRuleEntry.status = -1; // return Value
 		sFilterRuleEntry.rule.rt_tbl_hdl=nTableHdl02; //put here the handle corresponding to Routing Rule 2
 		sFilterRuleEntry.rule.attrib.u.v4.dst_addr = 0xC0A80101; // Filter DST_IP == 192.168.1.1.
-		if (
-				((uint8_t)-1 == cFilterTable0.AddRuleToTable(sFilterRuleEntry)) ||
-				!m_Filtering.AddFilteringRule(cFilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == cFilterTable0.AddRuleToTable(sFilterRuleEntry))
 		{
-			LOG_MSG_ERROR ("Adding Rule(1) to Filtering block Failed.");
+			LOG_MSG_ERROR ("Adding Rule(1) to Filtering table Failed.");
 			bRetVal = false;
 			goto bail;
-		} else
-		{
-			LOG_MSG_DEBUG("flt rule hdl0=0x%x, status=0x%x\n", cFilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,cFilterTable0.ReadRuleFromTable(1)->status);
 		}
 
 		// Configuring Filtering Rule No.3
@@ -613,19 +601,22 @@ public:
 		sFilterRuleEntry.status = -1; // return value
 		sFilterRuleEntry.rule.rt_tbl_hdl=nTableHdl03; //put here the handle corresponding to Routing Rule 2
 		sFilterRuleEntry.rule.attrib.u.v4.dst_addr = 0xC0A80102; // Filter DST_IP == 192.168.1.2.
-
-		if (
-				((uint8_t)-1 == cFilterTable0.AddRuleToTable(sFilterRuleEntry)) ||
-				!m_Filtering.AddFilteringRule(cFilterTable0.GetFilteringTable())
-			)
+		if ((uint8_t)-1 == cFilterTable0.AddRuleToTable(sFilterRuleEntry))
 		{
-			LOG_MSG_ERROR ("Adding Rule(2) to Filtering block Failed.");
+			LOG_MSG_ERROR ("Adding Rule(2) to Filtering table Failed.");
 			bRetVal = false;
 			goto bail;
-		} else
-		{
-			LOG_MSG_DEBUG("flt rule hdl0=0x%x, status=0x%x\n", cFilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,cFilterTable0.ReadRuleFromTable(2)->status);
 		}
+
+		if (!m_Filtering.AddFilteringRule(cFilterTable0.GetFilteringTable())) {
+			LOG_MSG_ERROR ("Failed to commit Filtering rules");
+			bRetVal = false;
+			goto bail;
+		}
+
+		LOG_MSG_DEBUG("flt rule hdl0=0x%x, status=0x%x\n", cFilterTable0.ReadRuleFromTable(0)->flt_rule_hdl,cFilterTable0.ReadRuleFromTable(0)->status);
+		LOG_MSG_DEBUG("flt rule hdl0=0x%x, status=0x%x\n", cFilterTable0.ReadRuleFromTable(1)->flt_rule_hdl,cFilterTable0.ReadRuleFromTable(1)->status);
+		LOG_MSG_DEBUG("flt rule hdl0=0x%x, status=0x%x\n", cFilterTable0.ReadRuleFromTable(2)->flt_rule_hdl,cFilterTable0.ReadRuleFromTable(2)->status);
 
 	bail:
 		Free(pHeaderDescriptor);

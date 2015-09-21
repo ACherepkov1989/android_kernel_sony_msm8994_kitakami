@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -252,7 +252,7 @@ void Pipe::SetSpecificClientParameters(
 			m_nHeaderLengthAdd = sizeof(m_pUsbHeader);
 			m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 			m_pHeader = m_pUsbHeader;
-			LOG_MSG_INFO("Setting parameters for USB_CONS");
+			LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 			break;
 		case IPA_CLIENT_TEST2_CONS:
 			m_pInodePath = CONFIG_3_FROM_IPA_TO_A2_NDUN;

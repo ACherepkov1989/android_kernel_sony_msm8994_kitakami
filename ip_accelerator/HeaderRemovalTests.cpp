@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -68,7 +68,7 @@ bool HeaderRemovalTOSCheck::Run()
 	}
 	LOG_MSG_INFO("A2 Packet was  successfully created (%d bytes)", nA2NDUNPacketByteSize);
 
-	if ( false == SetIPATablesToPassAllToSpecificClient(IPA_CLIENT_TEST_CONS)) {
+	if ( false == SetIPATablesToPassAllToSpecificClient(IPA_CLIENT_TEST2_PROD, IPA_CLIENT_TEST_CONS)) {
 		LOG_MSG_ERROR("SetIPATablesToPassAllToSpecificClient failed, exiting test case");
 		bTestResult = false;
 		goto bail;
