@@ -994,7 +994,8 @@ static void tx_cmd_local_rx_done(struct glink_transport_if *if_ptr,
  * @lcid:	Local channel ID
  * @pctx:	Packet TX context
  *
- * Return: 0 on success, standard error codes otherwise
+ * Return: The number of bytes transmitted on success, standard error codes
+ *         otherwise
  */
 static int tx(struct glink_transport_if *if_ptr, uint32_t lcid,
 		struct glink_core_tx_pkt *pctx)
@@ -1029,7 +1030,7 @@ static int tx(struct glink_transport_if *if_ptr, uint32_t lcid,
 	GLX_INFO_PERF(
 		"lcid: %u %s: end (Success) TX R[%u]:%u data[%p] size[%u]\n",
 		lcid, __func__, pctx->riid, pctx->size, pctx->data, pctx->size);
-	return 0;
+	return pctx->size;
 }
 
 /**
@@ -1038,7 +1039,8 @@ static int tx(struct glink_transport_if *if_ptr, uint32_t lcid,
  * @lcid:	Local channel ID
  * @pctx:	Packet TX context
  *
- * Return: 0 on success, standard error codes otherwise
+ * Return: The number of bytes transmitted on success, standard error codes
+ *         otherwise
  */
 static int tx_cmd_tracer_pkt(struct glink_transport_if *if_ptr, uint32_t lcid,
 		struct glink_core_tx_pkt *pctx)
@@ -1075,7 +1077,7 @@ static int tx_cmd_tracer_pkt(struct glink_transport_if *if_ptr, uint32_t lcid,
 	GLX_INFO_PERF(
 		"lcid: %u %s: end (Success) TX R[%u]:%u data[%p] size[%u]\n",
 		lcid, __func__, pctx->riid, pctx->size, pctx->data, pctx->size);
-	return 0;
+	return pctx->size;
 }
 
 /**
