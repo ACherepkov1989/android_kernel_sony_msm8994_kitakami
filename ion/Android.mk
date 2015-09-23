@@ -17,6 +17,7 @@ include $(DLKM_DIR)/AndroidKernelModule.mk
 # the userspace test program
 include $(CLEAR_VARS)
 LOCAL_MODULE := msm_iontest
+LOCAL_CLANG := false
 LOCAL_CFLAGS += -Werror
 LOCAL_SRC_FILES += $(commonSources) msm_iontest.c kernel_ion_tests.c user_ion_tests.c cp_ion_tests.c
 LOCAL_SRC_FILES += ion_test_utils.c
