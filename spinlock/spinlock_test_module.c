@@ -58,6 +58,7 @@ static struct locks {
 static DEFINE_SPINLOCK(global_lock_static);
 static spinlock_t *global_lock_heap;
 static spinlock_t *uncached_lock;
+static phys_addr_t phys;
 
 enum {
 	IRQS_DISABLED_TEST = 1,
@@ -436,7 +437,7 @@ static int spinlock_test_remove(struct platform_device *pdev)
 	}
 
 	if (uncached_lock) {
-		dma_free_coherent(&pdev->dev, sizeof(spinlock_t), uncached_lock, 0);
+		dma_free_coherent(&pdev->dev, sizeof(spinlock_t), uncached_lock, phys);
 		uncached_lock = NULL;
 	}
 
@@ -446,7 +447,6 @@ static int spinlock_test_remove(struct platform_device *pdev)
 static int spinlock_test_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	phys_addr_t phys;
 	if (num_possible_cpus() > CPU_NUM_MAX) {
 		dev_err(&pdev->dev, "Number of possible cpus on this target \
 			exceeds the limit %d\n", CPU_NUM_MAX);
@@ -476,6 +476,7 @@ static int spinlock_test_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "create spinlock debugfs failed!\n");
 		kfree(global_lock_heap);
 		dma_free_coherent(&pdev->dev, sizeof(spinlock_t), uncached_lock, phys);
+		uncached_lock = NULL;
 		return ret;
 	}
 	return 0;
