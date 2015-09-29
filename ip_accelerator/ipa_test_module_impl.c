@@ -5430,7 +5430,7 @@ static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_us
 	u32 ipa_pipe_num;
 	int index;
 
-	pr_debug("copying from 0x%p %u bytes\n",
+	pr_debug("copying from 0x%p %zu bytes\n",
 		to_ipa_user,
 		sizeof(struct ipa_channel_config));
 	retval = copy_from_user(
@@ -5472,7 +5472,7 @@ static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_us
 	}
 
 	if (to_ipa_channel_config.config_size != sizeof(struct ipa_ep_cfg)) {
-		pr_err("bad config size (%d.vs.%d) update test struct?\n",
+		pr_err("bad config size (%zu.vs.%zu) update test struct?\n",
 			to_ipa_channel_config.config_size,
 			sizeof(struct ipa_ep_cfg));
 		return -EFAULT;
@@ -5528,7 +5528,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 	u32 ipa_pipe_num;
 	int index;
 
-	pr_debug("copying from 0x%p %d bytes\n",
+	pr_debug("copying from 0x%p %zu bytes\n",
 		from_ipa_user,
 		sizeof(struct ipa_channel_config));
 	retval = copy_from_user(
@@ -5536,7 +5536,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 		from_ipa_user,
 		sizeof(struct ipa_channel_config));
 	if (retval) {
-		pr_err("fail to copy from user - from_ipa_user (%d.vs.%d)\n",
+		pr_err("fail to copy from user - from_ipa_user (%d.vs.%zu)\n",
 			retval, sizeof(from_ipa_user));
 		return -1;
 	}
