@@ -41,6 +41,12 @@ struct ipa_test_config_header
 	char tail_marker; /* IPA_TEST_CONFIG_MARKER */
 };
 
+struct ipa_test_en_status
+{
+	int num_clients;
+	enum ipa_client_type *clients;
+};
+
 struct ipa_channel_config
 {
 	char head_marker; /* IPA_TEST_CHANNEL_CONFIG_MARKER */
@@ -48,6 +54,7 @@ struct ipa_channel_config
 	int index; /* shall be used for to_ipa_x or from_ipa_x */
 	size_t config_size;
 	void *cfg;
+	bool en_status;
 	char tail_marker; /* IPA_TEST_CHANNEL_CONFIG_MARKER */
 };
 #endif /* _IPA_TEST_MODULE_H_ */

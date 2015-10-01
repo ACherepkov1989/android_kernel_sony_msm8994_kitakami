@@ -144,6 +144,7 @@ public:
 
 	// Pointer to current producer pipe used in the test
 	InterfaceAbstraction *m_pCurrentProducer;
+	ipa_client_type m_currProducerClient;
 
 	// Pipe of the WLAN ETH2 consumer
 	InterfaceAbstraction m_defaultConsumer;

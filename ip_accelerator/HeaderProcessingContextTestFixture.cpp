@@ -68,6 +68,7 @@ const Byte IpaHdrProcCtxTestFixture::WLAN_802_3_HDR[WLAN_802_3_HDR_SIZE] =
 IpaHdrProcCtxTestFixture::IpaHdrProcCtxTestFixture():
 	m_procCtxHandleId(PROC_CTX_HANDLE_ID_MAX),
 	m_pCurrentProducer(NULL),
+	m_currProducerClient(IPA_CLIENT_MAX),
 	m_pCurrentConsumer(NULL),
 	m_currConsumerPipeNum(IPA_CLIENT_MAX),
 	m_sendSize1 (m_BUFF_MAX_SIZE),
@@ -349,7 +350,8 @@ void IpaHdrProcCtxTestFixture::AddFltBypassRule()
 {
 	IPAFilteringTable FilterTable0;
 	struct ipa_flt_rule_add flt_rule_entry;
-	FilterTable0.Init(IPA_IP_v4,IPA_CLIENT_TEST_PROD,true,1);
+
+	FilterTable0.Init(IPA_IP_v4,m_currProducerClient,false,1);
 	printf("FilterTable*.Init Completed Successfully..\n");
 
 	// Configuring Filtering Rule No.0
@@ -510,7 +512,7 @@ bool IpaHdrProcCtxTestFixture::SendPackets()
 		m_sendSize1);
 	if (false == isSuccess)
 	{
-		LOG_MSG_ERROR("SendPackets Buffer1 failed.\n");
+		LOG_MSG_ERROR("SendPackets Buffer1 failed on client %d\n", m_currProducerClient);
 		return false;
 	}
 

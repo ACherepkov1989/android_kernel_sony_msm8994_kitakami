@@ -51,6 +51,7 @@ public:
 			4. Generate and commit 1 filtering rule. \
 			All traffic goes to routing table 0";
 		m_pCurrentProducer = &m_rndisEth2Producer;
+		m_currProducerClient = IPA_CLIENT_TEST_PROD;
 		m_pCurrentConsumer = &m_defaultConsumer;
 		m_currConsumerPipeNum = IPA_CLIENT_TEST2_CONS;
 		m_procCtxHandleId = PROC_CTX_HANDLE_ID_WLAN_ETH2_2_ETH2;
@@ -117,6 +118,7 @@ public:
 			4. Generate and commit 1 filtering rule. \
 			All traffic goes to routing table 0";
 		m_pCurrentProducer = &m_wlanEth2producer;
+		m_currProducerClient = IPA_CLIENT_TEST2_PROD;
 		m_pCurrentConsumer = &m_rndisEth2Consumer;
 		m_currConsumerPipeNum = IPA_CLIENT_TEST3_CONS;
 		m_procCtxHandleId = PROC_CTX_HANDLE_ID_RNDIS_ETH2_2_ETH2;
@@ -199,6 +201,7 @@ public:
 			4. Generate and commit 1 filtering rule. \
 			All traffic goes to routing table 0";
 		m_pCurrentProducer = &m_wlanEth2producer;
+		m_currProducerClient = IPA_CLIENT_TEST2_PROD;
 		m_pCurrentConsumer = &m_defaultConsumer;
 		m_currConsumerPipeNum = IPA_CLIENT_TEST2_CONS;
 		m_procCtxHandleId = PROC_CTX_HANDLE_ID_WLAN_ETH2_2_ETH2;
@@ -259,6 +262,7 @@ public:
 			4. Generate and commit 1 filtering rule. \
 			All traffic goes to routing table 0";
 		m_pCurrentProducer = &m_wlanEth2producer;
+		m_currProducerClient = IPA_CLIENT_TEST2_PROD;
 		m_pCurrentConsumer = &m_rndisEth2Consumer;
 		m_currConsumerPipeNum = IPA_CLIENT_TEST3_CONS;
 		m_procCtxHandleId = PROC_CTX_HANDLE_ID_RNDIS_ETH2_2_ETH2;
@@ -314,7 +318,7 @@ public:
 		if (false == isSuccess)
 		{
 			LOG_MSG_ERROR(
-				"SendData Buffer 1 failed.\n");
+				"SendData Buffer 1 failed on producer %d\n", m_currProducerClient);
 			return false;
 		}
 
@@ -325,7 +329,7 @@ public:
 		if (false == isSuccess)
 		{
 			LOG_MSG_ERROR(
-				"SendData Buffer 2 failed.\n");
+				"SendData Buffer 2 failed on producer %d\n", m_currProducerClient);
 			return false;
 		}
 
@@ -402,6 +406,7 @@ public:
 			4. Generate and commit 1 filtering rule. \
 			All traffic goes to routing table 0";
 		m_pCurrentProducer = &m_wlanEth2producer;
+		m_currProducerClient = IPA_CLIENT_TEST2_PROD;
 		m_pCurrentConsumer = &m_defaultConsumer;
 		m_currConsumerPipeNum = IPA_CLIENT_TEST2_CONS;
 		m_procCtxHandleId = PROC_CTX_HANDLE_ID_WLAN_ETH2_2_ETH2;
