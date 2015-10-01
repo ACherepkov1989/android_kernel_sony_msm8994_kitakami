@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/version.h>
 
 #include "iontest.h"
 #include "compat_msm_ion_test_module.h"
@@ -213,7 +214,12 @@ static long ion_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	ion_phys_addr_t phys_addr;
 	void *addr;
 	size_t len;
-	unsigned long flags, size;
+	unsigned long flags;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,18,0))
+	unsigned long size;
+#else
+	size_t size;
+#endif
 	struct msm_ion_test *ion_test = file->private_data;
 	struct ion_test_data *test_data = &ion_test->test_data;
 
