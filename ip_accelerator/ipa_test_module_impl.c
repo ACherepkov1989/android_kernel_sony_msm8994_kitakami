@@ -32,6 +32,7 @@
 #include <linux/delay.h> /* msleep() */
 #include <linux/string.h>
 #include <linux/printk.h>
+#include <linux/msm_gsi.h>
 #include "ipa_rm_ut.h"
 #include "ipa_test_module.h"
 
@@ -54,6 +55,9 @@
 
 #define DESC_FIFO_SZ 0x100
 #define DATA_FIFO_SZ 0x2000
+
+#define GSI_CHANNEL_RING_LEN 4096
+#define GSI_EVT_RING_LEN 4096
 
 #define TX_NUM_BUFFS 16
 #define TX_SZ 32768
@@ -89,10 +93,12 @@
 #define EXCEPTION_KFIFO_DEBUG_VERBOSE 1
 #define SAVE_HEADER 1
 
-int ipa_sys_setup(struct ipa_sys_connect_params *sys_in, unsigned long *ipa_bam_hdl,
+int ipa_sys_setup(struct ipa_sys_connect_params *sys_in,
+		  unsigned long *ipa_bam_or_gsi_hdl,
 		  u32 *ipa_pipe_num, u32 *clnt_hdl, bool en_status);
 int ipa_sys_teardown(u32 clnt_hdl);
-
+int ipa_sys_update_gsi_hdls(u32 clnt_hdl, unsigned long gsi_ch_hdl,
+	unsigned long gsi_ev_hdl);
 enum fops_type {
 	IPA_TEST_REG_CHANNEL,
 	IPA_TEST_DATA_PATH_TEST_CHANNEL,
@@ -128,7 +134,11 @@ struct test_endpoint_sys {
 	struct sps_register_event reg_event; /* Check... */
 	struct sps_iovec iovec; /* An array of descriptor like couples */
 	struct completion xfer_done; /*A completion object for end transfer*/
-
+	struct gsi_chan_props gsi_channel_props;
+	struct gsi_evt_ring_props gsi_evt_ring_props;
+	bool gsi_valid;
+	unsigned long gsi_chan_hdl;
+	unsigned long gsi_evt_ring_hdl;
 };
 
 #define MAX_CHANNEL_NAME (20)
@@ -190,6 +200,8 @@ struct test_context {
 	s32 configuration_idx;
 	s32 current_configuration_idx;
 
+	enum ipa_transport_type ipa_transport;
+
 	u32 signature;/*Legacy*/
 };
 
@@ -202,6 +214,7 @@ struct ipa_tx_suspend_private_data {
 };
 
 static struct test_context *ipa_test;
+
 
 /**
  * Allocate memory from system memory.
@@ -315,11 +328,30 @@ int insert_descriptors_into_rx_endpoints(u32 count)
 		if (!rx_channel->rx_pool_inited) {
 			res = 0;
 			for (j = 0; j < RX_NUM_BUFFS; j++) {
-				res |= sps_transfer_one(rx_channel->ep.sps,
-					rx_channel->mem.phys_base + j * count,
-				       count, 0, 0);
-				pr_debug(DRV_NAME ":%s() sps_transfer_one rx res = %d.\n",
-					__func__, res);
+				if (ipa_test->ipa_transport ==
+				    IPA_TRANSPORT_TYPE_GSI) {
+					struct gsi_xfer_elem gsi_xfer;
+
+					memset(&gsi_xfer, 0, sizeof(gsi_xfer));
+					gsi_xfer.addr = rx_channel->mem.phys_base + j * count;
+					gsi_xfer.flags |= GSI_XFER_FLAG_EOT;
+					gsi_xfer.len = count;
+					gsi_xfer.type = GSI_XFER_ELEM_DATA;
+					gsi_xfer.xfer_user_data = (void*)(rx_channel->mem.phys_base + j * count);
+
+					pr_debug(DRV_NAME ":%s() submitting credit to gsi\n", __func__);
+					res |= gsi_queue_xfer(rx_channel->ep.gsi_chan_hdl, 1, &gsi_xfer, true);
+					if (res) {
+						pr_err(DRV_NAME ":%s() gsi_queue_xfer failed %d\n", __func__, res);
+						return -EFAULT;
+					}
+				} else {
+					res |= sps_transfer_one(rx_channel->ep.sps,
+						rx_channel->mem.phys_base + j * count,
+						count, 0, 0);
+					pr_debug(DRV_NAME ":%s() sps_transfer_one rx res = %d.\n",
+						__func__, res);
+				}
 			}
 
 			if (res == 0)
@@ -330,7 +362,118 @@ int insert_descriptors_into_rx_endpoints(u32 count)
 	return res;
 }
 
-static ssize_t channel_write(struct file *filp, const char __user *buf,
+static ssize_t channel_write_gsi(struct file *filp, const char __user *buf,
+	size_t count, loff_t *f_pos)
+{
+	struct channel_dev *channel_dev = filp->private_data;
+	int res = 0;
+	u32 buf_index = 0;
+	void *data_address = channel_dev->mem.base
+		+ buf_index * TX_BUFF_SIZE;
+	u32 data_phys_addr = channel_dev->mem.phys_base
+		+ buf_index * TX_BUFF_SIZE;
+	struct gsi_xfer_elem gsi_xfer;
+
+	/* Copy the data from the user and transmit */
+	res = copy_from_user(data_address, buf, count);
+	if (res) {
+		pr_debug(DRV_NAME ":%s() copy_from_user() failure.\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	/* Print the data */
+	print_buff(data_address, count);
+
+	pr_debug(DRV_NAME ":%s() -----Start Transfer-----\n", __func__);
+
+	if (count > (RX_BUFF_SIZE))
+		pr_err(DRV_NAME ":%s() -----PROBLEM-----\n", __func__);
+
+	/* Transmit */
+	memset(&gsi_xfer, 0, sizeof(gsi_xfer));
+	gsi_xfer.addr = data_phys_addr;
+	gsi_xfer.flags |= GSI_XFER_FLAG_EOT;
+	gsi_xfer.len = count;
+	gsi_xfer.type = GSI_XFER_ELEM_DATA;
+
+	pr_debug(DRV_NAME ":%s() sending a packet to gsi\n" , __func__);
+	res = gsi_queue_xfer(channel_dev->ep.gsi_chan_hdl, 1, &gsi_xfer, true);
+	if (res != GSI_STATUS_SUCCESS) {
+		pr_err(DRV_NAME ":%s()GSI xfer failed %d\n", __func__, res);
+		return res;
+	}
+
+	buf_index = (buf_index + 1) % TX_NUM_BUFFS;
+	return count;
+}
+
+static ssize_t channel_read_gsi(struct file *filp, char __user *buf,
+	size_t count, loff_t *f_pos)
+{
+	struct channel_dev *channel_dev = filp->private_data;
+	int res = 0;
+	int i;
+	phys_addr_t offset = 0;
+	struct gsi_chan_xfer_notify xfer_notify;
+	int max_retry = 10;
+	struct gsi_xfer_elem gsi_xfer;
+
+	pr_debug(DRV_NAME ":%s() size to read = %zu\n", __func__, count);
+	for (i = 0; i < max_retry; i++) {
+		res = gsi_poll_channel(channel_dev->ep.gsi_chan_hdl,
+			&xfer_notify);
+
+		if (res != GSI_STATUS_SUCCESS && res != GSI_STATUS_POLL_EMPTY) {
+			pr_err(DRV_NAME ":%s() gsi_poll_channel failed %d\n", __func__, res);
+			return res;
+		}
+		if (res == GSI_STATUS_SUCCESS)
+			break;
+
+		pr_debug(DRV_NAME ":%s() channel empty %d/%d\n", __func__, i + 1, max_retry);
+		msleep(5);
+	}
+
+	if (i == max_retry) {
+		pr_err(DRV_NAME ":%s() transfer not completed.\n", __func__);
+		return 0;
+	}
+
+	pr_debug(DRV_NAME ":%s() received %d bytes from 0x%8x.\n",
+		__func__, xfer_notify.bytes_xfered,
+		(phys_addr_t)xfer_notify.xfer_user_data);
+
+	/* Copy the received data to the user buffer */
+	offset = (phys_addr_t)xfer_notify.xfer_user_data - channel_dev->mem.phys_base;
+	res = copy_to_user(buf,
+		channel_dev->mem.base + offset,
+		xfer_notify.bytes_xfered);
+	if (res < 0) {
+		pr_err(DRV_NAME ":%s() copy_to_user() failed.\n", __func__);
+		return 0;
+	}
+
+	/* Re-insert the descriptor back to pipe */
+	memset(&gsi_xfer, 0, sizeof(gsi_xfer));
+	gsi_xfer.addr = (phys_addr_t)xfer_notify.xfer_user_data;
+	gsi_xfer.flags |= GSI_XFER_FLAG_EOT;
+	gsi_xfer.len = RX_BUFF_SIZE;
+	gsi_xfer.type = GSI_XFER_ELEM_DATA;
+	gsi_xfer.xfer_user_data = xfer_notify.xfer_user_data;
+
+	pr_debug(DRV_NAME ":%s() submitting credit to gsi\n", __func__);
+	res = gsi_queue_xfer(channel_dev->ep.gsi_chan_hdl, 1, &gsi_xfer, true);
+	if (res) {
+		pr_err(DRV_NAME ":%s() gsi_queue_xfer failed %d\n", __func__, res);
+		return 0;
+	}
+
+	pr_debug(DRV_NAME ":%s() Returning %d.\n", __func__, xfer_notify.bytes_xfered);
+	return xfer_notify.bytes_xfered;
+}
+
+static ssize_t channel_write_sps(struct file *filp, const char __user *buf,
 			     size_t count, loff_t *f_pos)
 {
 	struct channel_dev *channel_dev = filp->private_data;
@@ -372,7 +515,7 @@ static ssize_t channel_write(struct file *filp, const char __user *buf,
 	}
 }
 
-static ssize_t channel_read(struct file *filp, char __user *buf,
+static ssize_t channel_read_sps(struct file *filp, char __user *buf,
 			    size_t count, loff_t *f_pos)
 {
 	struct channel_dev *channel_dev = filp->private_data;
@@ -432,6 +575,22 @@ static ssize_t channel_read(struct file *filp, char __user *buf,
 		channel_dev->ep.iovec.size);
 
 	return channel_dev->ep.iovec.size;
+}
+
+static ssize_t channel_write(struct file *filp, const char __user *buf,
+	size_t count, loff_t *f_pos)
+{
+	if (ipa_test->ipa_transport == IPA_TRANSPORT_TYPE_GSI)
+		return channel_write_gsi(filp, buf, count, f_pos);
+	return channel_write_sps(filp, buf, count, f_pos);
+}
+
+static ssize_t channel_read(struct file *filp, char __user *buf,
+	size_t count, loff_t *f_pos)
+{
+	if (ipa_test->ipa_transport == IPA_TRANSPORT_TYPE_GSI)
+		return channel_read_gsi(filp, buf, count, f_pos);
+	return channel_read_sps(filp, buf, count, f_pos);
 }
 
 static const struct file_operations channel_dev_fops = {
@@ -495,50 +654,6 @@ int create_channel_device_by_type(
 
 	channel_dev = *channel_dev_ptr;
 
-	channel_dev->class = class_create(THIS_MODULE, name);
-	if (NULL == channel_dev->class) {
-		pr_err(DRV_NAME ":class_create() err.\n");
-		ret = -ENOMEM;
-		goto create_channel_device_failure;
-	}
-
-	ret = alloc_chrdev_region(&channel_dev->dev_num, 0, 1, name);
-	if (ret) {
-		pr_err(DRV_NAME ":alloc_chrdev_region err.\n");
-		ret = -ENOMEM;
-		goto create_channel_device_failure;
-	}
-
-	channel_dev->dev = device_create(channel_dev->class, NULL,
-					 channel_dev->dev_num, channel_dev,
-					 name);
-	if (IS_ERR(channel_dev->dev)) {
-		pr_err(DRV_NAME ":device_create err.\n");
-		ret = -ENODEV;
-		goto create_channel_device_failure;
-	}
-
-	switch (type) {
-	case IPA_TEST_REG_CHANNEL:
-		cdev_init(&channel_dev->cdev, &channel_dev_fops);
-		break;
-	case IPA_TEST_DATA_PATH_TEST_CHANNEL:
-		cdev_init(&channel_dev->cdev, &data_path_fops);
-		break;
-	default:
-		pr_debug("Wrong fops type in function %s", __func__);
-		ret = -EINVAL;
-		goto create_channel_device_failure;
-	}
-	channel_dev->cdev.owner = THIS_MODULE;
-
-	ret = cdev_add(&channel_dev->cdev, channel_dev->dev_num, 1);
-	if (ret) {
-		pr_err(DRV_NAME ":cdev_add err=%d\n", -ret);
-		ret = -ENODEV;
-		goto create_channel_device_failure;
-	}
-
 	strlcpy(channel_dev->name, name, MAX_CHANNEL_NAME);
 
 	/* Allocate desc FIFO of the pipe for the S2B/B2S pipes.*/
@@ -576,6 +691,50 @@ int create_channel_device_by_type(
 	channel_dev->test = ipa_test;
 	/*TODO(By Talel):is this pointer needed? the test context is shared*/
 
+	channel_dev->class = class_create(THIS_MODULE, name);
+	if (NULL == channel_dev->class) {
+		pr_err(DRV_NAME ":class_create() err.\n");
+		ret = -ENOMEM;
+		goto create_channel_device_failure;
+	}
+
+	ret = alloc_chrdev_region(&channel_dev->dev_num, 0, 1, name);
+	if (ret) {
+		pr_err(DRV_NAME ":alloc_chrdev_region err.\n");
+		ret = -ENOMEM;
+		goto create_channel_device_failure;
+	}
+
+	channel_dev->dev = device_create(channel_dev->class, NULL,
+		channel_dev->dev_num, channel_dev,
+		name);
+	if (IS_ERR(channel_dev->dev)) {
+		pr_err(DRV_NAME ":device_create err.\n");
+		ret = -ENODEV;
+		goto create_channel_device_failure;
+	}
+
+	switch (type) {
+	case IPA_TEST_REG_CHANNEL:
+		cdev_init(&channel_dev->cdev, &channel_dev_fops);
+		break;
+	case IPA_TEST_DATA_PATH_TEST_CHANNEL:
+		cdev_init(&channel_dev->cdev, &data_path_fops);
+		break;
+	default:
+		pr_debug("Wrong fops type in function %s", __func__);
+		ret = -EINVAL;
+		goto create_channel_device_failure;
+	}
+	channel_dev->cdev.owner = THIS_MODULE;
+
+	ret = cdev_add(&channel_dev->cdev, channel_dev->dev_num, 1);
+	if (ret) {
+		pr_err(DRV_NAME ":cdev_add err=%d\n", -ret);
+		ret = -ENODEV;
+		goto create_channel_device_failure;
+	}
+
 	if (0 == ret)
 		pr_debug(DRV_NAME
 			":Channel device:%d, name:%s created, address:0x%p.\n",
@@ -608,7 +767,7 @@ int create_channel_device(const int index,
  * DataPath test definitions:
  */
 
-#define MAX_TEST_SKB 5
+#define MAX_TEST_SKB 15
 
 #define TIME_OUT_TIME 600
 
@@ -700,9 +859,9 @@ static int datapath_read_data(void *element, int size)
 
 	pr_debug(DRV_NAME ":%s():Entering\n", __func__);
 
+	mutex_lock(&p_data_path_ctx->lock);
 	reinit_completion(&p_data_path_ctx->ipa_receive_completion);
 	pr_debug(DRV_NAME ":%s() Init completion\n", __func__);
-	mutex_lock(&p_data_path_ctx->lock);
 	pr_debug(DRV_NAME ":%s() Checking if kfifo is empty\n", __func__);
 	if (kfifo_is_empty(&p_data_path_ctx->fifo)) {
 		pr_debug(DRV_NAME ":%s() kfifo is empty\n", __func__);
@@ -736,8 +895,8 @@ static int datapath_read_data(void *element, int size)
 	pr_debug(DRV_NAME
 		":%s() took %d bytes out\n" , __func__, res);
 	pr_debug(DRV_NAME ":%s() unlocking lock\n", __func__);
-	mutex_unlock(&p_data_path_ctx->lock);
 	pr_debug(DRV_NAME ":%s():Exiting\n", __func__);
+	mutex_unlock(&p_data_path_ctx->lock);
 	return res;
 }
 
@@ -753,7 +912,6 @@ static int datapath_write_fifo(
 	pr_debug(DRV_NAME ":%s() putting %p into fifo\n", __func__, element);
 	res = kfifo_in(&p_data_path_ctx->fifo, &element, size);
 	pr_debug(DRV_NAME ":%s() finished kfifo in\n", __func__);
-	mutex_unlock(&p_data_path_ctx->lock);
 	if (res != size) {
 		pr_err(DRV_NAME ":%s() Error in saving element\n", __func__);
 		return -EINVAL;
@@ -762,6 +920,7 @@ static int datapath_write_fifo(
 
 	complete(&p_data_path_ctx->ipa_receive_completion);
 	pr_debug(DRV_NAME ":%s():Completed ipa_receive_completion\n", __func__);
+	mutex_unlock(&p_data_path_ctx->lock);
 	return 0;
 }
 
@@ -909,6 +1068,65 @@ static void notify_ipa_received(
 	}
 }
 
+static void ipa_test_gsi_evt_ring_err_cb(struct gsi_evt_err_notify *notify)
+{
+	if (notify) {
+		switch (notify->evt_id) {
+		case GSI_EVT_OUT_OF_BUFFERS_ERR:
+			pr_err("Received GSI_EVT_OUT_OF_BUFFERS_ERR\n");
+			break;
+		case GSI_EVT_OUT_OF_RESOURCES_ERR:
+			pr_err("Received GSI_EVT_OUT_OF_RESOURCES_ERR\n");
+			break;
+		case GSI_EVT_UNSUPPORTED_INTER_EE_OP_ERR:
+			pr_err("Received GSI_EVT_UNSUPPORTED_INTER_EE_OP_ERR\n");
+			break;
+		case GSI_EVT_EVT_RING_EMPTY_ERR:
+			pr_err("Received GSI_EVT_EVT_RING_EMPTY_ERR\n");
+			break;
+		default:
+			pr_err("Unexpected err evt: %d\n", notify->evt_id);
+		}
+	}
+	return;
+}
+
+static void ipa_test_gsi_chan_err_cb(struct gsi_chan_err_notify *notify)
+{
+	if (notify) {
+		switch (notify->evt_id) {
+		case GSI_CHAN_INVALID_TRE_ERR:
+			pr_err("Received GSI_CHAN_INVALID_TRE_ERR\n");
+			break;
+		case GSI_CHAN_NON_ALLOCATED_EVT_ACCESS_ERR:
+			pr_err("Received GSI_CHAN_NON_ALLOCATED_EVT_ACCESS_ERR\n");
+			break;
+		case GSI_CHAN_OUT_OF_BUFFERS_ERR:
+			pr_err("Received GSI_CHAN_OUT_OF_BUFFERS_ERR\n");
+			break;
+		case GSI_CHAN_OUT_OF_RESOURCES_ERR:
+			pr_err("Received GSI_CHAN_OUT_OF_RESOURCES_ERR\n");
+			break;
+		case GSI_CHAN_UNSUPPORTED_INTER_EE_OP_ERR:
+			pr_err("Received GSI_CHAN_UNSUPPORTED_INTER_EE_OP_ERR\n");
+			break;
+		case GSI_CHAN_HWO_1_ERR:
+			pr_err("Received GSI_CHAN_HWO_1_ERR\n");
+			break;
+		default:
+			pr_err("Unexpected err evt: %d\n", notify->evt_id);
+		}
+	}
+	return;
+}
+
+static void ipa_test_gsi_irq_notify_cb(struct gsi_chan_xfer_notify *notify)
+{
+	pr_debug("ipa_test_gsi_irq_notify_cb: channel 0x%p xfer 0x%p\n", notify->chan_user_data, notify->xfer_user_data);
+	pr_debug("ipa_test_gsi_irq_notify_cb: event %d notified\n", notify->evt_id);
+	pr_debug("ipa_test_gsi_irq_notify_cb: bytes_xfered %d\n", notify->bytes_xfered);
+}
+
 int connect_bamdma_to_apps(struct test_endpoint_sys *rx_ep,
 			   u32 pipe_index,
 			   struct sps_mem_buffer *desc_fifo,
@@ -965,44 +1183,127 @@ int connect_ipa_to_apps(struct test_endpoint_sys *rx_ep,
 			   u32 pipe_index,
 			   struct sps_mem_buffer *desc_fifo,
 			   struct sps_register_event *rx_event,
-			   unsigned long ipa_bam_hdl)
+			   unsigned long ipa_bam_or_gsi_hdl)
 {
 	int res = 0;
 	u32 rx_connect_options = 0;
 
-	rx_ep->sps = sps_alloc_endpoint();
-	pr_debug(DRV_NAME ":%s():rx_ep->sps = %p\n", __func__, rx_ep->sps);
-	res = sps_get_config(rx_ep->sps, &rx_ep->connect);
-	if (res) {
-		pr_err(DRV_NAME ":fail to get config.\n");
-		return -EINVAL;
+	if (ipa_test->ipa_transport == IPA_TRANSPORT_TYPE_GSI) {
+		dma_addr_t dma_addr;
+
+		memset(&rx_ep->gsi_evt_ring_props, 0, sizeof(rx_ep->gsi_evt_ring_props));
+		rx_ep->gsi_evt_ring_props.intf = GSI_EVT_CHTYPE_GPI_EV;
+		rx_ep->gsi_evt_ring_props.intr = GSI_INTR_IRQ;
+		rx_ep->gsi_evt_ring_props.re_size =
+			GSI_EVT_RING_RE_SIZE_16B;
+
+		rx_ep->gsi_evt_ring_props.ring_len = GSI_EVT_RING_LEN;
+		rx_ep->gsi_evt_ring_props.ring_base_vaddr =
+			dma_alloc_coherent(ipa_test->dev, GSI_EVT_RING_LEN,
+			&dma_addr, 0);
+		rx_ep->gsi_evt_ring_props.ring_base_addr = dma_addr;
+
+		rx_ep->gsi_evt_ring_props.int_modt = 3200; //0.1s under 32KHz clock
+		rx_ep->gsi_evt_ring_props.int_modc = 1;
+		rx_ep->gsi_evt_ring_props.rp_update_addr = 0;
+		rx_ep->gsi_evt_ring_props.exclusive = true;
+		rx_ep->gsi_evt_ring_props.err_cb = ipa_test_gsi_evt_ring_err_cb;
+		rx_ep->gsi_evt_ring_props.user_data = NULL;
+
+		res = gsi_alloc_evt_ring(&rx_ep->gsi_evt_ring_props, ipa_bam_or_gsi_hdl,
+			&rx_ep->gsi_evt_ring_hdl);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_alloc_evt_ring failed %d\n", res);
+			return -EFAULT;
+		}
+
+		memset(&rx_ep->gsi_channel_props, 0, sizeof(rx_ep->gsi_channel_props));
+		rx_ep->gsi_channel_props.prot = GSI_CHAN_PROT_GPI;
+		rx_ep->gsi_channel_props.dir = GSI_CHAN_DIR_FROM_GSI;
+		rx_ep->gsi_channel_props.ch_id =
+			ipa_get_gsi_ep_info(pipe_index)->ipa_gsi_chan_num;
+		rx_ep->gsi_channel_props.evt_ring_hdl = rx_ep->gsi_evt_ring_hdl;
+		rx_ep->gsi_channel_props.re_size = GSI_CHAN_RE_SIZE_16B;
+
+		rx_ep->gsi_channel_props.ring_len = GSI_CHANNEL_RING_LEN;
+		rx_ep->gsi_channel_props.ring_base_vaddr =
+			dma_alloc_coherent(ipa_test->dev, GSI_CHANNEL_RING_LEN,
+			&dma_addr, 0);
+		if (!rx_ep->gsi_channel_props.ring_base_vaddr) {
+			pr_err("connect_ipa_to_apps: falied to alloc GSI ring\n");
+			return -EFAULT;
+		}
+
+		rx_ep->gsi_channel_props.ring_base_addr = dma_addr;
+		rx_ep->gsi_channel_props.use_db_eng = GSI_CHAN_DIRECT_MODE;
+		rx_ep->gsi_channel_props.max_prefetch = GSI_ONE_PREFETCH_SEG;
+		rx_ep->gsi_channel_props.low_weight = 1;
+		rx_ep->gsi_channel_props.chan_user_data = rx_ep;
+
+		rx_ep->gsi_channel_props.err_cb = ipa_test_gsi_chan_err_cb;
+		rx_ep->gsi_channel_props.xfer_cb = ipa_test_gsi_irq_notify_cb;
+		res = gsi_alloc_channel(&rx_ep->gsi_channel_props, ipa_bam_or_gsi_hdl,
+			&rx_ep->gsi_chan_hdl);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_alloc_channel failed %d\n", res);
+			return -EFAULT;
+		}
+		rx_ep->gsi_valid = true;
+
+		res = ipa_sys_update_gsi_hdls(pipe_index, rx_ep->gsi_chan_hdl, rx_ep->gsi_evt_ring_hdl);
+		if (res) {
+			pr_err("ipa_sys_update_gsi_hdls failed %d\n", res);
+			return -EFAULT;
+		}
+
+		res = gsi_start_channel(rx_ep->gsi_chan_hdl);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_start_channel failed %d\n", res);
+			return -EFAULT;
+		}
+
+		pr_debug(DRV_NAME ":%s(): setting channel to polling mode\n", __func__);
+		res = gsi_config_channel_mode(rx_ep->gsi_chan_hdl, GSI_CHAN_MODE_POLL);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_config_channel_mode failed %d\n", res);
+			return -EFAULT;
+		}
+	} else {
+		rx_ep->sps = sps_alloc_endpoint();
+		pr_debug(DRV_NAME ":%s():rx_ep->sps = %p\n", __func__, rx_ep->sps);
+		res = sps_get_config(rx_ep->sps, &rx_ep->connect);
+		if (res) {
+			pr_err(DRV_NAME ":fail to get config.\n");
+			return -EINVAL;
+		}
+		rx_connect_options =
+			SPS_O_AUTO_ENABLE | SPS_O_EOT |
+			SPS_O_ACK_TRANSFERS | SPS_O_POLL;
+		rx_ep->connect.source = ipa_bam_or_gsi_hdl;
+		rx_ep->connect.destination = SPS_DEV_HANDLE_MEM;  /* Memory */
+		rx_ep->connect.mode = SPS_MODE_SRC; /* Producer pipe */
+		rx_ep->connect.src_pipe_index = pipe_index;
+		rx_ep->connect.options = rx_connect_options;
+		rx_ep->connect.desc = *desc_fifo;
+		res = sps_connect(rx_ep->sps, &rx_ep->connect);
+		if (res) {
+			pr_err(DRV_NAME ":fail to connect.\n");
+			return -EINVAL;
+		}
+		pr_debug(DRV_NAME ":-----Register event for RX pipe-----\n");
+		rx_event->mode = SPS_TRIGGER_WAIT;
+		rx_event->options = SPS_O_EOT;
+		init_completion(&rx_ep->xfer_done);
+		rx_event->xfer_done = &rx_ep->xfer_done;
+		pr_debug(DRV_NAME ":rx_event.event=0x%p.\n", rx_event->xfer_done);
+		res = sps_register_event(rx_ep->sps, rx_event);
+		if (res) {
+			pr_err(DRV_NAME ":fail to register event.\n");
+			return -EINVAL;
+		}
 	}
-	rx_connect_options =
-		SPS_O_AUTO_ENABLE | SPS_O_EOT |
-		SPS_O_ACK_TRANSFERS | SPS_O_POLL;
-	rx_ep->connect.source = ipa_bam_hdl;
-	rx_ep->connect.destination = SPS_DEV_HANDLE_MEM;  /* Memory */
-	rx_ep->connect.mode = SPS_MODE_SRC; /* Producer pipe */
-	rx_ep->connect.src_pipe_index = pipe_index;
-	rx_ep->connect.options = rx_connect_options;
-	rx_ep->connect.desc = *desc_fifo;
-	res = sps_connect(rx_ep->sps, &rx_ep->connect);
-	if (res) {
-		pr_err(DRV_NAME ":fail to connect.\n");
-		return -EINVAL;
-	}
-	pr_debug(DRV_NAME ":-----Register event for RX pipe-----\n");
-	rx_event->mode = SPS_TRIGGER_WAIT;
-	rx_event->options = SPS_O_EOT;
-	init_completion(&rx_ep->xfer_done);
-	rx_event->xfer_done = &rx_ep->xfer_done;
-	pr_debug(DRV_NAME ":rx_event.event=0x%p.\n", rx_event->xfer_done);
-	res = sps_register_event(rx_ep->sps, rx_event);
-	if (res) {
-		pr_err(DRV_NAME ":fail to register event.\n");
-		return -EINVAL;
-	}
-	return res;
+
+	return 0;
 }
 
 int connect_apps_to_bamdma(struct test_endpoint_sys *tx_ep,
@@ -1038,31 +1339,107 @@ int connect_apps_to_bamdma(struct test_endpoint_sys *tx_ep,
 int connect_apps_to_ipa(struct test_endpoint_sys *tx_ep,
 			   u32 pipe_index,
 			   struct sps_mem_buffer *desc_fifo,
-			   unsigned long ipa_bam_hdl)
+			   unsigned long ipa_bam_or_gsi_hdl)
 {
 	u32 tx_connect_options = 0;
 	int res = 0;
 
-	tx_ep->sps = sps_alloc_endpoint();
-	res = sps_get_config(tx_ep->sps, &tx_ep->connect);
-	if (res) {
-		pr_err(DRV_NAME ":fail to get config.\n");
-		return -EINVAL;
+	if (ipa_test->ipa_transport == IPA_TRANSPORT_TYPE_GSI) {
+		dma_addr_t dma_addr;
+
+		memset(&tx_ep->gsi_evt_ring_props, 0, sizeof(tx_ep->gsi_evt_ring_props));
+		tx_ep->gsi_evt_ring_props.intf = GSI_EVT_CHTYPE_GPI_EV;
+		tx_ep->gsi_evt_ring_props.intr = GSI_INTR_IRQ;
+		tx_ep->gsi_evt_ring_props.re_size =
+			GSI_EVT_RING_RE_SIZE_16B;
+
+		tx_ep->gsi_evt_ring_props.ring_len = GSI_EVT_RING_LEN;
+		tx_ep->gsi_evt_ring_props.ring_base_vaddr =
+			dma_alloc_coherent(ipa_test->dev, GSI_EVT_RING_LEN,
+			&dma_addr, 0);
+		tx_ep->gsi_evt_ring_props.ring_base_addr = dma_addr;
+
+		tx_ep->gsi_evt_ring_props.int_modt = 3200; //0.1s under 32KHz clock
+		tx_ep->gsi_evt_ring_props.int_modc = 1;
+		tx_ep->gsi_evt_ring_props.rp_update_addr = 0;
+		tx_ep->gsi_evt_ring_props.exclusive = true;
+		tx_ep->gsi_evt_ring_props.err_cb = ipa_test_gsi_evt_ring_err_cb;
+		tx_ep->gsi_evt_ring_props.user_data = NULL;
+
+		res = gsi_alloc_evt_ring(&tx_ep->gsi_evt_ring_props, ipa_bam_or_gsi_hdl,
+			&tx_ep->gsi_evt_ring_hdl);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_alloc_evt_ring failed %d\n", res);
+			return -EFAULT;
+		}
+
+		memset(&tx_ep->gsi_channel_props, 0, sizeof(tx_ep->gsi_channel_props));
+		tx_ep->gsi_channel_props.prot = GSI_CHAN_PROT_GPI;
+		tx_ep->gsi_channel_props.dir = GSI_CHAN_DIR_TO_GSI;
+		tx_ep->gsi_channel_props.ch_id =
+			ipa_get_gsi_ep_info(pipe_index)->ipa_gsi_chan_num;
+		tx_ep->gsi_channel_props.evt_ring_hdl = tx_ep->gsi_evt_ring_hdl;
+		tx_ep->gsi_channel_props.re_size = GSI_CHAN_RE_SIZE_16B;
+
+		tx_ep->gsi_channel_props.ring_len = GSI_CHANNEL_RING_LEN;
+		tx_ep->gsi_channel_props.ring_base_vaddr =
+			dma_alloc_coherent(ipa_test->dev, GSI_CHANNEL_RING_LEN,
+			&dma_addr, 0);
+		if (!tx_ep->gsi_channel_props.ring_base_vaddr) {
+			pr_err("connect_apps_to_ipa: falied to alloc GSI ring\n");
+			return -EFAULT;
+		}
+
+		tx_ep->gsi_channel_props.ring_base_addr = dma_addr;
+		tx_ep->gsi_channel_props.use_db_eng = GSI_CHAN_DIRECT_MODE;
+		tx_ep->gsi_channel_props.max_prefetch = GSI_ONE_PREFETCH_SEG;
+		tx_ep->gsi_channel_props.low_weight = 1;
+		tx_ep->gsi_channel_props.chan_user_data = tx_ep;
+
+		tx_ep->gsi_channel_props.err_cb = ipa_test_gsi_chan_err_cb;
+		tx_ep->gsi_channel_props.xfer_cb = ipa_test_gsi_irq_notify_cb;
+		res = gsi_alloc_channel(&tx_ep->gsi_channel_props, ipa_bam_or_gsi_hdl,
+			&tx_ep->gsi_chan_hdl);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_alloc_channel failed %d\n", res);
+			return -EFAULT;
+		}
+		tx_ep->gsi_valid = true;
+
+		res = ipa_sys_update_gsi_hdls(pipe_index, tx_ep->gsi_chan_hdl, tx_ep->gsi_evt_ring_hdl);
+		if (res) {
+			pr_err("ipa_sys_update_gsi_hdls failed %d\n", res);
+			return -EFAULT;
+		}
+
+		res = gsi_start_channel(tx_ep->gsi_chan_hdl);
+		if (res != GSI_STATUS_SUCCESS) {
+			pr_err("gsi_start_channel failed %d\n", res);
+			return -EFAULT;
+		}
+	} else {
+		tx_ep->sps = sps_alloc_endpoint();
+		res = sps_get_config(tx_ep->sps, &tx_ep->connect);
+		if (res) {
+			pr_err(DRV_NAME ":fail to get config.\n");
+			return -EINVAL;
+		}
+		tx_connect_options =
+			SPS_O_AUTO_ENABLE | SPS_O_EOT |
+			SPS_O_ACK_TRANSFERS | SPS_O_POLL;
+		tx_ep->connect.source = SPS_DEV_HANDLE_MEM; /* Memory */
+		tx_ep->connect.destination = ipa_bam_or_gsi_hdl;
+		tx_ep->connect.mode = SPS_MODE_DEST;  /* Consumer pipe */
+		tx_ep->connect.dest_pipe_index = pipe_index;
+		tx_ep->connect.options = tx_connect_options;
+		tx_ep->connect.desc = *desc_fifo;
+		res = sps_connect(tx_ep->sps, &tx_ep->connect);
+		if (res) {
+			pr_err(DRV_NAME ": fail to connect.\n");
+			return -EINVAL;
+		}
 	}
-	tx_connect_options =
-		SPS_O_AUTO_ENABLE | SPS_O_EOT |
-		SPS_O_ACK_TRANSFERS | SPS_O_POLL;
-	tx_ep->connect.source = SPS_DEV_HANDLE_MEM; /* Memory */
-	tx_ep->connect.destination = ipa_bam_hdl;
-	tx_ep->connect.mode = SPS_MODE_DEST;  /* Consumer pipe */
-	tx_ep->connect.dest_pipe_index = pipe_index;
-	tx_ep->connect.options = tx_connect_options;
-	tx_ep->connect.desc = *desc_fifo;
-	res = sps_connect(tx_ep->sps, &tx_ep->connect);
-	if (res) {
-		pr_err(DRV_NAME ": fail to connect.\n");
-		return -EINVAL;
-	}
+
 	return 0;
 }
 
@@ -1346,7 +1723,7 @@ int configure_system_1(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -1355,7 +1732,7 @@ int configure_system_1(void)
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1363,7 +1740,7 @@ int configure_system_1(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 	/* Prepare EP configuration details */
@@ -1374,7 +1751,7 @@ int configure_system_1(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1382,7 +1759,7 @@ int configure_system_1(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 fail:
@@ -1402,7 +1779,7 @@ int configure_system_2(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -1411,7 +1788,7 @@ int configure_system_2(void)
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1419,14 +1796,14 @@ int configure_system_2(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
 	/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1434,14 +1811,14 @@ int configure_system_2(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
 	/* Connect third (Default) Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1449,7 +1826,7 @@ int configure_system_2(void)
 			ipa_pipe_num,
 			&from_ipa_devs[2]->desc_fifo,
 			&from_ipa_devs[2]->rx_event,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1457,7 +1834,7 @@ int configure_system_2(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1465,7 +1842,7 @@ int configure_system_2(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 
 	if (res)
@@ -1483,7 +1860,7 @@ int configure_system_2(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1491,7 +1868,7 @@ int configure_system_2(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 
 	if (res)
@@ -1507,7 +1884,7 @@ int configure_system_3(void)
 	int res = 0;
 	struct ipa_ep_cfg ipa_ep_cfg;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 
@@ -1515,7 +1892,7 @@ int configure_system_3(void)
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1523,7 +1900,7 @@ int configure_system_3(void)
 			ipa_pipe_num,
 			&from_ipa_devs[0]->desc_fifo,
 			&from_ipa_devs[0]->rx_event,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -1531,7 +1908,7 @@ int configure_system_3(void)
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1539,7 +1916,7 @@ int configure_system_3(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -1547,7 +1924,7 @@ int configure_system_3(void)
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1555,7 +1932,7 @@ int configure_system_3(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[2]->desc_fifo,
 				  &from_ipa_devs[2]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -1577,7 +1954,7 @@ int configure_system_3(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1585,7 +1962,7 @@ int configure_system_3(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -1601,7 +1978,7 @@ int configure_system_5(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -1672,7 +2049,7 @@ int configure_system_5(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1680,7 +2057,7 @@ int configure_system_5(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1710,7 +2087,7 @@ int configure_system_5(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 				&ipa_pipe_num,
 				&from_ipa_devs[1]->ipa_client_hdl,
 				false))
@@ -1720,7 +2097,7 @@ int configure_system_5(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1752,7 +2129,7 @@ int configure_system_5(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1760,7 +2137,7 @@ int configure_system_5(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[2]->desc_fifo,
 				  &from_ipa_devs[2]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -1774,7 +2151,7 @@ int configure_system_5(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1782,7 +2159,7 @@ int configure_system_5(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -1798,7 +2175,7 @@ int configure_system_6(void)
 	int res = 0;
 	struct ipa_ep_cfg ipa_ep_cfg;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -1806,14 +2183,14 @@ int configure_system_6(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 	res = connect_ipa_to_apps(&from_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -1822,14 +2199,14 @@ int configure_system_6(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 	/* Connect A5 MEM --> Tx IPA */
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 fail:
@@ -1859,7 +2236,7 @@ int configure_system_8(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -1891,7 +2268,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1899,14 +2276,14 @@ int configure_system_8(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1914,7 +2291,7 @@ int configure_system_8(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1928,7 +2305,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1936,7 +2313,7 @@ int configure_system_8(void)
 			ipa_pipe_num,
 			&from_ipa_devs[2]->desc_fifo,
 			&from_ipa_devs[2]->rx_event,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1948,7 +2325,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1956,7 +2333,7 @@ int configure_system_8(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1970,7 +2347,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -1978,7 +2355,7 @@ int configure_system_8(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -1992,7 +2369,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2000,7 +2377,7 @@ int configure_system_8(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[2]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[2]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2012,7 +2389,7 @@ int configure_system_8(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2020,7 +2397,7 @@ int configure_system_8(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[3]->ep,
 			ipa_pipe_num,
 			&to_ipa_devs[3]->desc_fifo,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2051,7 +2428,7 @@ int configure_system_9(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 	enum ipa_aggr_mode mode;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	mode = IPA_MBIM;
@@ -2093,7 +2470,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2101,14 +2478,14 @@ int configure_system_9(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2116,7 +2493,7 @@ int configure_system_9(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2131,7 +2508,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2139,7 +2516,7 @@ int configure_system_9(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[2]->desc_fifo,
 				  &from_ipa_devs[2]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2151,7 +2528,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2159,7 +2536,7 @@ int configure_system_9(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2173,7 +2550,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2181,7 +2558,7 @@ int configure_system_9(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2195,7 +2572,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2203,7 +2580,7 @@ int configure_system_9(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[2]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[2]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2215,7 +2592,7 @@ int configure_system_9(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2223,7 +2600,7 @@ int configure_system_9(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[3]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[3]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2246,7 +2623,7 @@ int configure_system_10(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 	enum ipa_aggr_mode mode;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	mode = IPA_MBIM;
@@ -2278,7 +2655,7 @@ int configure_system_10(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2286,7 +2663,7 @@ int configure_system_10(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2298,7 +2675,7 @@ int configure_system_10(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2306,7 +2683,7 @@ int configure_system_10(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2321,7 +2698,7 @@ int configure_system_11(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 	enum ipa_aggr_mode mode;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	mode = IPA_MBIM;
@@ -2348,7 +2725,7 @@ int configure_system_11(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2356,7 +2733,7 @@ int configure_system_11(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2366,7 +2743,7 @@ int configure_system_11(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2374,7 +2751,7 @@ int configure_system_11(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2390,7 +2767,7 @@ int configure_system_11(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2398,7 +2775,7 @@ int configure_system_11(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[2]->desc_fifo,
 				  &from_ipa_devs[2]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2414,7 +2791,7 @@ int configure_system_11(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2422,7 +2799,7 @@ int configure_system_11(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[3]->desc_fifo,
 				  &from_ipa_devs[3]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2435,7 +2812,7 @@ int configure_system_11(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2443,7 +2820,7 @@ int configure_system_11(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2459,14 +2836,14 @@ int configure_system_11(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 	/* Connect A5 MEM --> Tx IPA */
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2483,7 +2860,7 @@ int configure_system_12(void)
 	char qcncm_sig[3];
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 	mode = IPA_QCNCM;
 	res = ipa_set_aggr_mode(mode);
@@ -2514,7 +2891,7 @@ int configure_system_12(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2522,7 +2899,7 @@ int configure_system_12(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2532,7 +2909,7 @@ int configure_system_12(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &from_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2540,7 +2917,7 @@ int configure_system_12(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2556,7 +2933,7 @@ int configure_system_12(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &from_ipa_devs[2]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2564,7 +2941,7 @@ int configure_system_12(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[2]->desc_fifo,
 				  &from_ipa_devs[2]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2580,7 +2957,7 @@ int configure_system_12(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &from_ipa_devs[3]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2588,7 +2965,7 @@ int configure_system_12(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[3]->desc_fifo,
 				  &from_ipa_devs[3]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2601,7 +2978,7 @@ int configure_system_12(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2609,7 +2986,7 @@ int configure_system_12(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2625,7 +3002,7 @@ int configure_system_12(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -2633,7 +3010,7 @@ int configure_system_12(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2648,7 +3025,7 @@ int configure_system_17(void)
 	int res = 0;
 	struct ipa_ep_cfg ipa_ep_cfg;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -2674,7 +3051,7 @@ int configure_system_17(void)
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-				&ipa_bam_hdl,
+				&ipa_bam_or_gsi_hdl,
 				&ipa_pipe_num,
 				&from_ipa_devs[0]->ipa_client_hdl,
 				false))
@@ -2684,7 +3061,7 @@ int configure_system_17(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	/* if (res)
 		goto fail;
 	  res = ipa_cfg_ep_rndis_aggr(ipa_pipe_num); */
@@ -2698,7 +3075,7 @@ int configure_system_17(void)
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl,
 			false))
@@ -2708,7 +3085,7 @@ int configure_system_17(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -2732,7 +3109,7 @@ int configure_system_17(void)
 	sys_in.client = IPA_CLIENT_TEST_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl,
 			false))
@@ -2743,7 +3120,7 @@ int configure_system_17(void)
 			ipa_pipe_num,
 			&from_ipa_devs[2]->desc_fifo,
 			&from_ipa_devs[2]->rx_event,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 	/*if (res)
 		goto fail;
 	res = ipa_cfg_ep_rndis_aggr(ipa_pipe_num);
@@ -2772,7 +3149,7 @@ int configure_system_17(void)
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[3]->ipa_client_hdl,
 			false))
@@ -2782,7 +3159,7 @@ int configure_system_17(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[3]->desc_fifo,
 				  &from_ipa_devs[3]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	/*if (res)
 		goto fail;
 	res = ipa_cfg_ep_rndis_aggr(ipa_pipe_num);
@@ -2803,7 +3180,7 @@ int configure_system_17(void)
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl,
 			false))
@@ -2813,7 +3190,7 @@ int configure_system_17(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2824,7 +3201,7 @@ int configure_system_17(void)
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl,
 			false))
@@ -2834,7 +3211,7 @@ int configure_system_17(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2863,7 +3240,7 @@ int configure_system_17(void)
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(
 			&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&to_ipa_devs[2]->ipa_client_hdl,
 			false))
@@ -2873,7 +3250,7 @@ int configure_system_17(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[2]->ep,
 			ipa_pipe_num,
 			&to_ipa_devs[2]->desc_fifo,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -2983,7 +3360,7 @@ int configure_system_18(void)
 	int res = 0;
 	struct ipa_ep_cfg ipa_ep_cfg;
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -2999,7 +3376,7 @@ int configure_system_18(void)
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	sys_in.notify = notify_ipa_write_done;
 	if (ipa_sys_setup(&sys_in,
-				&ipa_bam_hdl,
+				&ipa_bam_or_gsi_hdl,
 				&ipa_pipe_num,
 				&from_ipa_devs[0]->ipa_client_hdl,
 				false))
@@ -3009,7 +3386,7 @@ int configure_system_18(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3028,7 +3405,7 @@ int configure_system_18(void)
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	sys_in.notify = notify_ipa_received;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl,
 			false))
@@ -3038,7 +3415,7 @@ int configure_system_18(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -3297,7 +3674,7 @@ int configure_system_7(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -3314,7 +3691,7 @@ int configure_system_7(void)
 	/* Connect first Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl,
 			false))
 		goto fail;
@@ -3323,14 +3700,14 @@ int configure_system_7(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
 	/* Connect second Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[1]->ipa_client_hdl,
 			false))
 		goto fail;
@@ -3339,14 +3716,14 @@ int configure_system_7(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[1]->desc_fifo,
 				  &from_ipa_devs[1]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
 	/* Connect third (Default) Rx IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[2]->ipa_client_hdl,
 			false))
 		goto fail;
@@ -3355,7 +3732,7 @@ int configure_system_7(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[2]->desc_fifo,
 				  &from_ipa_devs[2]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3372,7 +3749,7 @@ int configure_system_7(void)
 	sys_in.notify = &notify_upon_exception;
 	sys_in.priv = &(p_exception_hdl_data->notify_cb_data);
 
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl,
 			false))
 		goto fail;
@@ -3381,7 +3758,7 @@ int configure_system_7(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -3397,6 +3774,32 @@ void destroy_channel_device(struct channel_dev *channel_dev)
 	pr_debug(DRV_NAME
 			":%s():Destroying device channel_dev = 0x%p,name %s.\n",
 	       __func__, channel_dev, channel_dev->name);
+
+	pr_debug("ep=0x%p gsi_chan_hdl=0x%lx\n", &channel_dev->ep, channel_dev->ep.gsi_chan_hdl);
+	if (channel_dev->ep.gsi_valid) {
+		pr_debug("stopping channel 0x%lx\n", channel_dev->ep.gsi_chan_hdl);
+		res = ipa_stop_gsi_channel(channel_dev->ipa_client_hdl);
+		if (res != GSI_STATUS_SUCCESS)
+			pr_err(DRV_NAME ":%s(): ipa_stop_gsi_channel failed %d\n\n", __func__, res);
+
+		pr_debug("reset channel 0x%lx\n", channel_dev->ep.gsi_chan_hdl);
+		res = gsi_reset_channel(channel_dev->ep.gsi_chan_hdl);
+		if (res != GSI_STATUS_SUCCESS)
+			pr_err(DRV_NAME ":%s(): gsi_reset_channel failed %d\n\n", __func__, res);
+
+		pr_debug("deallocate channel 0x%lx\n", channel_dev->ep.gsi_chan_hdl);
+		res = gsi_dealloc_channel(channel_dev->ep.gsi_chan_hdl);
+		if (res != GSI_STATUS_SUCCESS)
+			pr_err(DRV_NAME ":%s(): gsi_dealloc_channel failed %d\n\n", __func__, res);
+
+		dma_free_coherent(ipa_test->dev, channel_dev->ep.gsi_channel_props.ring_len, channel_dev->ep.gsi_channel_props.ring_base_vaddr, channel_dev->ep.gsi_channel_props.ring_base_addr);
+
+		pr_debug("deallocate channel event ring 0x%lx\n", channel_dev->ep.gsi_evt_ring_hdl);
+		res = gsi_dealloc_evt_ring(channel_dev->ep.gsi_evt_ring_hdl);
+		if (res != GSI_STATUS_SUCCESS)
+			pr_err(DRV_NAME ":%s(): gsi_dealloc_evt_ring failed %d\n\n", __func__, res);
+		dma_free_coherent(ipa_test->dev, channel_dev->ep.gsi_evt_ring_props.ring_len, channel_dev->ep.gsi_evt_ring_props.ring_base_vaddr, channel_dev->ep.gsi_evt_ring_props.ring_base_addr);
+	}
 
 	if (NULL != channel_dev->ep.sps) {
 		res = sps_disconnect(channel_dev->ep.sps);
@@ -3703,7 +4106,7 @@ int configure_system_14(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	pr_debug(DRV_NAME ":Update Version 4\n");
@@ -3719,7 +4122,7 @@ int configure_system_14(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST1_CONS;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[index]->ipa_client_hdl,
 			false))
@@ -3729,7 +4132,7 @@ int configure_system_14(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[index]->desc_fifo,
 				  &from_ipa_devs[index]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3738,7 +4141,7 @@ index++;
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[index]->ipa_client_hdl,
 			false))
@@ -3748,7 +4151,7 @@ index++;
 				  ipa_pipe_num,
 				  &from_ipa_devs[index]->desc_fifo,
 				  &from_ipa_devs[index]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3757,7 +4160,7 @@ index++;
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[index]->ipa_client_hdl,
 			false))
@@ -3767,7 +4170,7 @@ index++;
 				  ipa_pipe_num,
 				  &from_ipa_devs[index]->desc_fifo,
 				  &from_ipa_devs[index]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3776,7 +4179,7 @@ index++;
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST4_CONS;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&from_ipa_devs[index]->ipa_client_hdl,
 			false))
@@ -3786,7 +4189,7 @@ index++;
 				  ipa_pipe_num,
 				  &from_ipa_devs[index]->desc_fifo,
 				  &from_ipa_devs[index]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3803,7 +4206,7 @@ index = 0;
 	sys_in.client = IPA_CLIENT_TEST1_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-					&ipa_bam_hdl,
+					&ipa_bam_or_gsi_hdl,
 					&ipa_pipe_num,
 					&to_ipa_devs[index]->ipa_client_hdl,
 					false))
@@ -3813,7 +4216,7 @@ index = 0;
 	res = connect_apps_to_ipa(&to_ipa_devs[index]->ep,
 					ipa_pipe_num,
 					&to_ipa_devs[index]->desc_fifo,
-					ipa_bam_hdl);
+					ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -3826,7 +4229,7 @@ index++;
 	sys_in.client = IPA_CLIENT_A5_WLAN_AMPDU_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(&sys_in,
-			&ipa_bam_hdl,
+			&ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num,
 			&to_ipa_devs[index]->ipa_client_hdl,
 			false))
@@ -3836,7 +4239,7 @@ index++;
 	res = connect_apps_to_ipa(&to_ipa_devs[index]->ep,
 			ipa_pipe_num,
 			&to_ipa_devs[index]->desc_fifo,
-			ipa_bam_hdl);
+			ipa_bam_or_gsi_hdl);
 
 	if (res)
 		goto fail;
@@ -3892,7 +4295,7 @@ int configure_system_15(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	res = register_wan_interface();
@@ -3905,7 +4308,7 @@ int configure_system_15(void)
 	/* Connect IPA --> A5 MEM */
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_CONS;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -3913,7 +4316,7 @@ int configure_system_15(void)
 				  ipa_pipe_num,
 				  &from_ipa_devs[0]->desc_fifo,
 				  &from_ipa_devs[0]->rx_event,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3925,7 +4328,7 @@ int configure_system_15(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST3_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl,
 			&ipa_pipe_num, &to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -3933,7 +4336,7 @@ int configure_system_15(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -3955,7 +4358,7 @@ int configure_system_20(void)
 	struct ipa_ep_cfg ipa_ep_cfg;
 
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
 	memset(&ipa_ep_cfg, 0, sizeof(ipa_ep_cfg));
@@ -3965,7 +4368,7 @@ int configure_system_20(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_CONS;
 	if (ipa_sys_setup(&sys_in,
-		&ipa_bam_hdl, &ipa_pipe_num,
+		&ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 		&from_ipa_devs[index]->ipa_client_hdl, false))
 		goto fail;
 
@@ -3973,7 +4376,7 @@ int configure_system_20(void)
 		ipa_pipe_num,
 		&from_ipa_devs[index]->desc_fifo,
 		&from_ipa_devs[index]->rx_event,
-		ipa_bam_hdl);
+		ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -4002,7 +4405,7 @@ int configure_system_20(void)
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
 	if (ipa_sys_setup(
 		&sys_in,
-		&ipa_bam_hdl,
+		&ipa_bam_or_gsi_hdl,
 		&ipa_pipe_num,
 		&from_ipa_devs[index]->ipa_client_hdl,
 		false))
@@ -4013,7 +4416,7 @@ int configure_system_20(void)
 		ipa_pipe_num,
 		&from_ipa_devs[index]->desc_fifo,
 		&from_ipa_devs[index]->rx_event,
-		ipa_bam_hdl);
+		ipa_bam_or_gsi_hdl);
 	if (res)
 		goto fail;
 
@@ -4042,7 +4445,7 @@ int configure_system_20(void)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[0]->ipa_client_hdl, false))
 		goto fail;
 
@@ -4050,7 +4453,7 @@ int configure_system_20(void)
 	res = connect_apps_to_ipa(&to_ipa_devs[0]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[0]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 
 if (res)
@@ -4068,7 +4471,7 @@ if (res)
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = IPA_CLIENT_TEST2_PROD;
 	sys_in.ipa_ep_cfg = ipa_ep_cfg;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[1]->ipa_client_hdl, false))
 		goto fail;
 
@@ -4076,7 +4479,7 @@ if (res)
 	res = connect_apps_to_ipa(&to_ipa_devs[1]->ep,
 				  ipa_pipe_num,
 				  &to_ipa_devs[1]->desc_fifo,
-				  ipa_bam_hdl);
+				  ipa_bam_or_gsi_hdl);
 
 
 	if (res)
@@ -5447,7 +5850,7 @@ static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_us
 	int retval;
 	struct ipa_channel_config to_ipa_channel_config = {0};
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 	int index;
 
@@ -5521,7 +5924,7 @@ static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_us
 		pr_err("fail to copy cfg - from_ipa_user\n");
 		return -1;
 	}
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&to_ipa_devs[index]->ipa_client_hdl, false)) {
 		pr_err("setup sys pipe failed\n");
 		return -1;
@@ -5531,7 +5934,7 @@ static int configure_app_to_ipa_path(struct ipa_channel_config __user *to_ipa_us
 	retval = connect_apps_to_ipa(&to_ipa_devs[index]->ep,
 				ipa_pipe_num,
 				&to_ipa_devs[index]->desc_fifo,
-				ipa_bam_hdl);
+				ipa_bam_or_gsi_hdl);
 	if (retval) {
 		pr_err("fail to connect ipa to apps\n");
 		return -1;
@@ -5545,7 +5948,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 	int retval;
 	struct ipa_channel_config from_ipa_channel_config = {0};
 	struct ipa_sys_connect_params sys_in;
-	unsigned long ipa_bam_hdl;
+	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 	int index;
 
@@ -5620,7 +6023,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 	}
 	memset(&sys_in, 0, sizeof(sys_in));
 	sys_in.client = from_ipa_channel_config.client;
-	if (ipa_sys_setup(&sys_in, &ipa_bam_hdl, &ipa_pipe_num,
+	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[index]->ipa_client_hdl,from_ipa_user->en_status)) {
 			pr_err("setup sys pipe failed\n");
 			return -1;
@@ -5630,7 +6033,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 				ipa_pipe_num,
 				&from_ipa_devs[index]->desc_fifo,
 				&from_ipa_devs[index]->rx_event,
-				ipa_bam_hdl);
+				ipa_bam_or_gsi_hdl);
 	if (retval) {
 		pr_err("fail to connect ipa to apps\n");
 		return -1;
@@ -5923,6 +6326,13 @@ static int __init ipa_test_init(void)
 		pr_debug("[%s:%d, %s()] datapath_ds_init() failed (%d)\n",
 				__FILE__, __LINE__
 				, __func__, ret);
+
+	ipa_test->ipa_transport = ipa_get_transport_type();
+	pr_debug("[%s:%d, %s()] transport type %s\n",
+		__FILE__, __LINE__
+		, __func__,
+		(ipa_test->ipa_transport == IPA_TRANSPORT_TYPE_GSI) ?
+			"GSI" : "SPS");
 	return ret;
 }
 

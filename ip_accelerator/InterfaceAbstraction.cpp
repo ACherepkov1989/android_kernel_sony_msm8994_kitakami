@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -32,9 +32,11 @@
 #include <errno.h>
 #include "InterfaceAbstraction.h"
 
+#define MAX_OPEN_RETRY 10000
+
 bool InterfaceAbstraction::Open(const char * toIPAPath, const char * fromIPAPath)
 {
-	int tries_cnt = 10;
+	int tries_cnt = MAX_OPEN_RETRY;
 	if (NULL == toIPAPath && NULL == fromIPAPath)
 	{
 		printf("InterfaceAbstraction constructor got 2 null arguments.\n");
@@ -43,14 +45,17 @@ bool InterfaceAbstraction::Open(const char * toIPAPath, const char * fromIPAPath
 
 	if (NULL != toIPAPath) {
 		while (tries_cnt > 0) {
+			printf("trying to open %s %d/%d\n", toIPAPath, MAX_OPEN_RETRY - tries_cnt, MAX_OPEN_RETRY);
 			// Sleep for 5 msec
 			usleep(5000);
 			m_toIPADescriptor = open(toIPAPath, O_WRONLY);
-			if (-1 != m_toIPADescriptor)
+			if (-1 != m_toIPADescriptor) {
+				printf("Success!\n");
 				break;
+			}
 			tries_cnt--;
 		}
-		printf("open retries_cnt=%d\n", 10-tries_cnt);
+		printf("open retries_cnt=%d\n", MAX_OPEN_RETRY - tries_cnt);
 		if (-1 == m_toIPADescriptor) {
 			printf("InterfaceAbstraction failed while opening %s.\n", toIPAPath);
 			exit(0);
@@ -58,17 +63,20 @@ bool InterfaceAbstraction::Open(const char * toIPAPath, const char * fromIPAPath
 		m_toChannelName = toIPAPath;
 		printf("%s device node opened, fd = %d.\n", toIPAPath, m_toIPADescriptor);
 	}
-	tries_cnt = 10;
+	tries_cnt = MAX_OPEN_RETRY;
 	if (NULL != fromIPAPath) {
 		while (tries_cnt > 0) {
+			printf("trying to open %s %d/%d\n", fromIPAPath, MAX_OPEN_RETRY - tries_cnt, MAX_OPEN_RETRY);
 			// Sleep for 5 msec
 			usleep(5000);
 			m_fromIPADescriptor = open(fromIPAPath, O_RDONLY);
-			if (-1 != m_fromIPADescriptor)
+			if (-1 != m_fromIPADescriptor) {
+				printf("Success!\n");
 				break;
+			}
 			tries_cnt--;
 		}
-		printf("open retries_cnt=%d\n", 10-tries_cnt);
+		printf("open retries_cnt=%d\n", MAX_OPEN_RETRY - tries_cnt);
 		if (-1 == m_fromIPADescriptor)
 		{
 			printf("InterfaceAbstraction failed on opening %s.\n", fromIPAPath);
