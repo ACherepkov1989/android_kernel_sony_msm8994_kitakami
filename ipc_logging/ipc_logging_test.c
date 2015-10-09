@@ -1,6 +1,6 @@
 /* ipc_logging/ipc_logging_test.c
  *
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -133,7 +133,22 @@
 #define TIME_NSEC_OFFSET 8
 #define TIME_NSEC_FIELD_SIZE 10
 
-#define STRING_OFFSET 19
+/*
+ * Extracted IPC logs have the form
+ *
+ * [dddddd.ddddddddd/xxxxxxxxxxxxxxxxxx]_An example log string
+ *
+ * where "d" represents a decimal digit (for the kernel timestamp), 'x'
+ * represents a hex digit (for the QTimer timestamp), '.', '[', ']',
+ * and '/' represent themselves, and '_' represents a space.
+ * "An example log string" represents the log message itself.
+ * - There are 15 'd' characters
+ * - There are 18 'x' characters
+ * - There are 5 special characters ('[', ']', '.', '_', '/')
+ * This adds up to 38, which is the index at which the 'A' in
+ * "An example log string" starts.
+ */
+#define STRING_OFFSET 38
 
 /**
  * String compare unit test assertion for test cases.
@@ -222,7 +237,7 @@ static void ipc_logging_ut_basic(struct seq_file *s)
 	int ipc_log_test_pages = 2;
 	int failed = 0;
 	char *test_data = {"hello world\n"};
-	char read_data[50] = {"\0"};
+	char *read_data = kzalloc(MAX_MSG_DECODED_SIZE, GFP_KERNEL);
 
 	char log1[30] = {"\0"};
 	unsigned long mtime1 = 0;
@@ -283,7 +298,7 @@ static void ipc_logging_ut_wrap_test(struct seq_file *s)
 	static void *ctx;
 	int failed = 0;
 	char *test_data = {"hello world\n"};
-	char read_data[50] = {"\0"};
+	char *read_data = kzalloc(MAX_MSG_DECODED_SIZE, GFP_KERNEL);
 
 	char log1[30] = {"\0"};
 	unsigned long mtime1 = 0;
