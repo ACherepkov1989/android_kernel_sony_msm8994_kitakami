@@ -5982,6 +5982,8 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 
 	/* Connect IPA --> Apps */
 	pr_debug("copying from 0x%p\n", from_ipa_channel_config.cfg);
+	memset(&sys_in, 0, sizeof(sys_in));
+	sys_in.client = from_ipa_channel_config.client;
 	retval = copy_from_user(
 		&sys_in.ipa_ep_cfg,
 		from_ipa_channel_config.cfg,
@@ -5990,8 +5992,7 @@ static int configure_app_from_ipa_path(struct ipa_channel_config __user *from_ip
 		pr_err("fail to copy cfg - from_ipa_user\n");
 		return -1;
 	}
-	memset(&sys_in, 0, sizeof(sys_in));
-	sys_in.client = from_ipa_channel_config.client;
+
 	if (ipa_sys_setup(&sys_in, &ipa_bam_or_gsi_hdl, &ipa_pipe_num,
 			&from_ipa_devs[index]->ipa_client_hdl,from_ipa_user->en_status)) {
 			pr_err("setup sys pipe failed\n");
