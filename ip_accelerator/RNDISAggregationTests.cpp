@@ -281,6 +281,7 @@ public:
 		m_name = "RNDISAggregationSuspendWaTest";
 		m_description = "RNDISAggregationSuspendWaTest - Send 3 IP packet instead 4, suspend the pipe"
 			" and expect aggregation to be closed.";
+		m_minIPAHwType = IPA_HW_v3_0;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -297,7 +298,6 @@ public:
 		bool bRetVal = true;
 
 		bRetVal = RNDISAggregationTestFixture::Setup();
-
 		if (bRetVal == false) {
 			return bRetVal;
 		}
@@ -394,8 +394,9 @@ public:
 
 	bool Teardown()
 	{
-		bool bRetVal = RNDISAggregationTestFixture::Teardown();
+		bool bRetVal = true;
 
+		bRetVal = RNDISAggregationTestFixture::Teardown();
 		if (bRetVal == false) {
 			return bRetVal;
 		}

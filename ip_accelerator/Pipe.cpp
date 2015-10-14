@@ -559,42 +559,42 @@ void Pipe::SetSpecificClientParameters(
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST1_PROD ");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_PROD ");
 		   break;
 	   case (IPA_CLIENT_TEST2_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA_AGG;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_CONS");
 		   break;
 	   case (IPA_CLIENT_TEST2_PROD):
 		   m_pInodePath          = CONFIG_17_TO_IPA_DEAGG;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_A2_EMBEDDED_PROD ");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST2_PROD ");
 		   break;
 	   case (IPA_CLIENT_TEST3_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for A2_EMBEDDED_CONS");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST3_CONS");
 		   break;
 	   case (IPA_CLIENT_TEST_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA_AGG_TIME;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for USB_CONS");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST_CONS");
 		   break;
 	   case (IPA_CLIENT_TEST4_CONS):
 		   m_pInodePath          = CONFIG_17_FROM_IPA_ZERO_LIMITS;
 		   m_nHeaderLengthAdd    = sizeof(m_pUsbHeader);
 		   m_nHeaderLengthRemove = sizeof(m_pUsbHeader);
 		   m_pHeader             = m_pUsbHeader;
-		   LOG_MSG_INFO("Setting parameters for Q6_LAN_CONS");
+		   LOG_MSG_INFO("Setting parameters for IPA_CLIENT_TEST4_CONS");
 		   break;
 	   default:
 		   LOG_MSG_ERROR("IPA_TEST_CONFIFURATION_17 switch in default "
