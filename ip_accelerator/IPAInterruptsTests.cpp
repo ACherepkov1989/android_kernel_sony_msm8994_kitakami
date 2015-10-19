@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -56,7 +56,10 @@ public:
 		bool bRetVal = true;
 
 		/*Set the configuration to support USB->IPA and IPA->USB pipes.*/
-		ConfigureScenario(IPA_TEST_CONFIGURATION_19, "1");
+		ConfigureScenario(IPA_TEST_CONFIGURATION_19);
+
+		RegSuspendHandler(true,true,0);
+
 		/*Initialize the pipe for all the tests -
 		 * this will open the inode which represents the pipe.
 		 */
@@ -81,7 +84,9 @@ public:
 		bool bRetVal = true;
 
 		/*Set the configuration to support USB->IPA and IPA->USB pipes.*/
-		ConfigureScenario(IPA_TEST_CONFIGURATION_19, "0");
+		ConfigureScenario(IPA_TEST_CONFIGURATION_19);
+
+		RegSuspendHandler(false,true,0);
 
 		/*Initialize the pipe for all the tests -
 		 * this will open the inode which represents the pipe.

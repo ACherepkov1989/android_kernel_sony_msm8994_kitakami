@@ -353,6 +353,31 @@ void print_buff(void *data, size_t size);
 
 void add_buff(uint8_t *data, size_t size, uint8_t val);
 
+/**
+		@brief
+		Performes ep control of a specific endpoint.
+		@param [in] ep_ctrl - Pointer to ipa_test_ep_ctrl struct with
+					the data of the requested operation
+	@return bool
+
+		@details
+		Suspend\Unsuspends\Delays\resumes an endpoint.
+*/
+bool configure_ep_ctrl(struct ipa_test_ep_ctrl *ep_ctrl);
+
+/**
+		@brief
+		Register an alternative suspend handler
+		@param [in] deferred_flag - should the handler execute in defer mode
+		@param [in] reg - register or unregister the suspend handler
+		@param [in] DevNum - the index of the ep that the handler is registered to
+	@return bool
+
+		@details
+		Register the test framework suspend handler for a given endpoint
+*/
+bool RegSuspendHandler(bool deferred_flag, bool reg, int DevNum);
+
 class Eth2Helper {
 public:
 	static const Byte m_ETH2_IP4_HDR[ETH_HLEN];

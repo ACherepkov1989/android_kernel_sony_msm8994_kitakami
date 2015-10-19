@@ -3284,14 +3284,6 @@ void suspend_handler(enum ipa_irq_type interrupt,
 	res = ipa_cfg_ep_ctrl(clnt_hdl, &ipa_to_usb_ep_cfg_ctrl);
 	if (res)
 		pr_err("failed enabling back data path for IPA_CLIENT_USB_CONS\n");
-
-	pr_debug("remove suspend interrupt handler:\n");
-	res = ipa_remove_interrupt_handler(IPA_TX_SUSPEND_IRQ);
-
-	if (res)
-		pr_err("remove handler for suspend interrupt failed\n");
-
-	kfree(private_data);
 }
 /*
  * Configures the system as follows:
@@ -3303,12 +3295,10 @@ void suspend_handler(enum ipa_irq_type interrupt,
  * Then disable USB_CONS EP for creating the suspend interrupt and register
  * a handler for it.
 */
-int configure_system_19(char **params)
+int configure_system_19(void)
 {
 	struct ipa_ep_cfg_ctrl ipa_to_usb_ep_cfg_ctrl;
-	struct ipa_tx_suspend_private_data *suspend_priv_data = NULL;
 	int res;
-	s32 defer_work;
 
 	res = configure_system_1();
 	if (res) {
@@ -3326,27 +3316,6 @@ int configure_system_19(char **params)
 		goto fail;
 	}
 	pr_debug("end-point ctrl register configured successfully (ipa_ep_suspend = true)\n");
-
-	res = kstrtos32(params[1], 10, (s32 *)&defer_work);
-	if (res) {
-		pr_err(DRV_NAME ":kstrtos32() failed. can't convert defer param\n");
-		res = -EFAULT;
-		goto fail;
-	}
-	suspend_priv_data =
-			kzalloc(sizeof(*suspend_priv_data), GFP_ATOMIC);
-	if (!suspend_priv_data) {
-		pr_err("failed allocating suspend_priv_data\n");
-		res = -ENOMEM;
-		goto fail;
-	}
-	suspend_priv_data->clnt_hdl = from_ipa_devs[0]->ipa_client_hdl;
-	res = ipa_add_interrupt_handler(IPA_TX_SUSPEND_IRQ, suspend_handler,
-			(bool)defer_work, (void *)suspend_priv_data);
-	if (res) {
-		pr_err("register handler for suspend interrupt failed\n");
-		goto fail;
-	}
 
 	return 0;
 
@@ -5705,7 +5674,7 @@ ssize_t ipa_test_write(struct file *filp, const char __user *buf,
 
 		/*Make all the configurations required
 		 * (SPS connects and IPA connect)*/
-		ret = configure_system_19(params);
+		ret = configure_system_19();
 		if (ret) {
 			pr_err(DRV_NAME ":System configuration failed.\n");
 			ret = -ENODEV;
@@ -6207,6 +6176,77 @@ int handle_clean_ioctl(void)
 	return 0;
 }
 
+static int handle_ep_ctrl_ioctl(unsigned long ioctl_arg)
+{
+	int retval = 0;
+	struct ipa_ep_cfg_ctrl ep_ctrl;
+	struct ipa_test_ep_ctrl test_ep_ctrl;
+
+	retval = copy_from_user(&test_ep_ctrl,
+			(u8 *)ioctl_arg,
+			sizeof(test_ep_ctrl));
+	if (retval) {
+		pr_err("failed copying ep_ctrl data from user\n");
+		return retval;
+	}
+
+	ep_ctrl.ipa_ep_delay = test_ep_ctrl.ipa_ep_delay;
+	ep_ctrl.ipa_ep_suspend = test_ep_ctrl.ipa_ep_suspend;
+
+	pr_debug("handle_ep_ctrl_ioctl: sending hdl %d\n\n",
+			from_ipa_devs[test_ep_ctrl.from_dev_num]->ipa_client_hdl);
+
+	return ipa_cfg_ep_ctrl(from_ipa_devs[test_ep_ctrl.from_dev_num]->ipa_client_hdl, &ep_ctrl);
+}
+
+static int handle_reg_suspend_handler(unsigned long ioctl_arg)
+{
+	int res = 0;
+	struct ipa_tx_suspend_private_data *suspend_priv_data = NULL;
+	struct ipa_test_reg_suspend_handler reg_data;
+
+	res = copy_from_user(&reg_data,
+			(u8 *)ioctl_arg,
+			sizeof(reg_data));
+	if (res) {
+		pr_err("failed copying ep_ctrl data from user\n");
+		return res;
+	}
+
+	if (reg_data.reg) {
+		if (reg_data.DevNum > (MAX_CHANNEL_DEVS / 2))
+		{
+			res = -ENXIO;
+			pr_err("DevNum is incorrect %d\n", reg_data.DevNum);
+			goto fail;
+		}
+
+		suspend_priv_data =
+				kzalloc(sizeof(*suspend_priv_data), GFP_KERNEL);
+		if (!suspend_priv_data) {
+			pr_err("failed allocating suspend_priv_data\n");
+			res = -ENOMEM;
+			goto fail;
+		}
+
+		suspend_priv_data->clnt_hdl = from_ipa_devs[reg_data.DevNum]->ipa_client_hdl;
+		pr_debug("registering interrupt handle to clnt_hdl %d\n", suspend_priv_data->clnt_hdl);
+		res = ipa_add_interrupt_handler(IPA_TX_SUSPEND_IRQ, suspend_handler,
+				reg_data.deferred_flag, (void *)suspend_priv_data);
+		if (res) {
+			pr_err("register handler for suspend interrupt failed\n");
+			goto fail_allocated;
+		}
+
+	} else {
+		res = ipa_restore_suspend_handler();
+	}
+fail:
+	return res;
+fail_allocated:
+	kfree(suspend_priv_data);
+	return res;
+}
 
 static long ipa_test_ioctl(struct file *filp,
 	unsigned int cmd, unsigned long arg)
@@ -6228,6 +6268,12 @@ static long ipa_test_ioctl(struct file *filp,
 
 	case IPA_TEST_IOC_GET_HW_TYPE:
 		retval = ipa_get_hw_type();
+		break;
+	case IPA_TEST_IOC_EP_CTRL:
+		retval = handle_ep_ctrl_ioctl(arg);
+		break;
+	case IPA_TEST_IOC_REG_SUSPEND_HNDL:
+		retval = handle_reg_suspend_handler(arg);
 		break;
 	default:
 		pr_err("ioctl is not supported (%d)\n", cmd);
