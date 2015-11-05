@@ -6,6 +6,7 @@ OPTIONS can be (defaults in parenthesis):
   -n, --nominal		nominal test cases
   -a, --adversarial	adversarial test cases
   -V			run with debug messages on (off)
+  -l, --legacy		run cp tests for legacy heap (ION_CP_MM_HEAP_ID)
 
 Description:
 Ion is a memory allocator used by multimedia clients.

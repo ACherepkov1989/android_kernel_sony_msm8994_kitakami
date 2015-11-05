@@ -51,6 +51,7 @@
 #define MSM_ION		"/dev/ion"
 
 unsigned int TEST_TYPE = NOMINAL_TEST;
+unsigned int legacy_secure;
 
 static int run_tests(struct ion_test_plan **table, const char *test_plan,
 					unsigned int type, size_t size,
@@ -90,8 +91,9 @@ static int run_tests(struct ion_test_plan **table, const char *test_plan,
 int parse_args(int argc, char **argv)
 {
 	unsigned int level;
-	if (argc != 3)
+	if (argc != 4)
 		return 1;
+
 	switch (argv[1][0]) {
 	case 'n':
 	{
@@ -110,6 +112,8 @@ int parse_args(int argc, char **argv)
 	if (level != INFO && level != ERR)
 		return -EINVAL;
 	set_debug_level(level);
+
+	legacy_secure = atoi(argv[3]);
 	return 0;
 }
 
@@ -136,7 +140,7 @@ int main(int argc, char **argv)
 		debug(ERR, "no kernel tests\n");
 		return -EIO;
 	}
-	cptable = get_cp_ion_tests(MSM_ION_TEST, &cpsize);
+	cptable = get_cp_ion_tests(MSM_ION_TEST, legacy_secure, &cpsize);
 	if (!cptable) {
 		debug(ERR, "no user tests\n");
 		return -EIO;

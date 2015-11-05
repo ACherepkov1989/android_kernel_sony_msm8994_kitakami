@@ -67,6 +67,27 @@ static struct ion_test_data *mm_heap_data_settings[] = {
 	[ADV_TEST] = &adv_mm_heap_test,
 };
 
+static struct ion_test_data legacy_cp_heap_test = {
+	.align = 0x100000,
+	.size = 0x100000,
+	.heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
+	.flags = ION_FLAG_SECURE,
+	.heap_type_req = SECURE_DMA,
+};
+
+static struct ion_test_data adv_legacy_cp_heap_test = {
+	.align = 0x100000,
+	.size = 0x100000,
+	.heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID),
+	.flags = ION_FLAG_SECURE,
+	.heap_type_req = 0,
+};
+
+static struct ion_test_data *legacy_cp_heap_settings[] = {
+	[NOMINAL_TEST] = &legacy_cp_heap_test,
+	[ADV_TEST] = &adv_legacy_cp_heap_test,
+};
+
 static int test_sec_alloc(const char *ion_dev, const char *msm_ion_dev,
 				struct ion_test_plan *ion_tp, int test_type,
 				int *test_skipped)
@@ -324,14 +345,36 @@ static struct ion_test_plan sec_map_test = {
 	.test_type_flags = NOMINAL_TEST,
 	.test_fn = test_sec_map,
 };
+
+static struct ion_test_plan legacy_cp_heap_alloc_test = {
+	.name = "Legacy cp heap test",
+	.test_plan_data = legacy_cp_heap_settings,
+	.test_plan_data_len = 3,
+	.test_type_flags = NOMINAL_TEST,
+	.test_fn = test_sec_alloc,
+};
+
 static struct ion_test_plan *cp_tests[] = {
 	&sec_alloc_test,
 	&sec_map_test,
 };
 
-struct ion_test_plan **get_cp_ion_tests(const char *dev, size_t *size)
+static struct ion_test_plan *cp_legacy_tests[] = {
+	&legacy_cp_heap_alloc_test,
+};
+
+struct ion_test_plan **get_cp_ion_tests(const char *dev,
+		unsigned int legacy_secure, size_t *size)
 {
-	*size = ARRAY_SIZE(cp_tests);
-	setup_heaps_for_tests(dev, cp_tests, *size);
-	return cp_tests;
+	struct ion_test_plan **tests;
+
+	if (legacy_secure) {
+		*size = ARRAY_SIZE(cp_legacy_tests);
+		tests = cp_legacy_tests;
+	} else {
+		*size = ARRAY_SIZE(cp_tests);
+		tests = cp_tests;
+	}
+	setup_heaps_for_tests(dev, tests, *size);
+	return tests;
 }

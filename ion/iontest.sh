@@ -48,6 +48,7 @@ ion_test_dev=/dev/msm_ion_test
 ion_test_dev_sys=/sys/class/msm_ion_test/msm_ion_test/dev
 test_type=n
 level=0
+legacy_secure=0
 
 maybe_make_node()
 {
@@ -89,8 +90,11 @@ do
 	-V)
 		level=1
 		;;
+	-l | --legacy)
+		legacy_secure=1
+		;;
 	-h | --help | *)
-	echo "Usage: $0 [-n | --nominal] [-a | --adversarial] [-V]";
+	echo "Usage: $0 [-n | --nominal] [-a | --adversarial] [-V] [-l | --legacy]";
 	exit 1
 	;;
 	esac
@@ -119,7 +123,7 @@ maybe_make_node $ion_test_dev $ion_test_dev_sys || exit 1
 
 
 #invoke test
-./msm_iontest $test_type $level
+./msm_iontest $test_type $level $legacy_secure
 ret=$?
 if [ $ret -ne 0 ];then
 	echo "Test Failed"

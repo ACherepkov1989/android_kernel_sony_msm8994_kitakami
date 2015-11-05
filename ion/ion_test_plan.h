@@ -48,5 +48,6 @@ struct ion_test_plan {
 
 struct ion_test_plan **get_kernel_ion_tests(const char *dev, size_t *size);
 struct ion_test_plan **get_user_ion_tests(const char *dev, size_t *size);
-struct ion_test_plan **get_cp_ion_tests(const char *dev, size_t *size);
+struct ion_test_plan **get_cp_ion_tests(const char *dev,
+		unsigned int legacy_secure, size_t *size);
 #endif
