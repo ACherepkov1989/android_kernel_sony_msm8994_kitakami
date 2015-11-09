@@ -62,12 +62,155 @@ RNDISAggregationTestFixture::RNDISAggregationTestFixture()
 
 /////////////////////////////////////////////////////////////////////////////////
 
+static int SetupKernelModule(void)
+{
+	int retval;
+	struct ipa_channel_config from_ipa_channels[4];
+	struct test_ipa_ep_cfg from_ipa_cfg[4];
+	struct ipa_channel_config to_ipa_channels[3];
+	struct test_ipa_ep_cfg to_ipa_cfg[3];
+	struct ipa_test_config_header header = {0};
+	struct ipa_channel_config *to_ipa_array[3];
+	struct ipa_channel_config *from_ipa_array[4];
+	bool en_status = false;
+
+	/* From ipa configurations - 4 pipes */
+	memset(&from_ipa_cfg[0], 0, sizeof(from_ipa_cfg[0]));
+	from_ipa_cfg[0].aggr.aggr_en = IPA_ENABLE_AGGR;
+	from_ipa_cfg[0].aggr.aggr = IPA_GENERIC;
+	from_ipa_cfg[0].aggr.aggr_byte_limit = 1;
+	from_ipa_cfg[0].aggr.aggr_time_limit = 0;
+	from_ipa_cfg[0].hdr.hdr_ofst_pkt_size_valid = true;
+	from_ipa_cfg[0].hdr.hdr_ofst_pkt_size = 12;
+	from_ipa_cfg[0].hdr.hdr_additional_const_len = 14;
+	from_ipa_cfg[0].hdr.hdr_len = 58;
+	from_ipa_cfg[0].hdr_ext.hdr_little_endian = true;
+	from_ipa_cfg[0].hdr_ext.hdr_total_len_or_pad_valid = true;
+	from_ipa_cfg[0].hdr_ext.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN;
+	from_ipa_cfg[0].hdr_ext.hdr_total_len_or_pad_offset = 4;
+
+	prepare_channel_struct(&from_ipa_channels[0],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST2_CONS,
+			(void *)&from_ipa_cfg[0],
+			sizeof(from_ipa_cfg[0]),
+			en_status);
+	from_ipa_array[0] = &from_ipa_channels[0];
+
+	memset(&from_ipa_cfg[1], 0, sizeof(from_ipa_cfg[1]));
+	prepare_channel_struct(&from_ipa_channels[1],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST3_CONS,
+			(void *)&from_ipa_cfg[1],
+			sizeof(from_ipa_cfg[1]),
+			en_status);
+	from_ipa_array[1] = &from_ipa_channels[1];
+
+	memset(&from_ipa_cfg[2], 0, sizeof(from_ipa_cfg[2]));
+	from_ipa_cfg[2].aggr.aggr_en = IPA_ENABLE_AGGR;
+	from_ipa_cfg[2].aggr.aggr = IPA_GENERIC;
+	from_ipa_cfg[2].aggr.aggr_byte_limit = 1;
+	from_ipa_cfg[2].aggr.aggr_time_limit = 30;
+	from_ipa_cfg[2].hdr.hdr_ofst_pkt_size_valid = true;
+	from_ipa_cfg[2].hdr.hdr_ofst_pkt_size = 12;
+	from_ipa_cfg[2].hdr.hdr_additional_const_len = 14;
+	from_ipa_cfg[2].hdr.hdr_len = 58;
+	from_ipa_cfg[2].hdr_ext.hdr_little_endian = true;
+	from_ipa_cfg[2].hdr_ext.hdr_total_len_or_pad_valid = true;
+	from_ipa_cfg[2].hdr_ext.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN;
+	from_ipa_cfg[2].hdr_ext.hdr_total_len_or_pad_offset = 4;
+
+	prepare_channel_struct(&from_ipa_channels[2],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST_CONS,
+			(void *)&from_ipa_cfg[2],
+			sizeof(from_ipa_cfg[2]),
+			en_status);
+	from_ipa_array[2] = &from_ipa_channels[2];
+
+	memset(&from_ipa_cfg[3], 0, sizeof(from_ipa_cfg[3]));
+	from_ipa_cfg[3].aggr.aggr_en = IPA_ENABLE_AGGR;
+	from_ipa_cfg[3].aggr.aggr = IPA_GENERIC;
+	from_ipa_cfg[3].aggr.aggr_byte_limit = 0;
+	from_ipa_cfg[3].aggr.aggr_time_limit = 0;
+	from_ipa_cfg[3].aggr.aggr_pkt_limit = 2;
+	from_ipa_cfg[3].hdr.hdr_ofst_pkt_size_valid = true;
+	from_ipa_cfg[3].hdr.hdr_ofst_pkt_size = 12;
+	from_ipa_cfg[3].hdr.hdr_additional_const_len = 14;
+	from_ipa_cfg[3].hdr.hdr_len = 58;
+	from_ipa_cfg[3].hdr_ext.hdr_little_endian = true;
+	from_ipa_cfg[3].hdr_ext.hdr_total_len_or_pad_valid = true;
+	from_ipa_cfg[3].hdr_ext.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN;
+	from_ipa_cfg[3].hdr_ext.hdr_total_len_or_pad_offset = 4;
+
+	prepare_channel_struct(&from_ipa_channels[3],
+			header.from_ipa_channels_num++,
+			IPA_CLIENT_TEST4_CONS,
+			(void *)&from_ipa_cfg[3],
+			sizeof(from_ipa_cfg[3]),
+			en_status);
+	from_ipa_array[3] = &from_ipa_channels[3];
+
+	/* to ipa configurations - 3 pipes */
+	memset(&to_ipa_cfg[0], 0, sizeof(to_ipa_cfg[0]));
+	to_ipa_cfg[0].hdr.hdr_len = 14;
+
+	prepare_channel_struct(&to_ipa_channels[0],
+			header.to_ipa_channels_num++,
+			IPA_CLIENT_TEST_PROD,
+			(void *)&to_ipa_cfg[0],
+			sizeof(to_ipa_cfg[0]),
+			en_status);
+	to_ipa_array[0] = &to_ipa_channels[0];
+
+	memset(&to_ipa_cfg[1], 0, sizeof(to_ipa_cfg[1]));
+	prepare_channel_struct(&to_ipa_channels[1],
+			header.to_ipa_channels_num++,
+			IPA_CLIENT_TEST3_PROD,
+			(void *)&to_ipa_cfg[1],
+			sizeof(to_ipa_cfg[1]),
+			en_status);
+	to_ipa_array[1] = &to_ipa_channels[1];
+
+	memset(&to_ipa_cfg[2], 0, sizeof(to_ipa_cfg[2]));
+	to_ipa_cfg[2].aggr.aggr_en = IPA_ENABLE_DEAGGR;
+	to_ipa_cfg[2].aggr.aggr = IPA_GENERIC;
+	to_ipa_cfg[2].deaggr.deaggr_hdr_len = 44;
+	to_ipa_cfg[2].deaggr.packet_offset_valid = true;
+	to_ipa_cfg[2].deaggr.packet_offset_location = 8;
+	to_ipa_cfg[2].hdr.hdr_len = 14; /* Ethernet header */
+	to_ipa_cfg[2].hdr.hdr_ofst_pkt_size = 12;
+	to_ipa_cfg[2].hdr.hdr_remove_additional = false;
+	to_ipa_cfg[2].hdr_ext.hdr_little_endian = 1;
+	to_ipa_cfg[2].hdr_ext.hdr_total_len_or_pad_valid = 1;
+	to_ipa_cfg[2].hdr_ext.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN;
+	to_ipa_cfg[2].hdr_ext.hdr_payload_len_inc_padding = 0;
+	to_ipa_cfg[2].hdr_ext.hdr_total_len_or_pad_offset = 4;
+
+	prepare_channel_struct(&to_ipa_channels[2],
+			header.to_ipa_channels_num++,
+			IPA_CLIENT_TEST2_PROD,
+			(void *)&to_ipa_cfg[2],
+			sizeof(to_ipa_cfg[2]),
+			en_status);
+	to_ipa_array[2] = &to_ipa_channels[2];
+
+	prepare_header_struct(&header, from_ipa_array, to_ipa_array);
+
+	retval = GenericConfigureScenario(&header);
+
+	return retval;
+}
+
 bool RNDISAggregationTestFixture::Setup()
 {
 	bool bRetVal = true;
 
 	//Set the configuration to support USB->IPA and IPA->USB pipes.
-	ConfigureScenario(IPA_TEST_CONFIGURATION_17);
+	bRetVal = SetupKernelModule();
+	if (bRetVal != true) {
+		return bRetVal;
+	}
 
 	//Initialize the pipe for all the tests - this will open the inode which represents the pipe.
 	bRetVal &= m_IpaToUsbPipeAgg.Init();

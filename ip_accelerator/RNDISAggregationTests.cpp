@@ -272,6 +272,142 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////
 };
 
+class RNDISAggregationSuspendWaTest: public RNDISAggregationTestFixture {
+public:
+	/////////////////////////////////////////////////////////////////////////////////
+
+	RNDISAggregationSuspendWaTest()
+	{
+		m_name = "RNDISAggregationSuspendWaTest";
+		m_description = "RNDISAggregationSuspendWaTest - Send 3 IP packet instead 4, suspend the pipe"
+			" and expect aggregation to be closed.";
+		m_minIPAHwType = IPA_HW_v3_0;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////
+
+	virtual bool AddRules()
+	{
+		return AddRulesAggByteLimit();
+	} // AddRules()
+
+	/////////////////////////////////////////////////////////////////////////////////
+
+	bool Setup()
+	{
+		bool bRetVal = true;
+
+		bRetVal = RNDISAggregationTestFixture::Setup();
+		if (bRetVal == false) {
+			return bRetVal;
+		}
+
+		/* register test framework suspend handler to from_ipa_devs */
+		bRetVal = RegSuspendHandler(false, true, 0);
+
+		return bRetVal;
+	}
+
+	bool TestLogic()
+	{
+		/*The packets that will be sent*/
+
+		Byte pPackets[NUM_PACKETS][MAX_PACKET_SIZE];
+		/*Buffer for the packet that will be received*/
+		Byte pReceivedPacket[2*MAX_PACKET_SIZE];
+		/*
+		 *Total size of all sent packets
+		 * (this is the max size of the aggregated
+		 *packet minus the size of the header and the NDP)
+		 */
+		uint32_t nIPv4DSTAddr;
+		size_t pIpPacketsSizes[NUM_PACKETS];
+		size_t ExpectedPacketSize = (NUM_PACKETS - 1) * sizeof(struct RndisEtherHeader);
+
+		struct ipa_test_ep_ctrl ep_ctrl;
+
+		/* send one packet less than aggregation size in order to see the force close */
+		for(int i = 0; i < (NUM_PACKETS - 1); i++) {
+			/*
+			 *initialize the packets
+			 *Load input data (IP packet) from file
+			 */
+			pIpPacketsSizes[i] = MAX_PACKET_SIZE;
+			if (!LoadDefaultPacket(m_eIP, pPackets[i], pIpPacketsSizes[i]))
+			{
+				LOG_MSG_ERROR("Failed to load Ethernet Packet");
+				return false;
+			}
+			nIPv4DSTAddr = ntohl(0x7F000001);
+			memcpy (&pPackets[i][IPV4_DST_ADDR_OFFSET],&nIPv4DSTAddr,
+				sizeof(nIPv4DSTAddr));
+			for(int j = pIpPacketsSizes[i]; j < MAX_PACKET_SIZE / NUM_PACKETS + 1; j++) {
+				pPackets[i][j] = j & 0xFF;
+			}
+			pIpPacketsSizes[i] = MAX_PACKET_SIZE / NUM_PACKETS + 1;
+
+			/* send the packet */
+			LOG_MSG_DEBUG("Sending packet into the A2 TETH pipe(%d bytes)\n",
+					pIpPacketsSizes[i]);
+			size_t nBytesSent = m_HsicToIpaPipe.Send(pPackets[i], pIpPacketsSizes[i]);
+			if (pIpPacketsSizes[i] != nBytesSent)
+			{
+				LOG_MSG_ERROR("Sending packet into the USB pipe(%d bytes) "
+					"failed!\n", pIpPacketsSizes[i]);
+				return false;
+			}
+			ExpectedPacketSize += pIpPacketsSizes[i];
+		}
+
+		/* suspend the pipe */
+		ep_ctrl.from_dev_num = 0;
+		ep_ctrl.ipa_ep_delay = false;
+		ep_ctrl.ipa_ep_suspend = true;
+		configure_ep_ctrl(&ep_ctrl);
+
+		/* receive the packet */
+		LOG_MSG_DEBUG(
+			"Reading packet from the USB pipe(%d bytes should be there)"
+			"\n", ExpectedPacketSize);
+		size_t nBytesReceived = m_IpaToUsbPipeAgg
+				.Receive(pReceivedPacket, MAX_PACKET_SIZE);
+		if (ExpectedPacketSize != nBytesReceived)
+		{
+			LOG_MSG_ERROR(
+				"Receiving aggregated packet from the USB pipe(%d bytes) "
+				"failed!\n", nBytesReceived);
+			print_buff(pReceivedPacket, nBytesReceived);
+			return false;
+		}
+
+
+		for(int i = 0; i < (NUM_PACKETS - 1); i++) {
+			if (!RNDISAggregationHelper::
+					CompareIPvsRNDISPacket(pPackets[i], pIpPacketsSizes[i],
+				pReceivedPacket + (i * ExpectedPacketSize / (NUM_PACKETS - 1)),
+				ExpectedPacketSize / (NUM_PACKETS - 1)))
+				return false;
+		}
+
+		return true;
+	}
+
+	bool Teardown()
+	{
+		bool bRetVal = true;
+
+		bRetVal = RNDISAggregationTestFixture::Teardown();
+		if (bRetVal == false) {
+			return bRetVal;
+		}
+
+		/* unregister the test framework suspend handler */
+		bRetVal = RegSuspendHandler(false, false, 0);
+
+		return bRetVal;
+	}
+};
+
 class RNDISAggregationByteLimitTest: public RNDISAggregationTestFixture {
 public:
 
@@ -302,14 +438,15 @@ public:
 		Byte pReceivedPacket[2*MAX_PACKET_SIZE];
 		/*Total size of all sent packets
 		 * (this is the max size of the aggregated
+		 *packet minus the size of the header and the NDP)
 		 */
-		/*packet minus the size of the header and the NDP)*/
 		uint32_t nIPv4DSTAddr;
 		size_t pIpPacketsSizes[NUM_PACKETS];
 		size_t ExpectedPacketSize = NUM_PACKETS * sizeof(struct RndisEtherHeader);
 
 		for(int i = 0; i < NUM_PACKETS; i++) {
-			/*initialize the packets
+			/*
+			 *initialize the packets
 			 *Load input data (IP packet) from file
 			 */
 			pIpPacketsSizes[i] = MAX_PACKET_SIZE;
@@ -326,7 +463,7 @@ public:
 			}
 			pIpPacketsSizes[i] = MAX_PACKET_SIZE / NUM_PACKETS + 1;
 
-			//send the packet
+			/* send the packet */
 			LOG_MSG_DEBUG("Sending packet into the A2 TETH pipe(%d bytes)\n",
 					pIpPacketsSizes[i]);
 			size_t nBytesSent = m_HsicToIpaPipe.Send(pPackets[i], pIpPacketsSizes[i]);
@@ -339,7 +476,7 @@ public:
 			ExpectedPacketSize += pIpPacketsSizes[i];
 		}
 
-		/*receive the packet*/
+		/* receive the packet */
 		LOG_MSG_DEBUG(
 			"Reading packet from the USB pipe(%d bytes should be there)"
 			"\n", ExpectedPacketSize);
@@ -770,6 +907,7 @@ public:
 static RNDISAggregationSanityTest aRNDISAggregationSanityTest;
 static RNDISAggregationDeaggregation1PacketTest aRNDISAggregationDeaggregation1PacketTest;
 static RNDISAggregation1PacketTest aRNDISAggregation1PacketTest;
+static RNDISAggregationSuspendWaTest aRNDISAggregationSuspendWaTest;
 static RNDISAggregationByteLimitTest aRNDISAggregationByteLimitTest;
 static RNDISAggregationDeaggregationNumPacketsTest aRNDISAggregationDeaggregationNumPacketsTest;
 static RNDISAggregationDeaggregationExceptionPacketsTest aRNDISAggregationDeaggregationExceptionPacketsTest;

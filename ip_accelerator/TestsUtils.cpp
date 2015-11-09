@@ -933,6 +933,35 @@ int GenericConfigureScenarioDestory(void)
 	return true;
 }
 
+bool configure_ep_ctrl(struct ipa_test_ep_ctrl *ep_ctrl)
+{
+	int fd;
+	int retval = 0;
+
+	g_Logger.AddMessage(LOG_DEVELOPMENT, "ep ctrl started \n");
+
+	fd = open(CONFIGURATION_NODE_PATH,  O_RDWR);
+	if (fd == -1) {
+		g_Logger.AddMessage(LOG_ERROR,
+			"%s - open %s failed (retval=%d,fd=%d,errno=%s)\n",
+			__FUNCTION__, CONFIGURATION_NODE_PATH, fd, strerror(errno));
+		return false;
+	}
+
+	retval = ioctl(fd, IPA_TEST_IOC_EP_CTRL, ep_ctrl);
+	if (retval)
+		g_Logger.AddMessage(LOG_ERROR, "fail to perform ep ctrl (%d)\n", retval);
+	else
+		g_Logger.AddMessage(LOG_DEVELOPMENT, "ep ctrl was successfully executed\n");
+
+	retval = close(fd);
+	if (retval) {
+		g_Logger.AddMessage(LOG_ERROR, "fail to close the fd - %d\n", retval);
+	}
+
+	return true;
+}
+
 void prepare_channel_struct(struct ipa_channel_config *channel,
 		int index,
 		enum ipa_client_type client,
@@ -1043,6 +1072,38 @@ void add_buff(uint8_t *data, size_t size, uint8_t val)
 {
 	for (int i = 0; i < static_cast<int>(size); i++)
 		data[i]+=val;
+}
+
+bool RegSuspendHandler(bool deferred_flag, bool reg, int DevNum)
+{
+	int fd = 0;
+	int retval = 0;
+	struct ipa_test_reg_suspend_handler RegData;
+
+	fd = open(CONFIGURATION_NODE_PATH,  O_RDWR);
+	if (fd == -1) {
+		g_Logger.AddMessage(LOG_ERROR,
+				"%s - open %s failed (fd=%d,errno=%s)\n",
+				__FUNCTION__, CONFIGURATION_NODE_PATH, fd, strerror(errno));
+		return false;
+	}
+
+	RegData.DevNum = DevNum;
+	RegData.reg = reg;
+	RegData.deferred_flag = deferred_flag;
+
+	retval = ioctl(fd, IPA_TEST_IOC_REG_SUSPEND_HNDL, &RegData);
+	if (retval) {
+		g_Logger.AddMessage(LOG_ERROR, "fail to reg suspend handler (%d)\n", retval);
+		close(fd);
+		return false;
+	} else {
+		g_Logger.AddMessage(LOG_DEVELOPMENT, "suspend handler was successfully configured\n");
+	}
+
+	close(fd);
+
+	return true;
 }
 
 const Byte Eth2Helper::m_ETH2_IP4_HDR[ETH_HLEN] =

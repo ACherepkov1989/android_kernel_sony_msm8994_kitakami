@@ -12,6 +12,8 @@
 #define IPA_TEST_IOCTL_GET_HW_TYPE 1
 #define IPA_TEST_IOCTL_CONFIGURE 2
 #define IPA_TEST_IOCTL_CLEAN 3
+#define IPA_TEST_IOCTL_EP_CTRL 4
+#define IPA_TEST_IOCTL_REG_SUSPEND_HNDL 5
 
 #define IPA_TEST_IOC_GET_HW_TYPE _IO(IPA_TEST_IOC_MAGIC, \
 		IPA_TEST_IOCTL_GET_HW_TYPE)
@@ -20,6 +22,12 @@
 		struct ipa_test_config_header *)
 #define IPA_TEST_IOC_CLEAN _IO(IPA_TEST_IOC_MAGIC, \
 		IPA_TEST_IOCTL_CLEAN)
+#define IPA_TEST_IOC_EP_CTRL _IOWR(IPA_TEST_IOC_MAGIC, \
+		IPA_TEST_IOCTL_EP_CTRL, \
+		struct ipa_test_ep_ctrl *)
+#define IPA_TEST_IOC_REG_SUSPEND_HNDL _IOWR(IPA_TEST_IOC_MAGIC, \
+		IPA_TEST_IOCTL_REG_SUSPEND_HNDL, \
+		struct ipa_test_reg_suspend_handler *)
 
 #define IPA_TEST_CONFIG_MARKER 0x57
 #define IPA_TEST_CHANNEL_CONFIG_MARKER 0x83
@@ -45,6 +53,20 @@ struct ipa_test_en_status
 {
 	int num_clients;
 	enum ipa_client_type *clients;
+};
+
+struct ipa_test_ep_ctrl
+{
+	bool ipa_ep_suspend;
+	bool ipa_ep_delay;
+	int from_dev_num;
+};
+
+struct ipa_test_reg_suspend_handler
+{
+	int DevNum;
+	bool reg;
+	bool deferred_flag;
 };
 
 struct ipa_channel_config
