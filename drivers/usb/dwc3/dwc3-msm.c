@@ -2807,8 +2807,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->pwr_event_irq = platform_get_irq_byname(pdev, "pwr_event_irq");
 	if (mdwc->pwr_event_irq < 0) {
 		dev_err(&pdev->dev, "pget_irq for pwr_event_irq failed\n");
-		ret = -EINVAL;
-		goto err;
+		mdwc->pwr_event_irq = 0;
 	} else {
 		/*
 		 * enable pwr event irq early during PM resume to meet bus
