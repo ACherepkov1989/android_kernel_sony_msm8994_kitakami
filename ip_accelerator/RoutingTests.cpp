@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -344,7 +344,7 @@ public:
 	{
 		if ((RecvSize <= SendSize) ||
 			((RecvSize - SendSize) != sizeof(struct ipa3_hw_pkt_status))){
-			printf("received buffer size does not match! sent:receive [%d]:[%d]\n",SendSize,RecvSize);
+			printf("received buffer size does not match! sent:receive [%zu]:[%zu]\n",SendSize,RecvSize);
 			return false;
 		}
 
