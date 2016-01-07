@@ -25,10 +25,13 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if [ -d /system/lib/modules/ ]; then
-	modpath=/system/lib/modules
-else
-	modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
+[ -d /system/lib/modules/ ] && modpath=/system/lib/modules
+[ -d /kernel-tests/modules/lib/modules/$(uname -r 2>/dev/null)/extra ] && modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
+[ -d /usr/kernel-tests/hrtimer ] && modpath=/usr/kernel-tests/hrtimer
+
+if [[ -z "$modpath" ]]; then
+	echo "Couldn't find a path to kernel module. Bailing..."
+	exit 1
 fi
 
 hrtimer_test_mod=$modpath/hrtimer_test_module.ko
