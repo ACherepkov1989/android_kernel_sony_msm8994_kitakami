@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -3422,6 +3422,7 @@ public:
 		m_name = "QcncmMBIMAggregationTest";
 		m_description = "MBIM Aggregation test - sends 5 packets and receives 1 "
 				"aggregated packet";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3603,6 +3604,7 @@ public:
 		m_name = "QcncmMBIMAggregationLoopTest";
 		m_description = "MBIM Aggregation Loop test - sends 5 packets and expects to"
 				"receives 1 aggregated packet a few times";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3675,6 +3677,7 @@ public:
 		m_name = "QcncmMBIMAggregationMultiplePacketsTest";
 		m_description = "MBIM Aggregation multiple packets test - sends 9 packets "
 				"with same stream ID and receives 1 aggregated packet with 2 NDPs";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3746,6 +3749,7 @@ public:
 		m_name = "QcncmMBIMAggregationTimeLimitTest";
 		m_description = "MBIM Aggregation time limit test - sends 1 small packet "
 				"smaller than the byte limit and receives 1 aggregated packet";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3780,6 +3784,7 @@ public:
 		m_name = "QcncmMBIMAggregationByteLimitTest";
 		m_description = "MBIM Aggregation byte limit test - sends 2 packets that together "
 				"are larger than the byte limit ";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3815,6 +3820,7 @@ public:
 		m_name = "QcncmMBIMAggregationTimeLimitLoopTest";
 		m_description = "MBIM Aggregation time limit loop test - sends 5 small packet "
 				"smaller than the byte limit and receives 5 aggregated packet";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -3849,6 +3855,7 @@ public:
 		m_name = "QcncmMBIMAggregation0LimitsTest";
 		m_description = "MBIM Aggregation 0 limits test - sends 5 packets and expects"
 				"to get each packet back aggregated (both size and time limits are 0)";
+		m_maxIPAHwType = IPA_HW_v2_6L;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
