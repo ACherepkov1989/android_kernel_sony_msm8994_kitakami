@@ -2343,7 +2343,7 @@ int configure_system_9(void)
 	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
-	mode = IPA_MBIM;
+	mode = IPA_MBIM_AGGR;
 	res = ipa_set_aggr_mode(mode);
 	if (res)
 		goto fail;
@@ -2526,7 +2526,7 @@ fail:
  This configuration is for 1 input pipe and 1 output pipe:
  /dev/to_ipa_0 -> MEM -> BAM-DMA -> IPA -> BAM-DMA -> MEM -> /dev/from_ipa_0
  /dev/to_ipa_1 -> MEM -> BAM-DMA -> IPA -> BAM-DMA -> MEM -> /dev/from_ipa_1
- from_ipa_0, from_ipa_1 transfer IPA_MBIM aggregated packets
+ from_ipa_0, from_ipa_1 transfer IPA_MBIM_AGGR aggregated packets
  to_ipa_0, to_ipa_1 transfer raw packets
 */
 int configure_system_10(void)
@@ -2538,7 +2538,7 @@ int configure_system_10(void)
 	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
-	mode = IPA_MBIM;
+	mode = IPA_MBIM_AGGR;
 	res = ipa_set_aggr_mode(mode);
 	if (res)
 		goto fail;
@@ -2613,7 +2613,7 @@ int configure_system_11(void)
 	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
 
-	mode = IPA_MBIM;
+	mode = IPA_MBIM_AGGR;
 	res = ipa_set_aggr_mode(mode);
 	if (res)
 		goto fail;
@@ -2774,7 +2774,7 @@ int configure_system_12(void)
 	struct ipa_sys_connect_params sys_in;
 	unsigned long ipa_bam_or_gsi_hdl;
 	u32 ipa_pipe_num;
-	mode = IPA_QCNCM;
+	mode = IPA_QCNCM_AGGR;
 	res = ipa_set_aggr_mode(mode);
 	if (res)
 		goto fail;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -534,8 +534,8 @@ enum ipa_aggr_type {
 };
 
 enum ipa_aggr_mode {
-	IPA_MBIM,
-	IPA_QCNCM,
+	IPA_MBIM_AGGR,
+	IPA_QCNCM_AGGR,
 };
 
 enum hdr_total_len_or_pad_type {
@@ -579,6 +579,7 @@ struct ipa_ep_cfg_aggr {
 	uint32_t aggr_byte_limit;
 	uint32_t aggr_time_limit;
 	uint32_t aggr_pkt_limit;
+	uint32_t aggr_hard_byte_limit_en;
 };
 
 struct ipa_ep_cfg_route {
@@ -603,6 +604,7 @@ struct ipa_ep_cfg_cfg {
 	bool frag_offload_en;
 	enum ipa_cs_offload cs_offload_en;
 	uint8_t cs_metadata_hdr_offset;
+	uint8_t gen_qmb_master_sel;
 };
 
 struct ipa_ep_cfg_metadata_mask {
