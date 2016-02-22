@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1006,7 +1006,7 @@ bool CompareResultVsGolden_w_Status(Byte *goldenBuffer,   unsigned int goldenSiz
 		return false;
 	}
 
-	printf("comparison is made considering %d status bytes!\n",sizeof(struct ipa3_hw_pkt_status));
+	printf("comparison is made considering %zu status bytes!\n", sizeof(struct ipa3_hw_pkt_status));
 
 	return !memcmp((void*)((unsigned char *)receivedBuffer +
 		sizeof(struct ipa3_hw_pkt_status)), (void*)goldenBuffer, goldenSize);

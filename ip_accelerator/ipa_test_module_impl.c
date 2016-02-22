@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -440,9 +440,9 @@ static ssize_t channel_read_gsi(struct file *filp, char __user *buf,
 		return 0;
 	}
 
-	pr_debug(DRV_NAME ":%s() received %d bytes from 0x%8x.\n",
-		__func__, xfer_notify.bytes_xfered,
-		(phys_addr_t)xfer_notify.xfer_user_data);
+	pr_debug(DRV_NAME ":%s() received %ld bytes from 0x%pad\n",
+		__func__,(unsigned long) xfer_notify.bytes_xfered,
+		&xfer_notify.xfer_user_data);
 
 	/* Copy the received data to the user buffer */
 	offset = (phys_addr_t)xfer_notify.xfer_user_data - channel_dev->mem.phys_base;
