@@ -160,6 +160,8 @@ struct channel_dev {
 	/*The data/desc FIFO for the A5 to IPA/BAM-DMA*/
 	struct sps_mem_buffer desc_fifo;
 	struct sps_mem_buffer mem;
+	/*Index of the next available buffer to use under mem.buff*/
+	int mem_buff_index;
 	/*A pointer to the test context - should be deleted - TODO*/
 	struct test_context *test;
 	struct sps_register_event rx_event;/*SPS feature to get events*/
@@ -367,11 +369,10 @@ static ssize_t channel_write_gsi(struct file *filp, const char __user *buf,
 {
 	struct channel_dev *channel_dev = filp->private_data;
 	int res = 0;
-	u32 buf_index = 0;
 	void *data_address = channel_dev->mem.base
-		+ buf_index * TX_BUFF_SIZE;
+		+ channel_dev->mem_buff_index * TX_BUFF_SIZE;
 	u32 data_phys_addr = channel_dev->mem.phys_base
-		+ buf_index * TX_BUFF_SIZE;
+		+ channel_dev->mem_buff_index * TX_BUFF_SIZE;
 	struct gsi_xfer_elem gsi_xfer;
 
 	/* Copy the data from the user and transmit */
@@ -404,7 +405,8 @@ static ssize_t channel_write_gsi(struct file *filp, const char __user *buf,
 		return res;
 	}
 
-	buf_index = (buf_index + 1) % TX_NUM_BUFFS;
+	channel_dev->mem_buff_index = (channel_dev->mem_buff_index + 1) %
+					TX_NUM_BUFFS;
 	return count;
 }
 
@@ -479,11 +481,10 @@ static ssize_t channel_write_sps(struct file *filp, const char __user *buf,
 	struct channel_dev *channel_dev = filp->private_data;
 	u32 tx_xfer_flags = SPS_IOVEC_FLAG_EOT;
 	int res = 0;
-	u32 buf_index = 0;
 	void *data_address = channel_dev->mem.base
-			+ buf_index * TX_BUFF_SIZE;
+			+ channel_dev->mem_buff_index * TX_BUFF_SIZE;
 	u32 data_phys_addr = channel_dev->mem.phys_base
-			+ buf_index * TX_BUFF_SIZE;
+			+ channel_dev->mem_buff_index * TX_BUFF_SIZE;
 
 	/* Copy the data from the user and transmit */
 	res = copy_from_user(data_address, buf, count);
@@ -509,10 +510,11 @@ static ssize_t channel_write_sps(struct file *filp, const char __user *buf,
 			, __func__, res);
 	if (res) {
 		return -EINVAL;
-	} else {
-		buf_index = (buf_index + 1) % TX_NUM_BUFFS;
-		return count;
 	}
+
+	channel_dev->mem_buff_index = (channel_dev->mem_buff_index + 1) %
+					TX_NUM_BUFFS;
+	return count;
 }
 
 static ssize_t channel_read_sps(struct file *filp, char __user *buf,
@@ -686,6 +688,8 @@ int create_channel_device_by_type(
 	pr_debug(DRV_NAME ":mem phys=0x%pa.virt=0x%p.\n",
 		&channel_dev->mem.phys_base, channel_dev->mem.base);
 	memset(channel_dev->mem.base, 0xbb, channel_dev->mem.size);
+
+	channel_dev->mem_buff_index = 0;
 
 	/* Add a pointer from the channel device to the test context info */
 	channel_dev->test = ipa_test;
