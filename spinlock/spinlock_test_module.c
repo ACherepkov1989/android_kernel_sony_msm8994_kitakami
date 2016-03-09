@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -459,6 +459,7 @@ static int spinlock_test_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(64));
 	uncached_lock = dma_alloc_coherent(&pdev->dev, sizeof(spinlock_t), &phys, GFP_KERNEL);
 	if (!uncached_lock) {
 		dev_err(&pdev->dev ,"Failed to allocate Uncached memory for lock\n");
