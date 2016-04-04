@@ -16,6 +16,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := msm_iommutest
 LOCAL_SRC_FILES += $(commonSources) msm_iommutest.c
 LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include/
+LOCAL_CLANG := false
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_SHARED_LIBRARIES := \
         libc \
@@ -32,6 +33,7 @@ LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_SRC_FILES := iommutest.sh
 LOCAL_MODULE_TAGS := optional debug
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests/msm_iommu
+LOCAL_CLANG := false
 include $(BUILD_PREBUILT)
 
 define ADD_TEST
@@ -42,6 +44,7 @@ LOCAL_SRC_FILES    := $1
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_TAGS  := debug
 LOCAL_MODULE_PATH  := $(TARGET_OUT_DATA)/kernel-tests/msm_iommu
+LOCAL_CLANG := false
 include $(BUILD_PREBUILT)
 
 endef
