@@ -1,4 +1,4 @@
-/* Copyright (c)2012,2014, The Linux Foundation. All rights reserved.
+/* Copyright (c)2012,2014-2016 The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -75,7 +75,7 @@ static int msm_bus_create_client(unsigned long arg)
 	clid = msm_bus_scale_register_client(pdata);
 	pr_debug("AXI: %s(): Got client id: %u\n", __func__, clid);
 	cldata.clid = clid;
-	cldata.pdatah = (uint32_t)(pdata);
+	cldata.pdatah = (size_t)(pdata);
 	if (__copy_to_user((void __user *)arg, &cldata,
 		sizeof(struct msm_bus_test_cldata))) {
 		pr_err("AXI: %s(): Error copying data to client\n", __func__);

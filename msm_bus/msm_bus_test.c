@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -313,11 +313,11 @@ static int repeatability(int fd, int ni, int target)
 
 void *rep_threadfn(void *thargs)
 {
-	int ret = 0;
+	int64_t ret = 0;
 	ret = repeatability(((int *)thargs)[0], ((int *)thargs)[1],
 			((int *)thargs)[2]);
 	if (ret)
-		printf("\nError :%d\n", ret);
+		printf("\nError :%ld\n", ret);
 	return (void *)ret;
 }
 
