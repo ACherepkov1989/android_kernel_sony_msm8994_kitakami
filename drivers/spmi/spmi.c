@@ -67,7 +67,7 @@ int spmi_device_add(struct spmi_device *sdev)
 	struct spmi_controller *ctrl = sdev->ctrl;
 	int err;
 
-	dev_set_name(&sdev->dev, "%d-%02x", ctrl->nr, sdev->usid);
+	dev_set_name(&sdev->dev, "%d-%02x", ctrl->nr, sdev->sid); //sdev->usid);
 
 	err = device_add(&sdev->dev);
 	if (err < 0) {

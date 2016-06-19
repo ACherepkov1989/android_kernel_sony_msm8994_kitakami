@@ -12,7 +12,8 @@
 
 /dts-v1/;
 
-#include "msm8939.dtsi"
+//#include "msm8939.dtsi"
+#include "msm8936.dtsi"
 #include "msm8939-mtp.dtsi"
 #include "msm8939-audio-internal_codec.dtsi"
 #include "dsi-panel-fih_common.dtsi"
@@ -22,6 +23,6 @@
 / {
 	model = "SoMC Tulip SMB1360";
 	compatible = "somc,kanuti", "somc,tulip", "somc,fih-board",
-		     "qcom,msm8939-mtp", "qcom,msm8939", "qcom,mtp";
+		     "qcom,msm8936-mtp", "qcom,msm8936", "qcom,mtp";
 	qcom,board-id = <8 0>;
 };

@@ -364,12 +364,12 @@
 
 &pmx_mdss {
 	qcom,num-grp-pins = <3>;
-	qcom,pins = <&gp 97>, <&gp 25>, <&gp 98>;
+	qcom,pins = "gpio97", "gpio25", "gpio98";
 };
 
 &pmx_mdss_te {
 	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 24>;
+	qcom,pins = "gpio24";
 };
 
 &mdss_dsi0 {

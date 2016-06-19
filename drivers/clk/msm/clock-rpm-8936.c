@@ -181,11 +181,13 @@ static int msm_rpmcc_8936_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	int ret;
-
+pr_info("------------------------------------RPMCC 8936 PROBE-------------------------------\n");
 	ret = enable_rpm_scaling();
-	if (ret < 0)
+	if (ret < 0) {
+		pr_info("----------------------CANNOT ENABLE RPM SCALING------------------\n");
 		return ret;
-
+	}
+pr_info("------------------------------------RPM SCALING ENABLED-------------------------------\n");
 	res =  platform_get_resource_byname(pdev, IORESOURCE_MEM, "cc_base");
 	if (!res) {
 		dev_err(&pdev->dev, "Unable to get register base\n");

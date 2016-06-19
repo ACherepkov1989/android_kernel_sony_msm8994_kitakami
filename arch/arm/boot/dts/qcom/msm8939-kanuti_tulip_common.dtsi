@@ -428,7 +428,7 @@
 
 &pmx_mdss {
 	qcom,num-grp-pins = <4>;
-	qcom,pins = <&gp 114>, <&gp 17>, <&gp 25>, <&gp 10>;
+	pins = "gpio114", "gpio17", "gpio25", "gpio10";
 };
 
 &mdss_dsi0_pll {
@@ -478,10 +478,11 @@
 
 
 /* Pinctrl */
-&tlmm_pinmux {
+&msm_gpio {
 	hwid_pins {
-		qcom,pins = <&gp 0>, <&gp 1>, <&gp 2>, <&gp 3>,
-			    <&gp 8>, <&gp 9>, <&gp 107>, <&gp 35>;
+		qcom,pins = "gpio0", "gpio1", "gpio2", "gpio3",
+			    "gpio8", "gpio9", "gpio107", "gpio35";
+		function = "gpios";
 		qcom,num-grp-pins = <8>;
 		qcom,pin-func = <0>;
 		label = "fih_hwid_pin";
@@ -497,17 +498,17 @@
 	/delete-node/ spi0_cs0_suspend;
 
 	tlmm_gpio_key {
-		qcom,pins = <&gp 108>, <&gp 109>, <&gp 51>, <&gp 11>;
+		qcom,pins = "gpio108", "gpio109", "gpio51", "gpio11";
 		qcom,num-grp-pins = <4>;
 	};
 
 	ext-cdc-tlmm-lines { /* Verify me. CAF or FIH? */
-		qcom,pins = <&gp 112>, <&gp 117>, <&gp 118>, <&gp 119>;
+		qcom,pins = "gpio112", "gpio117", "gpio118", "gpio119";
 		qcom,num-grp-pins = <4>;
 	};
 
 	bma2x2_int_pin {
-		qcom,pins = <&gp 69>;
+		qcom,pins = "gpio69";
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "bma2x2-irq";
@@ -523,7 +524,7 @@
 	};
 
 	bmg160_int_pin {
-		qcom,pins = <&gp 115>;
+		qcom,pins = "gpio115";
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "bmg160-irq";
@@ -539,7 +540,7 @@
 	};
 
 	cm36286_int_active {
-		qcom,pins = <&gp 113>;
+		qcom,pins = "gpio113";
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "cm36286_irq_active";
@@ -551,7 +552,7 @@
 	};
 
 	cm36286_int_suspend {
-		qcom,pins = <&gp 113>;
+		qcom,pins = "gpio113";
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "cm36286_irq_suspend";
@@ -563,7 +564,7 @@
 	};
 
 	tlmm_lp5562 { /* LED IC lp5562 */
-		qcom,pins = <&gp 32>;
+		qcom,pins = "gpio32";
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "tlmm_lp5562";
@@ -579,7 +580,7 @@
 	};
 
 	ext-codec-lines {
-		qcom,pins = <&gp 67>;
+		qcom,pins = "gpio67";
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "ext-codec-lines";
@@ -596,7 +597,7 @@
 	};
 
 	cdc-ext-pa-lines {
-		qcom,pins = <&gp 113>, <&gp 114>, <&gp 115>;
+		qcom,pins = "gpio113", "gpio114", "gpio115";
 		qcom,num-grp-pins = <3>;
 		qcom,pin-func = <1>;
 		label = "cdc-ext-pa-lines";
@@ -612,7 +613,7 @@
 	};
 
 	cdc-ext-pa-ws-line {
-		qcom,pins = <&gp 110>;
+		qcom,pins = "gpio110";
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <2>;
 		label = "cdc-ext-pa-ws-line";
@@ -628,18 +629,18 @@
 	};
 
 	cam_sensor_rear {
-		qcom,pins =  <&gp 28>, <&gp 33>, <&gp 34>, <&gp 36>;
+		qcom,pins =  "gpio28", "gpio33", "gpio34", "gpio36";
 		qcom,num-grp-pins = <4>;
 	};
 
 	cam_sensor_rear_sleep {
-		qcom,pins =  <&gp 36>;
+		qcom,pins =  "gpio36";
 		qcom,num-grp-pins = <1>;
 	};
 
 	cam_sensor_rear_sleep_np {
 		/* RESET, STANDBY */
-		qcom,pins =  <&gp 28>, <&gp 33>, <&gp 34>;
+		qcom,pins =  "gpio28", "gpio33", "gpio34";
 		qcom,num-grp-pins = <3>;
 		qcom,pin-func = <0>;
 		label = "cam-sensor-rear-sleep-np";
@@ -651,17 +652,17 @@
 	};
 
 	cam_sensor_front {
-		qcom,pins = <&gp 121>;
+		qcom,pins = "gpio121";
 		qcom,num-grp-pins = <1>;
 	};
 
 	cam_sensor_front_sleep {
-		qcom,pins = <&gp 121>;
+		qcom,pins = "gpio121";
 		qcom,num-grp-pins = <1>;
 	};
 
 	cam_sensor_flash {
-		qcom,pins = <&gp 98>, <&gp 97> ;
+		qcom,pins = "gpio98", "gpio97" ;
 		qcom,num-grp-pins = <2>;
 	};
 };

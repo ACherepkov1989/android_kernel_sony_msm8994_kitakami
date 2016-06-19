@@ -475,6 +475,7 @@ static struct attribute *reset_attrs[] = {
 	&reset_attr_emmc_dload.attr,
 	NULL
 };
+#endif
 
 static struct attribute_group reset_attr_group = {
 	.attrs = reset_attrs,

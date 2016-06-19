@@ -624,8 +624,6 @@ static int _qpnp_pin_config(struct qpnp_pin_chip *q_chip,
 
 	/* output specific configuration */
 	if (Q_HAVE_HW_SP(Q_PIN_CFG_INVERT, q_spec, param->invert)) {
-		if (display_on_in_boot && param->keep_high_at_init)
-			param->invert = 1;
 		if (is_gpio_lv_mv(q_spec)) {
 			shift = Q_REG_DIG_OUT_SRC_INVERT_SHIFT;
 			mask = Q_REG_DIG_OUT_SRC_INVERT_MASK;
@@ -1509,6 +1507,8 @@ static int qpnp_pin_probe(struct spmi_device *spmi)
 	if (highest_gpio < lowest_gpio) {
 		dev_err(&spmi->dev, "%s: no device nodes specified in topology\n",
 								__func__);
+		dev_err(&spmi->dev, "%s: lowest_gpio: %d, highest_gpio: %d\n",
+					__func__, lowest_gpio, highest_gpio);
 		rc = -EINVAL;
 		goto err_probe;
 	} else if (lowest_gpio == 0) {

@@ -7,6 +7,24 @@ config PINCTRL_MSM
 	select GENERIC_PINCONF
 	select GPIOLIB_IRQCHIP
 
+config PINCTRL_MSM_TLMM
+	bool "MSM TLMM pinctrl driver"
+	depends on OF
+	select PINCTRL_MSM
+	help
+	  This is pinctrl TLMM for QC SoC. Chip independent, requires
+	  FULL DT configurations.
+
+config USE_PINCTRL_IRQ
+	default n
+	bool "Use Pinctrl IRQ chip"
+	depends on PINCTRL_MSM_TLMM
+	help
+	 Use Irq chip with Pinctrl subsystem instead of the irq chip
+	 associated with gpio lib. The pinctrl irq chip allows the pin
+	 attributes to be configured, prior to configuring them as
+	 interrupt triggers.
+
 config PINCTRL_APQ8064
 	tristate "Qualcomm APQ8064 pin controller driver"
 	depends on GPIOLIB && OF

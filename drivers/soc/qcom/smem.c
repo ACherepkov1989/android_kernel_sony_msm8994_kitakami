@@ -1314,7 +1314,7 @@ smem_targ_info_done:
 	smem_ram_base = ioremap_nocache(smem_ram_phys, smem_ram_size);
 
 	if (!smem_ram_base) {
-		LOG_ERR("%s: ioremap_nocache() of addr:%pa size: %pa\n",
+		LOG_ERR("%s: FAIL: ioremap_nocache() of addr:%pa size: %pa\n",
 				__func__,
 				&smem_ram_phys, &smem_ram_size);
 		return -ENODEV;

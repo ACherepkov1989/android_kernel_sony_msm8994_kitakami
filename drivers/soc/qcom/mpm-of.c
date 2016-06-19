@@ -1059,4 +1059,7 @@ void of_mpm_init(void)
 						ret);
 		}
 	}
+
+	if (!ret)
+		pr_info("MPM initialization SUCCESS.\n");
 }
