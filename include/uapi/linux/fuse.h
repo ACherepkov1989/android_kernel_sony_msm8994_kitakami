@@ -252,6 +252,7 @@ struct fuse_file_lock {
 #define FUSE_NO_OPEN_SUPPORT	(1 << 17)
 
 #define FUSE_SHORTCIRCUIT	(1 << 31)
+#define FUSE_STACKED_IO		(1 << 31) /* kholk: Android HACK */
 
 /**
  * CUSE INIT request/reply flags
