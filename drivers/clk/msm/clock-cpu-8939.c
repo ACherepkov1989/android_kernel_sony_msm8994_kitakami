@@ -222,7 +222,6 @@ static struct clk_lookup cpu_clocks_8939_single_cluster[] = {
 	CLK_LIST(a53_bc_clk),
 };
 
-
 static struct mux_div_clk *a53ssmux[] = {&a53ssmux_bc,
 						&a53ssmux_lc, &a53ssmux_cci};
 
@@ -742,6 +741,7 @@ static int clock_a53_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "Safe voltage plan loaded.\n");
 		}
 	}
+
 	if (single_cluster)
 		rc = of_msm_clock_register(pdev->dev.of_node,
 				cpu_clocks_8939_single_cluster,

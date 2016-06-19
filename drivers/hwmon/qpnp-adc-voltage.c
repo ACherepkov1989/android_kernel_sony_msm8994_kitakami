@@ -2735,6 +2735,8 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, vadc);
 	list_add(&vadc->list, &qpnp_vadc_device_list);
 
+	pr_info("QPNP VADC init OK\n");
+
 	return 0;
 
 err_setup:

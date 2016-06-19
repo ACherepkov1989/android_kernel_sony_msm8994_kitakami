@@ -5735,8 +5735,10 @@ static int tsens_tm_probe(struct platform_device *pdev)
 			pr_err("Error reading TSENS DT\n");
 			return rc;
 		}
-	} else
+	} else {
+		pr_err("%s: FATAL: No of_node!!!\n", __func__);
 		return -ENODEV;
+	}
 
 	tmdev->pdev = pdev;
 
@@ -5749,13 +5751,15 @@ static int tsens_tm_probe(struct platform_device *pdev)
 
 	rc = tsens_calib_sensors(tmdev);
 	if (rc < 0) {
-		pr_err("Calibration failed\n");
+		pr_err("%s: Calibration failed\n", __func__);
 		goto fail;
 	}
 
 	rc = tsens_hw_init(tmdev);
-	if (rc)
+	if (rc) {
+		pr_err("%s: HW init failed\n", __func__);
 		return rc;
+	}
 
 	tmdev->prev_reading_avail = true;
 
@@ -5772,7 +5776,7 @@ static int tsens_tm_probe(struct platform_device *pdev)
 	rc = create_tsens_mtc_sysfs(pdev);
 	if (rc < 0)
 		pr_debug("Cannot create create_tsens_mtc_sysfs %d\n", rc);
-
+	pr_info("TSENS init OK\n");
 	return 0;
 fail:
 	if (tmdev->tsens_critical_wq)
