@@ -1228,8 +1228,8 @@ int32_t qpnp_adc_scale_emmc_therm(struct qpnp_vadc_chip *chip,
 	if (!chip || !adc_properties || !chan_properties || !adc_chan_result)
 		goto error;
 
-	therm_voltage = qpnp_adc_scale_ratiometric_calib(adc_code,
-			adc_properties, chan_properties);
+       	qpnp_adc_scale_with_calib_param(adc_code,
+                        adc_properties, chan_properties, &therm_voltage);
 
 	rc = qpnp_adc_map_voltage_temp(adcmap_emmc_therm,
 		ARRAY_SIZE(adcmap_emmc_therm),
