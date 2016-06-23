@@ -350,6 +350,7 @@
 	qcom,iommu-ctx@fdb1a000 {
 		qcom,iommu-ctx-sids = <2>;
 		interrupts = <0 241 0>, <0 240 0>;
+		label = "gfx3d_secure";
 		qcom,secure-context;
 		linux,contiguous-region = <&secure_mem>;
 	};
