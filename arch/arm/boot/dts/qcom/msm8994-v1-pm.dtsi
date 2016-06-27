@@ -30,9 +30,20 @@
 		qcom,saw2-pmic-data1 = <0x02030080>; /* VDD_APC0 on  */
 		qcom,pfm-port = <0x2>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-ret = [00 03 00 0f];
-		qcom,saw2-spm-cmd-pc = [00 60 70 50 01 03 11 3f 3f 3f 3f 50 00
-			60 70 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [00 03 00 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 60 70 50 01 03 11 3f 3f 3f 3f 50 00
+				60 70 0f];
+			qcom,pc_mode;
+			qcom,slp_cmd_mode;
+			qcom,spm_en;
+		};
 	};
 
 	cluster0_spm: qcom,spm@f9012000 {
@@ -47,10 +58,20 @@
 		qcom,saw2-spm-dly = <0x3c100c1c>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 1b 0f];
-		qcom,saw2-spm-cmd-pc = [08 00 30 50 18 7b 26 6b 16 6b c0 e0 d0
-			1f 18 03 2f 1b 18 7b d0 2b e0 3b c0 16 6b 26 6b 18 00
-			30 50 08 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 1b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [08 00 30 50 18 7b 26 6b 16 6b c0 e0 d0
+				1f 18 03 2f 1b 18 7b d0 2b e0 3b c0 16 6b 26 6b 18 00
+				30 50 08 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	cluster1_spm: qcom,spm@f9013000 {
@@ -72,10 +93,20 @@
 		qcom,saw2-pmic-data1 = <0x02030080>; /* VDD_APC1 on  */
 		qcom,pfm-port = <0x2>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 1b 0f];
-		qcom,saw2-spm-cmd-pc = [08 00 30 50 18 7b 26 6b 16 6b c0 e0 d0
-			18 b0 01 03 2f 1b 11 b0 3f 3f 3f 3f 18 7b d0 2b e0 3b
-			c0 16 6b 26 6b 18 00 30 50 08 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 1b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [08 00 30 50 18 7b 26 6b 16 6b c0 e0 d0
+				18 b0 01 03 2f 1b 11 b0 3f 3f 3f 3f 18 7b d0 2b e0 3b
+				c0 16 6b 26 6b 18 00 30 50 08 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f9089000 {
@@ -91,10 +122,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f9099000 {
@@ -110,10 +151,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f90a9000 {
@@ -129,10 +180,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f90b9000 {
@@ -148,10 +209,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f90c9000 {
@@ -167,10 +238,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f90d9000 {
@@ -186,10 +267,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f90e9000 {
@@ -205,10 +296,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,spm@f90f9000 {
@@ -224,10 +325,20 @@
 		qcom,saw2-spm-dly = <0X3c100c00>;
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,use-qchannel-for-pc;
-		qcom,saw2-spm-cmd-wfi = [03 2f 0b 0f];
-		qcom,saw2-spm-cmd-pc = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
-			50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
-			30 0f];
+		qcom,mode0 {
+			qcom,label = "qcom,saw2-spm-cmd-wfi";
+			qcom,sequence = [03 2f 0b 0f];
+			qcom,spm_en;
+		};
+
+		qcom,mode1 {
+			qcom,label = "qcom,saw2-spm-cmd-pc";
+			qcom,sequence = [00 40 30 50 2b 14 70 24 80 e0 a0 92 1b
+				50 03 2f 0b 50 2b 92 1b e2 1b a0 80 24 14 70 50 00 40
+				30 0f];
+			qcom,pc_mode;
+			qcom,spm_en;
+		};
 	};
 
 	qcom,lpm-levels {
@@ -557,8 +668,11 @@
 
 	};
 
-	qcom,cpu-sleep-status {
+	qcom,cpu-sleep-status@f908b008{
 		compatible = "qcom,cpu-sleep-status";
+		reg = <0xf908b008 0x100>;
+		qcom,cpu-alias-addr = <0x10000>;
+		qcom,sleep-status-mask= <0x80000>;
 	};
 
 	qcom,rpm-log@fc000000 {
