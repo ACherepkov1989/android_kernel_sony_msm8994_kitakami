@@ -1132,6 +1132,7 @@ int pft_file_permission(struct file *filp, int mask)
 				 mask, file_to_filename(filp),
 				 __kuid_val(current_uid()), current_pid());
 			return 0;
+		}
 
 		pr_err("Access to file %s by (UID %d, PID %d) is blocked.\n",
 		       file_to_filename(filp),
@@ -1285,6 +1286,7 @@ int pft_inode_unlink(struct inode *dir, struct dentry *dentry)
 			current_pid(),
 			inode_to_filename(inode));
 		return -EACCES;
+	}
 
 	pr_debug("delete file %s\n", inode_to_filename(inode));
 
