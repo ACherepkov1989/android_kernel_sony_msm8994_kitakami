@@ -915,7 +915,7 @@ static const struct msm_function msm8994_functions[] = {
 	FUNCTION(tsif2_en),
 	FUNCTION(tsif2_data),
 	FUNCTION(qdss_cti_trig_out_a),
-	FUNCTION(qdss_cti_trig_out_b),
+	FUNCTION(qdss_cti_trig_out_c),
 	FUNCTION(qdss_tracectl_a),
 	FUNCTION(qdss_tracectl_b),
 	FUNCTION(qdss_tracedata_a),
