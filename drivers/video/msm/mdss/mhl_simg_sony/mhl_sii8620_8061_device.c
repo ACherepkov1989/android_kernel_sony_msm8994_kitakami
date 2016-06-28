@@ -1905,10 +1905,10 @@ int mhl_sii8620_device_start(void *context)
 	 * rgnd_done must be initialized before chip_power_on.
 	 * Because rgnd interrupt could occur immediately just after
 	 * calling the chip_power_on() and the wait code in the interrupt
-	 * is called before call INIT_COMPLETION and wait_for_xxx,
-	 * if the INIT_COMPLETION is called after the chip_power_on().
+	 * is called before call reinit_completion and wait_for_xxx,
+	 * if the reinit_completion is called after the chip_power_on().
 	 */
-	INIT_COMPLETION(rgnd_done);
+	reinit_completion(&rgnd_done);
 	set_default_devcap();
 	mhl_unpowered_start();
 	chip_power_on();
