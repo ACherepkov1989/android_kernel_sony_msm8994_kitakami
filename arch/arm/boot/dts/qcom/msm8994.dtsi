@@ -388,41 +388,43 @@
 
 	soc: soc { };
 
-	memory {
+	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
+		ranges;
 
-		secure_mem: secure_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0 0 0x12c00000>;
-			label = "secure_mem";
+		secure_mem: secure_region {
+			compatible = "shared-dma-pool";
+			reusable;
+			alignment = <0 0x400000>;
+			size = <0 0x12c00000>;
 		};
 
-		adsp_mem: adsp_region@0 {
-                        linux,reserve-contiguous-region;
-			reg = <0 0 0 0x3F00000>;
-			label = "adsp_mem";
+		adsp_mem: adsp_region {
+			compatible = "shared-dma-pool";
+			reusable;
+			alignment = <0 0x400000>;
+			size = <0 0x4000000>;
 		};
 
-		qsecom_mem: qsecom_region@0 {
-                        linux,reserve-contiguous-region;
-			reg = <0 0 0 0x1800000>;
-			label = "qseecom_mem";
+		qsecom_mem: qsecom_region {
+			compatible = "shared-dma-pool";
+			reusable;
+			alignment = <0 0x400000>;
+			size = <0 0x1400000>;
 		};
 
-		audio_mem: audio_region@0 {
-                        linux,reserve-contiguous-region;
-			linux,reserve-region;
-			reg = <0 0 0 0x614000>;
-			label = "audio_mem";
+		audio_mem: audio_region {
+			compatible = "shared-dma-pool";
+			reusable;
+			alignment = <0 0x400000>;
+			size = <0 0x800000>;
 		};
 
-		removed_regions: removed_regions@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
+		removed_regions: removed_regions@6300000 {
+			compatible = "removed-dma-pool";
+			no-map;
 			reg = <0 0x06300000 0 0xD00000>;
-			label = "memory_hole";
 		};
 
 		dfps_data_mem: dfps_data_mem@0 {
@@ -432,27 +434,22 @@
 			label = "dfps_data_mem";
 		};
 
-		cont_splash_mem: cont_splash_mem@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			reg = <0 0x03401000 0 0x2200000>;
-			label = "cont_splash_mem";
+		cont_splash_mem: cont_splash_mem@3400000 {
+			compatible = "shared-dma-pool";
+			reusable;
+			reg = <0 0x03400000 0 0x2200000>;
 		};
 
-		peripheral_mem: peripheral_region@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
+		peripheral_mem: peripheral_region@c800000 {
+			compatible = "removed-dma-pool";
+			no-map;
 			reg = <0 0x0ca00000 0 0x1f00000>;
-			label = "peripheral_mem";
 		};
 
-		modem_mem: modem_region@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
+		modem_mem: modem_region@7000000 {
+			compatible = "removed-dma-pool";
+			no-map;
 			reg = <0 0x07000000 0 0x5a00000>;
-			label = "modem_mem";
 		};
 	};
 };
