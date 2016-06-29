@@ -22,11 +22,16 @@
 		i2c4 = &i2c_4;
 	};
 
-	memory {
-
+	reserved-memory {
 		fb_mem: fb_region@0 {
 			reg = <0 0x40000000 0 0x1000000>;
 			label = "fb_mem";
+		};
+
+		ramoops_mem: ramoops_region@0 {
+			compatible = "removed-dma-pool";
+			reg = <0 0x1fe00000 0 0x00200000>;
+			no-map;
 		};
 	};
 };
