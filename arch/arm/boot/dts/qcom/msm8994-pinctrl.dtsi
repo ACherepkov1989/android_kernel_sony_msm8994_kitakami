@@ -323,6 +323,7 @@
 					drive-strength = <2>; /* 2 MA */
 					bias-disable; /* No PULL */
 				};
+			};
 		};
 
 		audio_ext_devices {
