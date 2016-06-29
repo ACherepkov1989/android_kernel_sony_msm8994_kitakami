@@ -1766,8 +1766,8 @@ static void __low_power_pre_mux_switch(struct mux_clk *mux)
 			 * caller (probably cpufreq) has ensured that hotplug
 			 * is not possible here.
 			 */
-			__smp_call_function_single(cpu,
-				&idle_data->csd[data->csd_idx], 0);
+			smp_call_function_single_async(cpu,
+				&idle_data->csd[data->csd_idx]);
 		} else {
 			idle_data->ipi_notsent_time = sched_clock();
 		}
