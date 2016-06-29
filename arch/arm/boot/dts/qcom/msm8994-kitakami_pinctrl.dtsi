@@ -23,25 +23,36 @@
 	config {
 		/delete-property/ bias-pull-down;
 		bias-disable;
-	}
+	};
 };
 
 &spi0_sleep {
 	config {
 		/delete-property/ bias-pull-down;
 		bias-disable;
-	}
+	};
 };
 
 &i2c_6_sleep {
 	config {
 		input-enable;
-	}
+	};
 };
 
+&cci1_active {
+	config {
+		/delete-property/ bias-pull-up;
+		bias-disable;
+	};
+};
 
+&cci1_suspend {
+	config {
+		input-enable;
+	};
+};
 
-&tlmm_pinmux {
+&msm_gpio {
 	pmx_i2c_4 {
 		/* active state */
 		i2c_4_active: i2c_4_active{
@@ -75,6 +86,34 @@
 		};
 	};
 
+	/* GPIO_0: MHL_SPI_MOSI */
+	msm_gpio_0: msm_gpio_0 {
+		mux {
+			pins = "gpio0";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio0";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_1: MHL_SPI_ISO */
+	msm_gpio_1: msm_gpio_1 {
+		mux {
+			pins = "gpio2";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio2";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
 	/* GPIO_2: MHL_SPI_CS_N */
 	msm_gpio_2: msm_gpio_2 {
 		mux {
@@ -84,6 +123,20 @@
 
 		config {
 			pins = "gpio2";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_3: MHL_SPI_CLK */
+	msm_gpio_3: msm_gpio_3 {
+		mux {
+			pins = "gpio3";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio3";
 			drive-strength = <2>;
 			bias-disable;
 		};
@@ -114,6 +167,36 @@
 			pins = "gpio5";
 			drive-strength = <2>;
 			bias-pull-up;
+		};
+	};
+
+	/* GPIO_6: NFC_I2C_SDA */
+	msm_gpio_6: msm_gpio_6 {
+		mux {
+			/* CLK, DATA */
+			pins = "gpio6";
+			function = "blsp_i2c2";
+		};
+
+		config {
+			pins = "gpio6";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	/* GPIO_7: NFC_I2C_SCL */
+	msm_gpio_7: msm_gpio_7 {
+		mux {
+			/* CLK, DATA */
+			pins = "gpio7";
+			function = "blsp_i2c2";
+		};
+
+		config {
+			pins = "gpio7";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
 		};
 	};
 
@@ -277,6 +360,62 @@
 		};
 	};
 
+	/* GPIO_19: CCI_I2C_SDA1 */
+	msm_gpio_19: msm_gpio_19 {
+		mux {
+			pins = "gpio19";
+			function = "cci_i2c";
+		};
+
+		config {
+			pins = "gpio19";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_19_sus: msm_gpio_19 {
+		mux {
+			pins = "gpio19";
+			function = "cci_i2c";
+		};
+
+		config {
+			pins = "gpio19";
+			drive-strength = <2>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	/* GPIO_20: CCI_I2C_SCL1 */
+	msm_gpio_20: msm_gpio_20 {
+		mux {
+			pins = "gpio20";
+			function = "cci_i2c";
+		};
+
+		config {
+			pins = "gpio20";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_20_sus: msm_gpio_20 {
+		mux {
+			pins = "gpio20";
+			function = "cci_i2c";
+		};
+
+		config {
+			pins = "gpio20";
+			drive-strength = <2>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
 	/* GPIO_21: NC */
 	msm_gpio_21: msm_gpio_21 {
 		mux {
@@ -370,7 +509,7 @@
 	msm_gpio_27_act: msm_gpio_27 {
 		mux {
 			pins = "gpio27";
-			function = "gpio";
+			function = "blsp_i2c6";
 		};
 
 		config {
@@ -383,7 +522,7 @@
 	msm_gpio_27_sus: msm_gpio_27 {
 		mux {
 			pins = "gpio27";
-			function = "gpio";
+			function = "blsp_i2c6";
 		};
 
 		config {
@@ -394,15 +533,55 @@
 		};
 	};
 
-
 	msm_gpio_27: msm_gpio_27 {
 		mux {
 			pins = "gpio27";
-			function = "gpio";
+			function = "blsp_i2c6";
 		};
 
 		config {
 			pins = "gpio27";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_28: TS_I2C_SCL */
+	msm_gpio_28_act: msm_gpio_28 {
+		mux {
+			pins = "gpio28";
+			function = "blsp_i2c6";
+		};
+
+		config {
+			pins = "gpio28";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_28_sus: msm_gpio_28 {
+		mux {
+			pins = "gpio28";
+			function = "blsp_i2c6";
+		};
+
+		config {
+			pins = "gpio28";
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	msm_gpio_28: msm_gpio_28 {
+		mux {
+			pins = "gpio28";
+			function = "blsp_i2c6";
+		};
+
+		config {
+			pins = "gpio28";
 			drive-strength = <2>;
 			bias-disable;
 		};
@@ -786,7 +965,7 @@
 			pins = "gpio48";
 			drive-strength = <2>;
 			bias-disable;
-			output-high
+			output-high;
 		};
 	};
 	msm_gpio_48: msm_gpio_48 {
@@ -1178,7 +1357,7 @@
 			pins = "gpio78";
 			drive-strength = <2>;
 			bias-disable;
-			output-low:
+			output-low;
 		};
 	};
 	msm_gpio_78: msm_gpio_78 {
@@ -1199,6 +1378,86 @@
 	/* GPIO_81: BT_PCM_DIN */
 	/* GPIO_82: BT_PCM_DOUT */
 	/* Follow QCT */
+
+	/* GPIO_83: APPS_I2C_SDA */
+	msm_gpio_83_act: msm_gpio_83 {
+		mux {
+			pins = "gpio83";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio83";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_83_sus: msm_gpio_83 {
+		mux {
+			pins = "gpio83";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio83";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_83: msm_gpio_83 {
+		mux {
+			pins = "gpio83";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio83";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_84: APPS_I2C_SCL */
+	msm_gpio_84_act: msm_gpio_84 {
+		mux {
+			pins = "gpio84";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio84";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_84_sus: msm_gpio_84 {
+		mux {
+			pins = "gpio84";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio84";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	msm_gpio_84: msm_gpio_84 {
+		mux {
+			pins = "gpio84";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio84";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 
 	/* GPIO_85: RF_LCD_ID_EN */
 	msm_gpio_85: msm_gpio_85 {
