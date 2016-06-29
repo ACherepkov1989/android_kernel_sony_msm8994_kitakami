@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,9 +34,12 @@
 #include <soc/qcom/clock-alpha-pll.h>
 
 #include <dt-bindings/clock/msm-clocks-8994.h>
+#include <dt-bindings/clock/msm-clocks-8992.h>
 
 #include "clock.h"
 #include "vdd-level-8994.h"
+
+#define A53OFFSET (56)
 
 enum {
 	C0_PLL_BASE,
@@ -61,6 +64,7 @@ static char *base_names[] = {
 
 static void *vbases[NUM_BASES];
 u32 cci_phys_base = 0xF9112000;
+static void sanity_check_clock_tree(u32 regval, struct mux_clk *mux);
 
 static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 
@@ -160,6 +164,7 @@ DEFINE_EXT_CLK(xo_ao, NULL);
 DEFINE_EXT_CLK(sys_apcsaux_clk, NULL);
 
 static bool msm8994_v2;
+static bool msm8992;
 
 static struct pll_clk a57_pll0 = {
 	.mode_reg = (void __iomem *)C1_PLL_MODE,
@@ -168,12 +173,12 @@ static struct pll_clk a57_pll0 = {
 	.config_reg = (void __iomem *)C1_PLL_USER_CTL,
 	.config_ctl_reg = (void __iomem *)C1_PLL_CONFIG_CTL,
 	.status_reg = (void __iomem *)C1_PLL_MODE,
+	.alt_status_reg = (void __iomem *)C1_PLL_STATUS,
 	.test_ctl_lo_reg = (void __iomem *)C1_PLL_TEST_CTL_LO,
 	.test_ctl_hi_reg = (void __iomem *)C1_PLL_TEST_CTL_HI,
 	.pgm_test_ctl_enable = true,
 	.masks = {
 		.pre_div_mask = BIT(12),
-		.post_div_mask = BM(9, 8),
 		.mn_en_mask = BIT(24),
 		.main_output_mask = BIT(0),
 		.early_output_mask = BIT(3),
@@ -181,7 +186,6 @@ static struct pll_clk a57_pll0 = {
 		.lock_mask = BIT(31),
 	},
 	.vals = {
-		.post_div_masked = 0x100,
 		.pre_div_masked = 0x0,
 		.config_ctl_val = 0x000D6968,
 		.test_ctl_lo_val = 0x00010000,
@@ -205,12 +209,12 @@ static struct pll_clk a57_pll1 = {
 	.config_reg = (void __iomem *)C1_PLLA_USER_CTL,
 	.config_ctl_reg = (void __iomem *)C1_PLLA_CONFIG_CTL,
 	.status_reg = (void __iomem *)C1_PLLA_MODE,
+	.alt_status_reg = (void __iomem *)C1_PLLA_STATUS,
 	.test_ctl_lo_reg = (void __iomem *)C1_PLLA_TEST_CTL_LO,
 	.test_ctl_hi_reg = (void __iomem *)C1_PLLA_TEST_CTL_HI,
 	.pgm_test_ctl_enable = true,
 	.masks = {
 		.pre_div_mask = BIT(12),
-		.post_div_mask = BM(9, 8),
 		.mn_en_mask = BIT(24),
 		.main_output_mask = BIT(0),
 		.early_output_mask = BIT(3),
@@ -218,7 +222,6 @@ static struct pll_clk a57_pll1 = {
 		.lock_mask = BIT(31),
 	},
 	.vals = {
-		.post_div_masked = 0x300,
 		.pre_div_masked = 0x0,
 		.config_ctl_val = 0x000D6968,
 		.test_ctl_lo_val = 0x00010000,
@@ -244,6 +247,7 @@ static struct pll_clk a53_pll0 = {
 	.config_reg = (void __iomem *)C0_PLL_USER_CTL,
 	.config_ctl_reg = (void __iomem *)C0_PLL_CONFIG_CTL,
 	.status_reg = (void __iomem *)C0_PLL_MODE,
+	.alt_status_reg = (void __iomem *)C0_PLL_STATUS,
 	.test_ctl_lo_reg = (void __iomem *)C0_PLL_TEST_CTL_LO,
 	.test_ctl_hi_reg = (void __iomem *)C0_PLL_TEST_CTL_HI,
 	.pgm_test_ctl_enable = true,
@@ -279,6 +283,7 @@ static struct pll_clk a53_pll1 = {
 	.config_reg = (void __iomem *)C0_PLLA_USER_CTL,
 	.config_ctl_reg = (void __iomem *)C0_PLLA_CONFIG_CTL,
 	.status_reg = (void __iomem *)C0_PLLA_MODE,
+	.alt_status_reg = (void __iomem *)C0_PLLA_STATUS,
 	.test_ctl_lo_reg = (void __iomem *)C0_PLLA_TEST_CTL_LO,
 	.test_ctl_hi_reg = (void __iomem *)C0_PLLA_TEST_CTL_HI,
 	.pgm_test_ctl_enable = true,
@@ -445,6 +450,8 @@ static void __cpu_mux_set_sel(struct mux_clk *mux, int sel)
 
 	regval &= ~(mux->mask << mux->shift);
 	regval |= (sel & mux->mask) << mux->shift;
+
+	sanity_check_clock_tree(regval, mux);
 
 	if (mux->priv)
 		scm_io_write(*(u32 *)mux->priv + mux->offset, regval);
@@ -696,6 +703,9 @@ static struct clk_div_ops pll_div_ops = {
 DEFINE_PLL_MUX_DIV(a53_pll0div_main, C0_PLL_BASE, &a53_pll0.c, C0_PLL_USER_CTL);
 DEFINE_PLL_MUX_DIV(a53_pll1div_main, C0_PLL_BASE, &a53_pll1.c,
 		   C0_PLLA_USER_CTL);
+DEFINE_PLL_MUX_DIV(a57_pll0div_main, C1_PLL_BASE, &a57_pll0.c, C1_PLL_USER_CTL);
+DEFINE_PLL_MUX_DIV(a57_pll1div_main, C1_PLL_BASE, &a57_pll1.c,
+		   C1_PLLA_USER_CTL);
 
 static struct mux_clk a53_lf_mux_v2 = {
 	.offset = MUX_OFFSET,
@@ -747,12 +757,13 @@ static struct mux_clk a53_hf_mux_v2 = {
 static struct mux_clk a57_lf_mux_v2 = {
 	.offset = MUX_OFFSET,
 	MUX_SRC_LIST(
-		{ &xo_ao.c,           0 },
-		{ &a57_pll1_main.c,   1 },
-		{ &a57_pll0_main.c,   2 },
-		{ &sys_apcsaux_clk.c, 3 },
+		{ &xo_ao.c,            0 },
+		{ &a57_pll1div_main.c, 1 },
+		{ &a57_pll0div_main.c, 2 },
+		{ &sys_apcsaux_clk.c,  3 },
 	),
 	.low_power_sel = 3,
+	.en_mask = 3,
 	.ops = &cpu_mux_ops,
 	.mask = 0x3,
 	.shift = 1,
@@ -775,6 +786,7 @@ static struct mux_clk a57_hf_mux_v2 = {
 		{ &a57_pll0.c,       3 },
 	),
 	.low_power_sel = 0,
+	.en_mask = 0,
 	.ops = &cpu_mux_ops,
 	.mask = 0x3,
 	.shift = 3,
@@ -890,6 +902,113 @@ static struct cpu_clk_8994 a57_clk = {
 		CLK_INIT(a57_clk.c),
 	},
 };
+
+#define LFMUX_MASK 0x6
+#define HFMUX_MASK 0x18
+#define LFDIV_MASK 0x20
+
+#define LFMUX_SHIFT 1
+#define HFMUX_SHIFT 3
+
+#define LFMUX_SEL 0
+#define PLL0_MAIN_SEL 2
+#define PLL1_MAIN_SEL 1
+#define PLL0_EARLY_SEL 3
+#define PLL1_EARLY_SEL 1
+#define AUX_CLK_SEL 3
+
+void sanity_check_clock_tree(u32 muxval, struct mux_clk *mux)
+{
+	int level;
+	u32 hfmux_sel = (muxval & HFMUX_MASK) >> HFMUX_SHIFT;
+	u32 lfmux_sel = (muxval & LFMUX_MASK) >> LFMUX_SHIFT;
+	int div = 0;
+	void *base = NULL;
+	unsigned long rate;
+	struct clk *c;
+	int cur_uv, req_uv;
+	int *uv;
+
+	if (!(msm8994_v2 || msm8992))
+		return;
+
+	if (mux->base == &vbases[ALIAS0_GLB_BASE]) {
+		base = vbases[C0_PLL_BASE];
+		c = &a53_clk.c;
+	}
+	if (mux->base == &vbases[ALIAS1_GLB_BASE]) {
+		base = vbases[C1_PLL_BASE];
+		c = &a57_clk.c;
+	}
+
+	if (!base)
+		return;
+
+	uv = c->vdd_class->vdd_uv;
+	level = c->vdd_class->cur_level;
+
+	/* Possibly hotplugged out */
+	if (!level || !uv[level])
+		return;
+
+	switch (hfmux_sel) {
+	case LFMUX_SEL:
+		switch (lfmux_sel) {
+		case PLL0_MAIN_SEL:
+			rate = readl_relaxed(base + C0_PLL_L_VAL);
+			div = readl_relaxed(base + C0_PLL_USER_CTL);
+			div &= 0x300;
+			div >>= 8;
+			if (div == 1)
+				div = 2;
+			else if (div == 3)
+				div = 4;
+			else
+				WARN(1, "bad div on %s pll0\n", c->dbg_name);
+			rate *= xo_ao.c.rate;
+			rate /= div;
+		break;
+
+		case PLL1_MAIN_SEL:
+			rate = readl_relaxed(base + C0_PLLA_L_VAL);
+			div = readl_relaxed(base + C0_PLLA_USER_CTL);
+			div &= 0x300;
+			div >>= 8;
+			if (div == 1)
+				div = 2;
+			else if (div == 3)
+				div = 4;
+			else
+				WARN(1, "bad div on %s pll1\n", c->dbg_name);
+			rate *= xo_ao.c.rate;
+			rate /= div;
+		break;
+
+		case AUX_CLK_SEL:
+			rate = sys_apcsaux_clk.c.rate;
+		break;
+		};
+	break;
+	case PLL0_EARLY_SEL:
+		rate = readl_relaxed(base + C0_PLL_L_VAL);
+		rate *= xo_ao.c.rate;
+	break;
+	case PLL1_EARLY_SEL:
+		rate = readl_relaxed(base + C0_PLLA_L_VAL);
+		rate *= xo_ao.c.rate;
+	break;
+	};
+
+	/* One regulator */
+	cur_uv = uv[level];
+	req_uv = uv[find_vdd_level(c, rate)];
+
+	if (cur_uv < req_uv) {
+		pr_err("%s: rate is %lu, uv is %d, req uv is %d\n", c->dbg_name,
+			rate, cur_uv, req_uv);
+		BUG();
+	}
+}
 
 DEFINE_FIXED_SLAVE_DIV_CLK(a53_div_clk, 1, &a53_clk.c);
 DEFINE_FIXED_SLAVE_DIV_CLK(a57_div_clk, 1, &a57_clk.c);
@@ -1114,6 +1233,7 @@ static struct clk_lookup cpu_clocks_8994[] = {
 	CLK_LIST(cpu_debug_mux),
 };
 
+/* List of clocks applicable to both 8994v2 and 8992 */
 
 static struct clk_lookup cpu_clocks_8994_v2[] = {
 	CLK_LIST(a53_clk),
@@ -1310,7 +1430,7 @@ static void perform_v1_fixup(void)
 
 static long corner_to_voltage(unsigned long corner, struct device *dev)
 {
-	struct dev_pm_opp *oppl;
+	struct opp *oppl;
 	long uv;
 
 	rcu_read_lock();
@@ -1333,7 +1453,7 @@ static int add_opp(struct clk *c, struct device *cpudev, struct device *vregdev,
 	int level;
 	long ret, uv, corner;
 	bool use_voltages = false;
-	struct dev_pm_opp *oppl;
+	struct opp *oppl;
 
 	rcu_read_lock();
 	/* Check if the regulator driver has already populated OPP tables */
@@ -1400,7 +1520,7 @@ static int add_opp(struct clk *c, struct device *cpudev, struct device *vregdev,
 
 static void print_opp_table(int a53_cpu, int a57_cpu)
 {
-	struct dev_pm_opp *oppfmax, *oppfmin;
+	struct opp *oppfmax, *oppfmin;
 	unsigned long apc0_fmax = a53_clk.c.fmax[a53_clk.c.num_fmax - 1];
 	unsigned long apc1_fmax = a57_clk.c.fmax[a57_clk.c.num_fmax - 1];
 	unsigned long apc0_fmin = a53_clk.c.fmax[1];
@@ -1487,7 +1607,6 @@ static void populate_opp_table(struct platform_device *pdev)
 
 static void init_v2_data(void)
 {
-	a57_pll1.vals.post_div_masked = 0x100;
 	a53_pll0.vals.config_ctl_val = 0x004D6968;
 	a53_pll1.vals.config_ctl_val = 0x004D6968;
 	a57_pll0.vals.config_ctl_val = 0x004D6968;
@@ -1524,6 +1643,7 @@ static void init_v2_data(void)
 }
 
 static int a57speedbin;
+static int a53speedbin;
 struct platform_device *cpu_clock_8994_dev;
 
 /* Low power mux code begins here */
@@ -1697,6 +1817,7 @@ static void __low_power_mux_set_sel(struct mux_clk *mux, int sel)
 	regval = readl_relaxed(*mux->base + mux->offset);
 	regval &= ~(mux->mask << mux->shift);
 	regval |= (sel & mux->mask) << mux->shift;
+	sanity_check_clock_tree(regval, mux);
 	writel_relaxed(regval, *mux->base + mux->offset);
 	/* Ensure switch request goes through before returning */
 	mb();
@@ -1833,10 +1954,11 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 	unsigned long a53rate, a57rate, ccirate;
 	bool v2;
 	int pvs_ver = 0;
-	u32 pte_efuse;
+	u64 pte_efuse;
 	char a57speedbinstr[] = "qcom,a57-speedbinXX-vXX";
+	char a53speedbinstr[] = "qcom,a53-speedbinXX-vXX";
 
-	v2 = msm8994_v2;
+	v2 = msm8994_v2 | msm8992;
 
 	a53_pll0_main.c.flags = CLKFLAG_NO_RATE_CACHE;
 	a57_pll0_main.c.flags = CLKFLAG_NO_RATE_CACHE;
@@ -1854,14 +1976,32 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 	if (!v2)
 		perform_v1_fixup();
 
-	ret = of_get_fmax_vdd_class(pdev, &a53_clk.c, "qcom,a53-speedbin0-v0");
+	if (msm8992) {
+		pte_efuse = readq_relaxed(vbases[EFUSE_BASE]);
+		a53speedbin = (pte_efuse >> A53OFFSET) & 0x3;
+		dev_info(&pdev->dev, "using A53 speed bin %u and pvs_ver %d\n",
+			 a53speedbin, pvs_ver);
+
+		snprintf(a53speedbinstr, ARRAY_SIZE(a53speedbinstr),
+			"qcom,a53-speedbin%d-v%d", a53speedbin, pvs_ver);
+	} else if (v2)
+		pte_efuse = readl_relaxed(vbases[EFUSE_BASE]);
+
+	snprintf(a53speedbinstr, ARRAY_SIZE(a53speedbinstr),
+			"qcom,a53-speedbin%d-v%d", a53speedbin, pvs_ver);
+
+	ret = of_get_fmax_vdd_class(pdev, &a53_clk.c, a53speedbinstr);
 	if (ret) {
-		dev_err(&pdev->dev, "Can't get speed bin for a53\n");
-		return ret;
+		dev_err(&pdev->dev, "Can't get speed bin for a53. Falling back to zero.\n");
+		ret = of_get_fmax_vdd_class(pdev, &a53_clk.c,
+					    "qcom,a53-speedbin0-v0");
+		if (ret) {
+			dev_err(&pdev->dev, "Unable to retrieve plan for A53. Bailing...\n");
+			return ret;
+		}
 	}
 
 	if (v2) {
-		pte_efuse = readl_relaxed(vbases[EFUSE_BASE]);
 		a57speedbin = pte_efuse & 0x7;
 		dev_info(&pdev->dev, "using A57 speed bin %u and pvs_ver %d\n",
 			 a57speedbin, pvs_ver);
@@ -1987,6 +2127,7 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 static struct of_device_id match_table[] = {
 	{ .compatible = "qcom,cpu-clock-8994" },
 	{ .compatible = "qcom,cpu-clock-8994-v2" },
+	{ .compatible = "qcom,cpu-clock-8992" },
 	{}
 };
 
@@ -2023,14 +2164,14 @@ module_exit(cpu_clock_8994_exit);
 #define ALIAS0_GLB_BASE_PHY 0xF900D000
 #define ALIAS1_GLB_BASE_PHY 0xF900F000
 #define C1_PLL_BASE_PHY 0xF9016000
+#define C0_PLL_BASE_PHY 0xF9015000
 
 int __init cpu_clock_8994_init_a57_v2(void)
 {
 	int ret = 0;
 
-	pr_info("clock-cpu-8994-v2: configuring clocks for the A57 cluster\n");
-
-	msm8994_v2 = true;
+	pr_info("%s: configuring clocks for the A57 cluster\n",
+		msm8992 ? "msm8992" : "msm8994-v2");
 
 	vbases[ALIAS0_GLB_BASE] = ioremap(ALIAS0_GLB_BASE_PHY, SZ_4K);
 	if (!vbases[ALIAS0_GLB_BASE]) {
@@ -2046,17 +2187,60 @@ int __init cpu_clock_8994_init_a57_v2(void)
 		goto iomap_fail;
 	}
 
+	vbases[C0_PLL_BASE] = ioremap(C0_PLL_BASE_PHY, SZ_4K);
+	if (!vbases[C0_PLL_BASE]) {
+		WARN(1, "Unable to ioremap A53 pll base. Can't configure A53 clocks.\n");
+		ret = -ENOMEM;
+		goto iomap_c0_pll_fail;
+	}
+
+	vbases[C1_PLL_BASE] = ioremap(C1_PLL_BASE_PHY, SZ_4K);
+	if (!vbases[C1_PLL_BASE]) {
+		WARN(1, "Unable to ioremap A57 pll base. Can't configure A57 clocks.\n");
+		ret = -ENOMEM;
+		goto iomap_c1_pll_fail;
+	}
+
 	/* Select GPLL0 for 600MHz on the A57s */
 	writel_relaxed(0x6, vbases[ALIAS1_GLB_BASE] + MUX_OFFSET);
 	/* Select GPLL0 for 600MHz on the A53s */
 	writel_relaxed(0x6, vbases[ALIAS0_GLB_BASE] + MUX_OFFSET);
 
-	/* Ensure write goes through before A53s are brought up. */
+	/* Ensure write goes through before we disable PLLs below. */
 	mb();
 	udelay(5);
 
-	pr_cont("clock-cpu-8994-v2: finished configuring A57 cluster clocks.\n");
+	/*
+	 * Disable the PLLs in order to allow early rate setting to work.
+	 * The PLL ping-pong scheme needs the PLL to refuse round_rate
+	 * requests if prepare. However handoff will set the PLL ref count
+	 * to one thus preventing PLL ping-ponging to work correctly before
+	 * late_init.
+	 */
+	writel_relaxed(0x0,  vbases[C0_PLL_BASE] + C0_PLL_MODE);
+	writel_relaxed(0x0,  vbases[C0_PLL_BASE] + C0_PLLA_MODE);
+	writel_relaxed(0x0,  vbases[C1_PLL_BASE] + C1_PLL_MODE);
+	writel_relaxed(0x0,  vbases[C1_PLL_BASE] + C1_PLLA_MODE);
 
+	/* Ensure writes go through before divider config below */
+	mb();
+	udelay(5);
+
+	/* Setup dividers and outputs */
+	writel_relaxed(0x109, vbases[C0_PLL_BASE] + C0_PLLA_USER_CTL);
+	writel_relaxed(0x109, vbases[C1_PLL_BASE] + C1_PLL_USER_CTL);
+	writel_relaxed(0x109, vbases[C1_PLL_BASE] + C1_PLLA_USER_CTL);
+
+	/* Ensure writes go through before clock driver probe */
+	mb();
+	udelay(5);
+
+	pr_cont("%s: finished configuring A57 cluster clocks.\n",
+		msm8992 ? "msm8992" : "msm8994-v2");
+
+iomap_c1_pll_fail:
+	iounmap(vbases[C0_PLL_BASE]);
+iomap_c0_pll_fail:
 	iounmap(vbases[ALIAS1_GLB_BASE]);
 iomap_fail:
 	iounmap(vbases[ALIAS0_GLB_BASE]);
@@ -2074,6 +2258,14 @@ int __init cpu_clock_8994_init_a57(void)
 	ofnode = of_find_compatible_node(NULL, NULL,
 					 "qcom,cpu-clock-8994-v2");
 	if (ofnode)
+		msm8994_v2 = true;
+
+	ofnode = of_find_compatible_node(NULL, NULL,
+					 "qcom,cpu-clock-8992");
+	if (ofnode)
+		msm8992 = true;
+
+	if (msm8994_v2 || msm8992)
 		return cpu_clock_8994_init_a57_v2();
 
 	ofnode = of_find_compatible_node(NULL, NULL,
