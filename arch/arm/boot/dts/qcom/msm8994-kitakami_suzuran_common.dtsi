@@ -172,92 +172,6 @@
 	};
 };
 
-&tlmm_pinmux {
-	/* GPIO_35: NC */
-	msm_gpio_35 {
-		qcom,pins = <&gp 35>;
-		qcom,num-grp-pins = <1>;
-		label = "msm_gpio_35";
-		qcom,pin-func = <0>;
-		msm_gpio_35_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	/* GPIO_36: NC */
-	msm_gpio_36 {
-		qcom,pins = <&gp 36>;
-		qcom,num-grp-pins = <1>;
-		label = "msm_gpio_36";
-		qcom,pin-func = <0>;
-		msm_gpio_36_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	/* GPIO_37: NC */
-	msm_gpio_37 {
-		qcom,pins = <&gp 37>;
-		qcom,num-grp-pins = <1>;
-		label = "msm_gpio_37";
-		qcom,pin-func = <0>;
-		msm_gpio_37_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	/* GPIO_41: NC */
-	msm_gpio_41 {
-		qcom,pin-func = <0>;
-		msm_gpio_41_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-			/delete-property/ bias-pull-up;
-			/delete-property/ input-enable;
-		};
-	};
-
-	/* GPIO_77: NC */
-	msm_gpio_77 {
-		qcom,pin-func = <0>;
-		msm_gpio_77_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-			/delete-property/ input-enable;
-		};
-	};
-
-	/* GPIO_122: NC */
-	msm_gpio_122 {
-		qcom,pin-func = <0>;
-		msm_gpio_122_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	pmx_sdc2_clk {
-		sdc2_clk_on: clk_on {
-			drive-strength = <12>;
-		};
-	};
-};
-
-&somc_pinctrl {
-	pinctrl-1 = <&msm_gpio_35_def &msm_gpio_36_def &msm_gpio_37_def &msm_gpio_49_def &msm_gpio_50_def
-		     &msm_gpio_51_def &msm_gpio_117_def &msm_gpio_118_def &msm_gpio_125_def &msm_gpio_130_def
-		     &msm_gpio_132_def &msm_gpio_133_def &msm_gpio_142_def &msm_gpio_143_def>;
-};
-
 &hsphy0 {
        qcom,hsphy-init = <0x00FBDFA7>;
        qcom,hsphy-init-host = <0x00FBC7A7>;
@@ -307,4 +221,81 @@
 
 &pcie1 {
 	status = "disabled";
+};
+
+&msm_gpio {
+	/* GPIO_35: NC */
+	msm_gpio_35: msm_gpio_35 {
+		mux {
+			pins = "gpio35";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio35";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	/* GPIO_36: NC */
+	msm_gpio_36: msm_gpio_36 {
+		mux {
+			pins = "gpio36";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio36";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	/* GPIO_37: NC */
+	msm_gpio_37: msm_gpio_37 {
+		mux {
+			pins = "gpio37";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio37";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+};
+
+/* GPIO_41: NC */
+&msm_gpio_41 {
+	config {
+		bias-disable;
+		output-low;
+		/delete-property/ bias-pull-up;
+		/delete-property/ input-enable;
+	};
+};
+
+/* GPIO_77: NC */
+&msm_gpio_77 {
+	config {
+		output-low;
+		/delete-property/ input-enable;
+	};
+};
+
+&sdc2_clk_on {
+	config {
+		drive-strength = <12>;
+	};
+};
+
+&somc_pinctrl {
+	pinctrl-1 = <&msm_gpio_35 &msm_gpio_36 &msm_gpio_37 &msm_gpio_49 &msm_gpio_50
+		     &msm_gpio_51 &msm_gpio_117 &msm_gpio_118 &msm_gpio_125 &msm_gpio_130
+		     &msm_gpio_132 &msm_gpio_133 &msm_gpio_142 &msm_gpio_143>;
 };

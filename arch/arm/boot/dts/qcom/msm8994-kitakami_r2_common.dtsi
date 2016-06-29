@@ -148,8 +148,8 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_default_gpio_0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&msm_gpio_10_act &msm_gpio_56_act &msm_gpio_78_act>;
-	pinctrl-1 = <&msm_gpio_10_sus &msm_gpio_56_sus &msm_gpio_78_sus>;
+	pinctrl-0 = <&msm_gpio_10 &msm_gpio_56_act &msm_gpio_78_act>;
+	pinctrl-1 = <&msm_gpio_10 &msm_gpio_56_sus &msm_gpio_78_sus>;
 	qcom,dsi-panel-bias-vreg;
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 	qcom,platform-regulator-settings = [];
@@ -160,123 +160,152 @@
 	status = "disabled";
 };
 
-&tlmm_pinmux {
+&msm_gpio {
 	/* GPIO_1: FP_SPI_MISO */
-	msm_gpio_1 {
-		msm_gpio_1_def: default {
-			/delete-property/ bias-disable;
-			bias-pull-down;
+	msm_gpio_1: msm_gpio_1 {
+		mux {
+			pins = "gpio1";
+			function = "gpio";
 		};
-	};
 
-	/* GPIO_2: FP_SPI_CS1_N */
-	msm_gpio_2 {
-		qcom,pin-func = <0>;
-		msm_gpio_2_def: default {
+		config {
+			pins = "gpio1";
 			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	/* GPIO_90: FP_INT */
-	msm_gpio_90 {
-		msm_gpio_90_def: default {
-			/delete-property/ bias-disable;
-			/delete-property/ output-low;
 			bias-pull-down;
-			input-enable;
 		};
 	};
 
-	fpc_spi_mosi_active {
-		qcom,pins = <&gp 0>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <1>;
-		label = "fpc_spi_mosi_active";
-		fpc_spi_mosi_active: active {
+	fpc_spi_mosi_active: fpc_mosi_act {
+		mux {
+			pins = "gpio0";
+			function = "blsp_spi1";
+		};
+		config {
+			pins = "gpio0";
 			drive-strength = <2>;
 			bias-disable;
 		};
 	};
 
-	fpc_spi_miso_active {
-		qcom,pins = <&gp 1>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <1>;
-		label = "fpc_spi_miso_active";
-		fpc_spi_miso_active: active {
+	fpc_spi_miso_active: fpc_miso_act {
+		mux {
+			pins = "gpio1";
+			function = "blsp_spi1";
+		};
+		config {
+			pins = "gpio1";
 			drive-strength = <2>;
 			bias-pull-down;
 		};
 	};
 
-	fpc_spi_clk_active {
-		qcom,pins = <&gp 3>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <1>;
-		label = "fpc_spi_clk_active";
-		fpc_spi_clk_active: active {
+	fpc_spi_clk_active: fpc_clk_act {
+		mux {
+			pins = "gpio3";
+			function = "blsp_spi1";
+		};
+		config {
+			pins = "gpio3";
 			drive-strength = <2>;
 			bias-disable;
 		};
 	};
 
 	fpc_cs_manual {
-		qcom,pins = <&gp 2>, <&gp 8>;
-		qcom,num-grp-pins = <2>;
-		label = "fpc_cs_manual";
-		qcom,pin-func = <0>;
-		fpc_cs_low: output-low {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
+		/* ToDo: gpio2 is blsp_spi1, gpio8 is blsp_spi1_cs1!! */
+		fpc_cs_low: fpc_cs_output_low {
+			mux {
+				pins = "gpio2", "gpio8";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio2", "gpio8";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
 		};
-		fpc_cs_high: output-high {
-			drive-strength = <2>;
-			bias-disable;
-			output-high;
+		fpc_cs_high: fpc_cs_output_high {
+			mux {
+				pins = "gpio2", "gpio8";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio2", "gpio8";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
 		};
 	};
 
-	fpc_cs_active {
-		qcom,pins = <&gp 2>, <&gp 8>;
-		qcom,num-grp-pins = <2>;
-		label = "fpc_cs_active";
-		qcom,pin-func = <1>;
-		fpc_cs_active: spi-active {
+	fpc_cs_active: fpc_cs_act {
+		mux {
+			pins = "gpio2", "gpio8";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio2", "gpio8";
 			drive-strength = <2>;
 			bias-disable;
 		};
 	};
 
 	fpc_reset {
-		qcom,pins = <&gp 89>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <0>;
-		label = "fpc_reset";
-		fpc_reset_reset: reset {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
+		fpc_reset_reset: fpc_rst_rst {
+			mux {
+				pins = "gpio89";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio89";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
 		};
-		fpc_reset_active: active {
-			drive-strength = <2>;
-			bias-disable;
-			output-high;
+		fpc_reset_active: fpc_rst_act {
+			mux {
+				pins = "gpio89";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio89";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
 		};
 	};
 
-	fpc_irq_active {
-		qcom,pins = <&gp 90>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <0>;
-		label = "fpc_irq_active";
-		fpc_irq_active: active {
+	fpc_irq_active: fpc_irq_act {
+		mux {
+			pins = "gpio90";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio90";
 			drive-strength = <2>;
 			bias-pull-down;
 			input-enable;
 		};
+	};
+};
+
+/* GPIO_2: FP_SPI_CS1_N */
+&msm_gpio_2 {
+	config {
+		output-low;
+	};
+};
+
+/* GPIO_90: FP_INT */
+&msm_gpio_90 {
+	config {
+		/delete-property/ bias-disable;
+		/delete-property/ output-low;
+		bias-pull-down;
+		input-enable;
 	};
 };
 
