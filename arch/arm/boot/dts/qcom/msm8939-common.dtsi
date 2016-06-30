@@ -527,6 +527,7 @@
 		qcom,sensors = <9>;
 		qcom,slope = <2911 2789 2906 2763 2922 2867 2833 2838 2840>;
 	//	qcom,sensor-id = <0 1 2 3 5 6 7 8 9>;
+		qcom,valid-status-check;
 	};
 
 	qcom,sensor-information {
@@ -636,7 +637,6 @@
 		qcom,freq-mitigation-temp = <105>;
 		qcom,freq-mitigation-temp-hysteresis = <15>;
 		qcom,freq-mitigation-value = <400000>;
-		qcom,freq-mitigation-control-mask = <0x01>;
 		qcom,freq-mitigation-control-list = <&CPU0>;
 		qcom,therm-reset-temp = <115>;
 		qcom,online-hotplug-core;
@@ -1964,6 +1964,7 @@
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
 	};
 
 	chan@32 {
@@ -1975,6 +1976,7 @@
 		qcom,scale-function = <4>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
 	};
 
 	chan@3c {
@@ -1986,6 +1988,7 @@
 		qcom,scale-function = <4>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
 	};
 };
 
@@ -2014,6 +2017,14 @@
 		qcom,fast-avg-setup = <2>;
 		qcom,btm-channel-number = <0x68>;
 	};
+};
+
+&pm8916_pon {
+	qcom,store-hard-reset-reason;
+};
+
+&pm8916_bms {
+	qcom,resume-soc = <99>;
 };
 
 #include "msm8939-gpu.dtsi"
