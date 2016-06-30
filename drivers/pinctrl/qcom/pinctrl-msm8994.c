@@ -601,7 +601,7 @@ static const char * const blsp_uart4_groups[] = {
 	"gpio19", "gpio20", "gpio21", "gpio22"
 };
 static const char * const blsp_uim4_groups[] = { "gpio19", "gpio20" };
-static const char * const blsp_i2c4_groups[] = { "gpio21", "gpio22" };
+static const char * const blsp_i2c4_groups[] = { "gpio19", "gpio20" };
 static const char * const blsp_spi4_groups[] = {
 	"gpio19", "gpio20", "gpio21", "gpio22"
 };
