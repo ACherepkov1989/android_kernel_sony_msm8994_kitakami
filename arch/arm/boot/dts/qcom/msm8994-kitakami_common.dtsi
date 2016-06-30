@@ -28,7 +28,7 @@
 			label = "fb_mem";
 		};
 
-		ramoops_mem: ramoops_region@0 {
+		ramoops_mem: ramoops_region@1fe00000 {
 			compatible = "removed-dma-pool";
 			reg = <0 0x1fe00000 0 0x00200000>;
 			no-map;

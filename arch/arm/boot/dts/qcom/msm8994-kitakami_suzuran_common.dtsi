@@ -17,16 +17,8 @@
  * published by the Free Software Foundation.
  */
 
-/ {
-	memory {
-
-		fb_mem: fb_region@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			reg = <0 0x40000000 0 0x0730000>;
-			label = "fb_mem";
-		};
-	};
+&fb_mem {
+	reg = <0 0x40000000 0 0x0730000>;
 };
 
 &soc {
@@ -212,7 +204,8 @@
 };
 
 &qsecom_mem {
-	reg = <0 0 0 0x1900000>;
+	//reg = <0 0 0 0x1900000>;
+	size = <0 0x1C00000>;
 };
 
 &removed_regions {
