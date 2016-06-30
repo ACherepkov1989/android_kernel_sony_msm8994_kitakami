@@ -49,7 +49,7 @@
 			};
 		};
 
-		blsp2_uart2_active: blsp2_uart2_active {
+		hsuart_active: blsp2_uart2_active {
 			mux {
 				pins = "gpio45", "gpio46", "gpio47", "gpio48";
 				function = "blsp_uart8";
@@ -62,7 +62,7 @@
 			};
 		};
 
-		blsp2_uart2_sleep: blsp2_uart2_sleep {
+		hsuart_sleep: blsp2_uart2_sleep {
 			mux {
 				pins = "gpio45", "gpio46", "gpio47", "gpio48";
 				function = "gpio";
