@@ -5241,7 +5241,7 @@ err_retrun:
 	return;
 }
 
-static ssize_t clearpad_debug_hwtest_open(struct inode *inode,
+static int clearpad_debug_hwtest_open(struct inode *inode,
 		struct file *file)
 {
 	file->private_data = inode->i_private;
@@ -5724,7 +5724,7 @@ static void clearpad_debug_init(struct clearpad_t *this)
 	if (!dent || IS_ERR(dent)) {
 		dev_err(&this->pdev->dev,
 			"%s: debugfs_create_dir error: dent=0x%x\n",
-			__func__, (unsigned)dent);
+			__func__, PTR_ERR(dent));
 		goto exit;
 	}
 
@@ -5736,7 +5736,7 @@ static void clearpad_debug_init(struct clearpad_t *this)
 	if (!dent || IS_ERR(dent)) {
 		dev_err(&this->pdev->dev,
 			"%s: debugfs_create_file error: dent=0x%x\n",
-			__func__, (unsigned)dent);
+			__func__, PTR_ERR(dent));
 		goto error;
 	}
 
