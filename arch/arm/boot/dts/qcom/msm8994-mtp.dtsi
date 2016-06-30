@@ -303,14 +303,24 @@
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
-&pmx_mdss {
-	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 78>;
+&mdss_dsi_active {
+	mux { pins = "gpio78"; };
+	config { pins = "gpio78"; };
 };
 
-&pmx_mdss_te {
-	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 10>;
+&mdss_dsi_suspend {
+	mux { pins = "gpio78"; };
+	config { pins = "gpio78"; };
+};
+
+&mdss_te_active {
+	mux { pins = "gpio10"; };
+	config { pins = "gpio10"; };
+};
+
+&mdss_te_suspend {
+	mux { pins = "gpio10"; };
+	config { pins = "gpio10"; };
 };
 
 &mdss_dsi {
@@ -361,19 +371,29 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 };
 
-&pmx_hdmi_cec {
-	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 31>;
+&mdss_hdmi_cec_active {
+	mux { pins = "gpio31"; };
+	config { pins = "gpio31"; };
 };
 
-&pmx_hdmi_ddc {
-	qcom,num-grp-pins = <2>;
-	qcom,pins = <&gp 32>, <&gp 33>;
+&mdss_hdmi_cec_suspend {
+	mux { pins = "gpio31"; };
+	config { pins = "gpio31"; };
 };
 
-&pmx_hdmi_hpd {
-	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 34>;
+&mdss_hdmi_ddc_active {
+	mux { pins = "gpio32", "gpio33"; };
+	config { pins = "gpio32", "gpio33"; };
+};
+
+&mdss_hdmi_ddc_suspend {
+	mux { pins = "gpio32", "gpio33"; };
+	config { pins = "gpio32", "gpio33"; };
+};
+
+&mdss_hdmi_hpd_active {
+	mux { pins = "gpio34"; };
+	config { pins = "gpio34"; };
 };
 
 &mdss_hdmi_tx {
