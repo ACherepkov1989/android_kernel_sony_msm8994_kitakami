@@ -2035,7 +2035,10 @@
 			 <&mdss_dsi0_pll clk_dsi0pll_byte_clk_mux>,
 			 <&mdss_dsi1_pll clk_dsi1pll_byte_clk_mux>,
 			 <&mdss_hdmi_pll clk_hdmi_20nm_vco_clk>;
+		#address-cells = <1>;
+		#size-cells = <1>;
 		#clock-cells = <1>;
+		ranges;
 	};
 
 	clock_debug: qcom,cc-debug@fc401880 {
@@ -3017,6 +3020,7 @@
 		interrupt-names = "tsens-upper-lower";
 		qcom,sensors = <16>;
 		qcom,slope = <2901 2846 3200 3200 3200 3200 3200 3200 3200 3200 3200 3200 3200 3200 3200 3200>;
+		qcom,valid-status-check;
 	};
 
 	qcom_tzlog: tz-log@fe87f720 {
