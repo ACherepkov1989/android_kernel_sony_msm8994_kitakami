@@ -146,7 +146,7 @@
 	msm_gpio_4: msm_gpio_4 {
 		mux {
 			pins = "gpio4";
-			function = "blsp_uart8";
+			function = "blsp_uart2";
 		};
 
 		config {
@@ -160,7 +160,7 @@
 	msm_gpio_5: msm_gpio_5 {
 		mux {
 			pins = "gpio5";
-			function = "blsp_uart8";
+			function = "blsp_uart2";
 		};
 
 		config {
