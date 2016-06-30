@@ -27,7 +27,11 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #if defined(CONFIG_BCMDHD_SDIO)
-#include <asm/mach/mmc.h>
+#include <linux/mmc/host.h>
+#include <linux/mmc/card.h>
+#include <linux/mmc/sdio_func.h>
+#include <asm-generic/gpio.h>
+#include <linux/msm-bus.h>
 #include <../drivers/mmc/host/msm_sdcc.h>
 
 static unsigned int g_wifi_detect;
