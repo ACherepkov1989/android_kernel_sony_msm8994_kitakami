@@ -1200,7 +1200,7 @@
 		reg = <0x00000000 0x00010000>;
 		reg-names = "rfsa_dsp";
 		qcom,client-id = <0x011013ec>;
-		linux,contiguous-region = <&adsp_mem>;
+		memory-region = <&adsp_mem>;
 	};
 
 	qcom,mdm_sharedmem@00000000 {
@@ -1215,7 +1215,7 @@
 		reg = <0x00000000 0x00010000>;
 		reg-names = "rfsa_sensor";
 		qcom,client-id = <0x011013ee>;
-		linux,contiguous-region = <&adsp_mem>;
+		memory-region = <&adsp_mem>;
 	};
 
 	sdhc_1: sdhci@f9824900 {
@@ -1911,7 +1911,7 @@
 		qcom,pas-id = <9>;
 		qcom,proxy-timeout-ms = <100>;
 		qcom,firmware-name = "venus";
-		linux,contiguous-region = <&peripheral_mem>;
+		memory-region = <&peripheral_mem>;
 	};
 
 	qcom,mss@fc880000 {
@@ -1961,7 +1961,7 @@
 		/* GPIO output to mss */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_1_out 0 0>;
 
-		linux,contiguous-region = <&modem_mem>;
+		memory-region = <&modem_mem>;
 	};
 
 	qcom,lpass@fe200000 {
@@ -1995,7 +1995,7 @@
 		/* GPIO output to lpass */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_2_out 0 0>;
 
-		linux,contiguous-region = <&peripheral_mem>;
+		memory-region = <&peripheral_mem>;
 	};
 
 	clock_rpm: qcom,rpmcc@fc401880 {
@@ -3425,13 +3425,13 @@
 	audio_heap {
 		compatible = "qcom,msm-shared-memory";
 		qcom,proc-id = <1>;
-		linux,contiguous-region = <&audio_mem>;
+		memory-region = <&audio_mem>;
 	};
 
 	adsp_heap {
 		compatible = "qcom,msm-shared-memory";
 		qcom,proc-id = <1>;
-		linux,contiguous-region = <&adsp_mem>;
+		memory-region = <&adsp_mem>;
 	};
 
 	qcom,msm-core@fc4b8000 {
