@@ -244,16 +244,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(input_current_now),
 	POWER_SUPPLY_ATTR(rerun_aicl),
 	POWER_SUPPLY_ATTR(cycle_count_id),
-	POWER_SUPPLY_ATTR(usbin_det),
-	POWER_SUPPLY_ATTR(wireless_det),
-	POWER_SUPPLY_ATTR(invalid_charger),
-	POWER_SUPPLY_ATTR(enable_shutdown_at_low_battery),
-	POWER_SUPPLY_ATTR(enable_llk),
-	POWER_SUPPLY_ATTR(llk_socmax),
-	POWER_SUPPLY_ATTR(llk_socmin),
-	POWER_SUPPLY_ATTR(stop_usb_host_function),
-	POWER_SUPPLY_ATTR(vfloat_mv),
-	POWER_SUPPLY_ATTR(fv_cmp_cfg),
 	POWER_SUPPLY_ATTR(safety_timer_expired),
 	POWER_SUPPLY_ATTR(restricted_charging),
 	POWER_SUPPLY_ATTR(current_capability),
@@ -272,7 +262,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(manufacturer),
 	POWER_SUPPLY_ATTR(serial_number),
 	POWER_SUPPLY_ATTR(battery_type),
-	POWER_SUPPLY_ATTR(charger_type),
 };
 
 static struct attribute *
