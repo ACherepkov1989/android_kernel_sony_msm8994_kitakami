@@ -1278,7 +1278,7 @@ static int mmc_reboot_notify(struct notifier_block *notify_block,
 static int mmc_select_timing(struct mmc_card *card)
 {
 	int err = 0;
-
+goto bus_speed;
 	if (!mmc_can_ext_csd(card))
 		goto bus_speed;
 
