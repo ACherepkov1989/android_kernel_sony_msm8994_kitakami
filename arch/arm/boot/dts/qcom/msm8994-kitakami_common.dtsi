@@ -1147,14 +1147,14 @@
 };
 
 &mdss_fb0 {
-	linux,contiguous-region = <&fb_mem>;
+	memory-region = <&fb_mem>;
 
 	/* Kernel splash configuration */
 	qcom,memblock-reserve = <0x03401000 0x2200000>;
 	qcom,memory-reservation-size = <0x1000000>; /* size: 16MB */
 	qcom,mdss-fb-splash-logo-enabled;
 	qcom,cont-splash-memory {
-		linux,contiguous-region = <&cont_splash_mem>;
+		memory-region = <&cont_splash_mem>;
 	};
 };
 
@@ -1162,7 +1162,12 @@
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
+&mdss_dsi0 {
+	qcom,display-id = "primary";
+};
+
 &mdss_hdmi_tx {
+	qcom,display-id = "secondary";
 	pinctrl-names = "hdmi_hpd_active", "hdmi_ddc_active",
 				"hdmi_active", "hdmi_sleep";
 	pinctrl-0 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_suspend>;
