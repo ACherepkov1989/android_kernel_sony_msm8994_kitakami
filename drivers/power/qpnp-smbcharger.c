@@ -285,11 +285,6 @@ struct smbchg_chip {
 	struct votable			*hw_aicl_rerun_disable_votable;
 	struct votable			*hw_aicl_rerun_enable_indirect_votable;
 	struct votable			*aicl_deglitch_short_votable;
-
-#ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
-	struct chg_somc_params		somc_params;
-	struct usb_somc_params		usb_params;
-#endif
 };
 
 enum qpnp_schg {
@@ -7292,16 +7287,7 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	chip->usb_present = is_usb_present(chip);
 	chip->dc_present = is_dc_present(chip);
 
-#ifndef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	if (chip->usb_present) {
-#else
-	src_detect_handler(0, chip);
-
-	if (chip->usb_present) {
-		union power_supply_propval prop = {chip->usb_present, };
-		chip->usb_psy->set_property(chip->usb_psy,
-					POWER_SUPPLY_PROP_USBIN_DET, &prop);
-#endif
 		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPF_DMF);
@@ -7309,11 +7295,24 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	} else {
 		handle_usb_removal(chip);
 	}
-
-#ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
+#else
+	if (chip->usb_present) {
+		const union power_supply_propval ret = {chip->usb_present,};
+		chip->usb_psy->set_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_USBIN_DET, &ret);
+		handle_usb_insertion(chip);
+		somc_chg_voltage_check_start(&chip->somc_params);
+	} else {
+		const union power_supply_propval ret = {chip->usb_present,};
+		handle_usb_removal(chip);
+		chip->usb_psy->set_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_USBIN_DET, &ret);
+		somc_chg_voltage_check_cancel(&chip->somc_params);
+	}
 	usbid_change_handler(0, chip);
-#endif
 
+	somc_chg_usbin_notify_changed(&chip->somc_params, chip->usb_present);
+#endif
 	return 0;
 }
 
