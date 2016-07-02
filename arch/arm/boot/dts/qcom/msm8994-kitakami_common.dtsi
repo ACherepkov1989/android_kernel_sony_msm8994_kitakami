@@ -235,7 +235,7 @@
 	/* I2C : BLSP11 */
 	i2c@f9967000 {
 		qcom,clk-freq-out = <355000>;
-		status = "ok";
+		status = "disabled";
 
 		sii8620@72 {
 			compatible = "qcom,mhl-sii8620";
@@ -251,6 +251,7 @@
 			clock-names = "mhl_clk";
 			mhl_vcc-supply = <&pm8994_l25>;
 			qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
+			status = "disabled";
 		};
 
 		/delete-node/ silabs4705@11;
