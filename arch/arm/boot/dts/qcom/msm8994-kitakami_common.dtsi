@@ -883,6 +883,9 @@
 	qcom,vbat-estimate-diff-mv = <200>;
 	qcom,fg-chg-iterm-ma = <150>;
 	qcom,fg-cc-cv-threshold-mv = <4340>;
+	qcom,cold-hot-jeita-hysteresis = <20 20>;
+	somc,cool-warm-jeita-hysteresis = <20 20>;
+	status = "ok";
 };
 
 &slim_msm {
@@ -1296,9 +1299,18 @@
 &usb3 {
 	qcom,usb_dp-vadc = <&pmi8994_vadc>;
 	qcom,usb_dm-vadc = <&pmi8994_vadc>;
-	mhl_switch_sel1_gpio = <&pmi8994_gpios 9 0>;
-	mhl_switch_sel2_gpio = <&pmi8994_gpios 10 0>;
+	usb_switch_sel2 = <&pmi8994_gpios 9 0>;
+	usb_switch_sel  = <&pmi8994_gpios 10 0>;
 	vbus_rec-supply = <&smbcharger_charger_otg>;
+
+	qcom,usbin-vadc = <&pmi8994_vadc>;
+	// we have no id level via vadc. qcom,usb_id_lv-vadc = <&pm8994_vadc>;
+
+	id_polling_use;
+	id_polling_up_interval = <2000>;
+	id_polling_up_period = <50000>;
+	id_polling_pd_gpio = <&pmi8994_mpps 1 0>;
+
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
 	};
@@ -1321,10 +1333,10 @@
 		qcom,fast-avg-setup = <0>;
 	};
 	chan@73 { /* msm_therm */
-		qcom,scale-function = <13>;
+		qcom,scale-function = <15>; /* 100K_PULLUP_DECI */
 	};
 	chan@74 { /* emmc_therm */
-		qcom,scale-function = <13>;
+		qcom,scale-function = <15>; /* 100K_PULLUP_DECI */
 	};
 };
 
@@ -1342,10 +1354,10 @@
 		qcom,thermal-node;
 	};
 	chan@73 { /* msm_therm */
-		qcom,scale-function = <8>;
+		qcom,scale-function = <8>; /* SMB_BATT_THERM */
 	};
 	chan@74 { /* emmc_therm */
-		qcom,scale-function = <8>;
+		qcom,scale-function = <8>; /* SMB_BATT_THERM */
 	};
 };
 
@@ -1356,17 +1368,29 @@
 };
 
 &pmi8994_charger {
+	status = "ok";
 	/delete-property/ qcom,parallel-usb-min-current-ma;
 	/delete-property/ qcom,parallel-9v-usb-min-current-ma;
 	qcom,bmd-pin-src = "bpd_none";
-	qcom,chg-vadc = <&pmi8994_vadc>;
+	qcom,usb_dp-vadc = <&pmi8994_vadc>;
+	qcom,usb_dm-vadc = <&pmi8994_vadc>;
 	qcom,charge-unknown-battery;
-	qcom,dc-psy-type = "Wireless";
+	qcom,float-voltage-mv = <4300>;
+	qcom,precharging-timeout-mins = <24>;
+	qcom,charging-timeout-mins = <768>;
+
+	qcom,fastchg-current-ma = <1000>;
+	somc,usb-9v-current-max = <1800>;
+	somc,fastchg-warm-current-ma = <800>;
+	somc,fastchg-cool-current-ma = <800>;
+	//somc,thermal-engine-fastchg-current = <1800 1800 1800 1400 1000 700 500 300 300 300 300 300 300 0 0>;
+	somc,thermal-engine-fastchg-current = <1000 1000 1000 900  800  700 700 700 700 700 700 500 300 300 0>;
 	somc,thermal-mitigation-usb-5v = <1500 1500 1500 1500 1500 1500 1500 1500 1200 900 700 500 300 300 0>;
 	somc,thermal-mitigation-usb-9v = <1800 1800 1800 1800 1800 1800 1400 1000 700 500 400 300 300 300 0>;
 	somc,thermal-mitigation-dc-5v = <1000 1000 1000 900 800 700 700 700 700 700 700 500 300 300 0>;
-	gpio_id_low = <&pmi8994_mpps 1 0>;
+	somc,limit-usb-5v-level = <8>;
 	qcom,autoadjust-vfloat;
+	qcom,force-aicl-rerun;
 };
 
 &usb_ehci {

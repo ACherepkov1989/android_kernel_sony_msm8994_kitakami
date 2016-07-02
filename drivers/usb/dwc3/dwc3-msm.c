@@ -22,8 +22,10 @@
 #undef CONFIG_USB_DWC3_MSM_ID_POLL
 #endif
 
-/* To defined, enable code for interrupt of PMIC exists */
-/* #define USE_POWER_SUPPLY_PROP_USB_OTG */
+/* OTG detection via PMIC interrupt */
+#ifndef CONFIG_ARCH_MSM8996
+#define USE_POWER_SUPPLY_PROP_USB_OTG
+#endif
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -290,6 +292,7 @@ struct dwc3_msm {
 
 	struct qpnp_vadc_chip	*vadc_dev;
 	int			usb_switch_sel_gpio;
+	int			usb_switch_sel_gpio2;
 	int			sub_type;
 	bool			usbin_state;
 	int			dp_dm;
@@ -326,10 +329,12 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA);
 
 #define USB_SWITCH_SEL_USB1		0
 #define USB_SWITCH_SEL_USB2		1
+#define USB_SWITCH_SEL_MHL		2
 
 static void dwc3_select_usb_switch(struct dwc3_msm *mdwc)
 {
 	int out;
+	int gpio_val = 0;
 
 	if (!gpio_is_valid(mdwc->usb_switch_sel_gpio)) {
 		dev_dbg(mdwc->dev, "gpio for usb switch is invalid\n");
@@ -341,7 +346,18 @@ static void dwc3_select_usb_switch(struct dwc3_msm *mdwc)
 	else
 		out = USB_SWITCH_SEL_USB2;
 
-	gpio_set_value(mdwc->usb_switch_sel_gpio, out);
+	if (out > 0)
+		gpio_val = 1;
+
+	gpio_set_value(mdwc->usb_switch_sel_gpio, gpio_val);
+
+	if (gpio_is_valid(mdwc->usb_switch_sel_gpio2)) {
+		if (out == USB_SWITCH_SEL_MHL)
+			gpio_set_value(mdwc->usb_switch_sel_gpio2, 1);
+		else
+			gpio_set_value(mdwc->usb_switch_sel_gpio2, 0);
+	}
+
 	dev_info(mdwc->dev, "select port USB%d\n", out + 1);
 }
 
@@ -1870,7 +1886,6 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned event,
 				QSCRATCH_GENERAL_CFG)
 				& ~PIPE_UTMI_CLK_DIS);
 		}
-
 		dwc3_msm_update_ref_clk(mdwc);
 		dwc->tx_fifo_size = mdwc->tx_fifo_size;
 		break;
@@ -3534,6 +3549,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (mdwc->usb_switch_sel_gpio < 0)
 		pr_debug("usb_switch_sel_gpio is not available\n");
 
+	mdwc->usb_switch_sel_gpio2 =
+				of_get_named_gpio(node, "usb_switch_sel2", 0);
+
 	return 0;
 
 put_dwc3:
@@ -3715,7 +3733,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		/* The delay between enabling regulator and adding the
 		   platform device is needed to succeed in the enumeration
 		   for certain devices. */
-		msleep(10);
+		msleep(10000);
 
 		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
 
