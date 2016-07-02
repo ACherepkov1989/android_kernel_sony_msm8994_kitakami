@@ -207,11 +207,11 @@
 	//reg = <0 0 0 0x1900000>;
 	size = <0 0x1C00000>;
 };
-
+/*
 &removed_regions {
 	reg = <0 0x06300000 0 0x9D00000>;
 };
-
+*/
 &pcie1 {
 	status = "disabled";
 };
