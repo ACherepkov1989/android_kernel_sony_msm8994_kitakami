@@ -1687,6 +1687,85 @@
 			tx-fifo-resize;
 			usb-phy = <&hsphy0>, <&ssphy0>;
 		};
+
+		qcom,usbbam@f9304000 {
+			compatible = "qcom,usb-bam-msm";
+			reg = <0xf9304000 0x9000>,
+			      <0xf92f880c 0x4>;
+			reg-names = "ssusb", "qscratch_ram1_reg";
+			interrupts = <0 132 0>;
+			interrupt-names = "ssusb";
+			clocks = <&clock_gcc clk_gcc_usb30_master_clk>,
+				 <&clock_gcc clk_gcc_sys_noc_usb3_axi_clk>;
+			clock-names = "mem_clk", "mem_iface_clk";
+
+			qcom,usb-bam-fifo-baseaddr = <0xf9200000>;
+			qcom,usb-bam-num-pipes = <16>;
+			qcom,ignore-core-reset-ack;
+			qcom,disable-clk-gating;
+			qcom,usb-bam-override-threshold = <0x4001>;
+			qcom,usb-bam-max-mbps-highspeed = <400>;
+			qcom,usb-bam-max-mbps-superspeed = <3600>;
+
+			qcom,pipe0 {
+				label = "ssusb-ipa-out-0";
+				qcom,usb-bam-mem-type = <2>;
+				qcom,bam-type = <0>;
+				qcom,dir = <0>;
+				qcom,pipe-num = <0>;
+				qcom,peer-bam = <2>;
+				qcom,src-bam-physical-address = <0xf9304000>;
+				qcom,src-bam-pipe-index = <1>;
+				qcom,data-fifo-size = <0x8000>;
+				qcom,descriptor-fifo-size = <0x2000>;
+				qcom,reset-bam-on-connect;
+			};
+			qcom,pipe1 {
+				label = "ssusb-ipa-in-0";
+				qcom,usb-bam-mem-type = <2>;
+				qcom,bam-type = <0>;
+				qcom,dir = <1>;
+				qcom,pipe-num = <0>;
+				qcom,peer-bam = <2>;
+				qcom,dst-bam-physical-address = <0xf9304000>;
+				qcom,dst-bam-pipe-index = <0>;
+				qcom,data-fifo-size = <0x8000>;
+				qcom,descriptor-fifo-size = <0x2000>;
+				qcom,reset-bam-on-connect;
+			};
+			qcom,pipe2 {
+				label = "ssusb-qdss-in-0";
+				qcom,usb-bam-mem-type = <1>;
+				qcom,bam-type = <0>;
+				qcom,dir = <1>;
+				qcom,pipe-num = <0>;
+				qcom,peer-bam = <1>;
+				qcom,src-bam-physical-address = <0xfc37C000>;
+				qcom,src-bam-pipe-index = <0>;
+				qcom,dst-bam-physical-address = <0xf9304000>;
+				qcom,dst-bam-pipe-index = <2>;
+				qcom,data-fifo-offset = <0xf0000>;
+				qcom,data-fifo-size = <0x1800>;
+				qcom,descriptor-fifo-offset = <0xf4000>;
+				qcom,descriptor-fifo-size = <0x1400>;
+				qcom,reset-bam-on-connect;
+			};
+
+			/* USB BAM pipe (consumer) configuration for accelerated DPL */
+			qcom,pipe3 {
+				label = "ssusb-dpl-ipa-in-1";
+				qcom,usb-bam-mem-type = <2>;
+				qcom,bam-type = <0>;
+				qcom,dir = <1>;
+				qcom,pipe-num = <1>;
+				qcom,peer-bam = <2>;
+				qcom,dst-bam-physical-address = <0xf9304000>;
+				qcom,dst-bam-pipe-index = <2>;
+				qcom,data-fifo-size = <0x8000>;
+				qcom,descriptor-fifo-size = <0x2000>;
+				qcom,reset-bam-on-connect;
+			};
+		};
 	};
 
 	hsphy0: hsphy@f92f8800 {
@@ -1710,7 +1789,7 @@
 	};
 
 	ssphy0: ssphy@f9b38000 {
-		compatible = "qcom,usb-ssphy-qmp";
+		compatible = "qcom,usb-ssphy-qmp-v1";
 		status = "disabled";
 		reg = <0xf9b38000 0x800>,
 			<0xf9b3e000 0x3ff>;
@@ -1736,85 +1815,6 @@
 		compatible = "qcom,usb-dbm-1p5";
 		reg = <0xf92f8000 0x1000>;
 		qcom,reset-ep-after-lpm-resume;
-	};
-
-	qcom,usbbam@f9304000 {
-		compatible = "qcom,usb-bam-msm";
-		reg = <0xf9304000 0x9000>,
-		      <0xf92f880c 0x4>;
-		reg-names = "ssusb", "qscratch_ram1_reg";
-		interrupts = <0 132 0>;
-		interrupt-names = "ssusb";
-		clocks = <&clock_gcc clk_gcc_usb30_master_clk>,
-			 <&clock_gcc clk_gcc_sys_noc_usb3_axi_clk>;
-		clock-names = "mem_clk", "mem_iface_clk";
-
-		qcom,usb-bam-fifo-baseaddr = <0xf9200000>;
-		qcom,usb-bam-num-pipes = <16>;
-		qcom,ignore-core-reset-ack;
-		qcom,disable-clk-gating;
-		qcom,usb-bam-override-threshold = <0x4001>;
-		qcom,usb-bam-max-mbps-highspeed = <400>;
-		qcom,usb-bam-max-mbps-superspeed = <3600>;
-
-		qcom,pipe0 {
-			label = "ssusb-ipa-out-0";
-			qcom,usb-bam-mem-type = <2>;
-			qcom,bam-type = <0>;
-			qcom,dir = <0>;
-			qcom,pipe-num = <0>;
-			qcom,peer-bam = <2>;
-			qcom,src-bam-physical-address = <0xf9304000>;
-			qcom,src-bam-pipe-index = <1>;
-			qcom,data-fifo-size = <0x8000>;
-			qcom,descriptor-fifo-size = <0x2000>;
-			qcom,reset-bam-on-connect;
-		};
-		qcom,pipe1 {
-			label = "ssusb-ipa-in-0";
-			qcom,usb-bam-mem-type = <2>;
-			qcom,bam-type = <0>;
-			qcom,dir = <1>;
-			qcom,pipe-num = <0>;
-			qcom,peer-bam = <2>;
-			qcom,dst-bam-physical-address = <0xf9304000>;
-			qcom,dst-bam-pipe-index = <0>;
-			qcom,data-fifo-size = <0x8000>;
-			qcom,descriptor-fifo-size = <0x2000>;
-			qcom,reset-bam-on-connect;
-		};
-		qcom,pipe2 {
-			label = "ssusb-qdss-in-0";
-			qcom,usb-bam-mem-type = <1>;
-			qcom,bam-type = <0>;
-			qcom,dir = <1>;
-			qcom,pipe-num = <0>;
-			qcom,peer-bam = <1>;
-			qcom,src-bam-physical-address = <0xfc37C000>;
-			qcom,src-bam-pipe-index = <0>;
-			qcom,dst-bam-physical-address = <0xf9304000>;
-			qcom,dst-bam-pipe-index = <2>;
-			qcom,data-fifo-offset = <0xf0000>;
-			qcom,data-fifo-size = <0x1800>;
-			qcom,descriptor-fifo-offset = <0xf4000>;
-			qcom,descriptor-fifo-size = <0x1400>;
-			qcom,reset-bam-on-connect;
-		};
-
-		/* USB BAM pipe (consumer) configuration for accelerated DPL */
-		qcom,pipe3 {
-			label = "ssusb-dpl-ipa-in-1";
-			qcom,usb-bam-mem-type = <2>;
-			qcom,bam-type = <0>;
-			qcom,dir = <1>;
-			qcom,pipe-num = <1>;
-			qcom,peer-bam = <2>;
-			qcom,dst-bam-physical-address = <0xf9304000>;
-			qcom,dst-bam-pipe-index = <2>;
-			qcom,data-fifo-size = <0x8000>;
-			qcom,descriptor-fifo-size = <0x2000>;
-			qcom,reset-bam-on-connect;
-		};
 	};
 
 	usb_otg: usb@f9a55000 {
