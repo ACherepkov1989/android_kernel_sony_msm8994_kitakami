@@ -1388,19 +1388,19 @@ static int __init clock_late_init(void)
 			pr_err("%s: %pS failed late_init.\n", __func__,
 				initdata);
 	}
-/*
+
 	list_for_each_entry_safe(h, h_temp, &handoff_list, list) {
 		clk_disable_unprepare(h->clk);
 		list_del(&h->list);
 		kfree(h);
 	}
-
+#ifndef CONFIG_ARCH_MSM8916 /* THIS IS AN IDIOT HACK */
 	list_for_each_entry_safe(v, v_temp, &handoff_vdd_list, list) {
 		unvote_vdd_level(v->vdd_class, v->vdd_class->num_levels - 1);
 		list_del(&v->list);
 		kfree(v);
 	}
-*/
+#endif
 	mutex_unlock(&msm_clock_init_lock);
 
 	return ret;
