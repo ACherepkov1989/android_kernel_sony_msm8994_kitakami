@@ -567,8 +567,8 @@ static int msm_cpu_quirks_probe(void)
 	}
 
 	/* SPM Standalone Power Collapse as Power Collapse quirk */
-	msm_cpu_quirks_lpm = of_property_read_bool(cpu_node,
-				"qcom,spm-spc-as-pc");
+	msm_cpu_quirks_lpm = true;/* of_property_read_bool(cpu_node,
+				"qcom,spm-spc-as-pc");*/
 
 	return 0;
 }
