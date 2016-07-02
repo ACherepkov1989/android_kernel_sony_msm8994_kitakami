@@ -178,4 +178,26 @@
                                 <89 662 0 0>;
                 };
 	};
+
+	kgsl_msm_iommu: qcom,kgsl-iommu@fdb10000 {
+		compatible = "qcom,kgsl-smmu-v1";
+		reg = <0xfdb10000 0x10000>;
+		/*
+		* The gpu can only program a single context bank
+		* at this fixed offset.
+		*/
+		qcom,protect = <0x40000 0x1000>; /* A530 */
+		clocks = <&clock_mmss clk_oxili_gfx3d_clk>,
+			 <&clock_mmss clk_oxilicx_ahb_clk>;
+		clock-names = "core_clk", "iface_clk";
+
+		status = "ok";
+
+		gfx3d_user: gfx3d_user {
+			compatible = "qcom,smmu-kgsl-cb";
+			label = "gfx3d_user";
+			qcom,gpu-offset = <0x40000>;
+		};
+	};
+
 };
