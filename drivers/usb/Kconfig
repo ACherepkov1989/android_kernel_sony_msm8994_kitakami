@@ -159,4 +159,12 @@ config USB_LED_TRIG
 	  LEDs and you want to use them as activity indicators for USB host or
 	  gadget.
 
+config SONY_USB_EXTENSIONS
+	bool "SoMC USB Extensions"
+	depends on USB_COMMON
+	help
+	  This option adds extensional code on USB drivers, required for
+	  some SoMC boards.
+	  If unsure, say N.
+
 endif # USB_SUPPORT

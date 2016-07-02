@@ -45,6 +45,10 @@
 
 #include "debug.h"
 
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+extern int msm_hsphy_set_params(struct usb_phy *uphy);
+#endif
+
 /* -------------------------------------------------------------------------- */
 
 void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
@@ -84,6 +88,9 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 			dwc3_writel(dwc->regs, DWC3_GFLADJ, reg);
 		}
 	}
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+	msm_hsphy_set_params(dwc->usb2_phy);
+#endif
 }
 
 /**

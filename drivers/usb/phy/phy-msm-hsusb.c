@@ -30,6 +30,11 @@ static int override_phy_init;
 module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+static int override_phy_init_host;
+module_param(override_phy_init_host, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_init_host, "Override HSPHY Init Seq for Host");
+#endif
 
 #define PORT_OFFSET(i) ((i == 0) ? 0x0 : ((i == 1) ? 0x6c : 0x88))
 
@@ -115,11 +120,32 @@ MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 #define USB_HSPHY_1P8_VOL_MAX			1800000 /* uV */
 #define USB_HSPHY_1P8_HPM_LOAD			19000	/* uA */
 
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+#define USB_PHY_TXFSLSTUNE0		0x03C00000	/* 22:25 */
+#define USB_PHY_TXRESTUNE0		0x00300000	/* 20:21 */
+#define USB_PHY_TXHSXVTUNE0		0x000C0000	/* 18:19 */
+#define USB_PHY_TXRISETUNE0		0x00030000	/* 16:17 */
+#define USB_PHY_TXPREEMPAMPTUNE0	0x0000C000	/* 14:15 */
+#define USB_PHY_TXPREEMPPULSETUNE0	0x00002000	/* 13:13 */
+#define USB_PHY_TXVREFTUNE0		0x00001E00	/*  9:12 */
+#define USB_PHY_SQRXTUNE0		0x000001C0	/*  6: 8 */
+#define USB_PHY_OTGTUNE0		0x00000038	/*  3: 5 */
+#define USB_PHY_COMPDISTUNE0		0x00000007	/*  0: 2 */
+
+#define msm_usb_read_phy_param(base, mask)\
+			msm_usb_read_reg_field((base),\
+						PARAMETER_OVERRIDE_X_REG(0), \
+						(mask))
+#endif
+
 struct msm_hsphy {
 	struct usb_phy		phy;
 	void __iomem		*base;
 	void __iomem		*tcsr;
 	int			hsphy_init_seq;
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+	int			hsphy_init_seq_host;
+#endif
 	bool			set_pllbtune;
 	u32			core_ver;
 
@@ -244,6 +270,19 @@ put_vdda18_lpm:
 	return rc < 0 ? rc : 0;
 }
 
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+static inline u32 msm_usb_read_reg_field(void *base,
+					  u32 offset,
+					  const u32 mask)
+{
+	u32 shift = find_first_bit((void *)&mask, 32);
+	u32 val = readl_relaxed(base + offset);
+	val &= mask;		/* clear other bits */
+	val >>= shift;
+	return val;
+}
+#endif
+
 static void msm_usb_write_readback(void *base, u32 offset,
 					const u32 mask, u32 val)
 {
@@ -302,6 +341,70 @@ static int msm_hsphy_reset(struct usb_phy *uphy)
 	return 0;
 }
 
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+static void msm_hsphy_param_output(struct usb_phy *uphy)
+{
+	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
+
+	dev_dbg(uphy->dev, "TXFSLSTUNE0       \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_TXFSLSTUNE0));
+	dev_dbg(uphy->dev, "TXRESTUNE0        \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_TXRESTUNE0));
+	dev_dbg(uphy->dev, "TXHSXVTUNE0       \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_TXHSXVTUNE0));
+	dev_dbg(uphy->dev, "TXRISETUNE0       \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_TXRISETUNE0));
+	dev_dbg(uphy->dev, "TXPREEMPAMPTUNE0  \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_TXPREEMPAMPTUNE0));
+	dev_dbg(uphy->dev, "TXPREEMPPULSETUNE0\t0x%02x\n",
+		msm_usb_read_phy_param(phy->base,
+						USB_PHY_TXPREEMPPULSETUNE0));
+	dev_dbg(uphy->dev, "TXVREFTUNE0       \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_TXVREFTUNE0));
+	dev_dbg(uphy->dev, "SQRXTUNE0         \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_SQRXTUNE0));
+	dev_dbg(uphy->dev, "OTGTUNE0          \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_OTGTUNE0));
+	dev_dbg(uphy->dev, "COMPDISTUNE0      \t0x%02x\n",
+		msm_usb_read_phy_param(phy->base, USB_PHY_COMPDISTUNE0));
+}
+
+int msm_hsphy_set_params(struct usb_phy *uphy)
+{
+	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
+	bool host = uphy->flags & PHY_HOST_MODE;
+	int hsphy_init_seq;
+
+	/*
+	 * write HSPHY init value to QSCRATCH reg to set HSPHY parameters like
+	 * VBUS valid threshold, disconnect valid threshold, DC voltage level,
+	 * preempasis and rise/fall time.
+	 */
+	if (host) {
+		if (override_phy_init_host)
+			phy->hsphy_init_seq_host = override_phy_init_host;
+		hsphy_init_seq = phy->hsphy_init_seq_host;
+	} else {
+		if (override_phy_init)
+			phy->hsphy_init_seq = override_phy_init;
+		hsphy_init_seq = phy->hsphy_init_seq;
+	}
+
+	if (!hsphy_init_seq)
+		return 0;
+
+	dev_info(uphy->dev, "set phy param for %s value=0x%08x\n",
+						host ? "host" : "peripheral",
+						hsphy_init_seq & 0x03FFFFFF);
+	msm_usb_write_readback(phy->base,
+					PARAMETER_OVERRIDE_X_REG(0), 0x03FFFFFF,
+					hsphy_init_seq & 0x03FFFFFF);
+	msm_hsphy_param_output(uphy);
+
+	return 0;
+}
+#endif
+
 static int msm_hsphy_init(struct usb_phy *uphy)
 {
 	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
@@ -347,6 +450,9 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 		}
 	}
 
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+	msm_hsphy_set_params(uphy);
+#else
 	/*
 	 * write HSPHY init value to QSCRATCH reg to set HSPHY parameters like
 	 * VBUS valid threshold, disconnect valid threshold, DC voltage level,
@@ -358,7 +464,7 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 		msm_usb_write_readback(phy->base,
 					PARAMETER_OVERRIDE_X_REG(0), 0x03FFFFFF,
 					phy->hsphy_init_seq & 0x03FFFFFF);
-
+#endif
 	return 0;
 }
 
@@ -527,6 +633,9 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 							OTGDISABLE0, 0);
 			}
 		}
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+		msm_hsphy_set_params(uphy);
+#else
 		/*
 		 * write HSPHY init value to QSCRATCH reg to set HSPHY
 		 * parameters like VBUS valid threshold, disconnect valid
@@ -539,6 +648,7 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 					PARAMETER_OVERRIDE_X_REG(0),
 					0x03FFFFFF,
 					phy->hsphy_init_seq & 0x03FFFFFF);
+#endif
 	}
 
 	phy->suspended = !!suspend; /* double-NOT coerces to bool value */
@@ -754,6 +864,12 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 		dev_dbg(dev, "unable to read hsphy init seq\n");
 	else if (!phy->hsphy_init_seq)
 		dev_warn(dev, "hsphy init seq cannot be 0. Using POR value\n");
+
+#ifdef CONFIG_SONY_USB_EXTENSIONS
+	if (of_property_read_u32(dev->of_node, "qcom,hsphy-init-host",
+					&phy->hsphy_init_seq_host))
+		dev_dbg(dev, "unable to read hsphy init seq for host\n");
+#endif
 
 	if (of_property_read_u32(dev->of_node, "qcom,num-ports",
 					&phy->num_ports))
