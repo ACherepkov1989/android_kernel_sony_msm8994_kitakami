@@ -3515,46 +3515,36 @@
 		qcom,high-hyst-temp = <5>;
 		qcom,polling-interval = <50>;
 
-		qcom,core-mapping {
-			ea0: qcom,cpu0-chars {
-				qcom,sensor = <&sensor_information7>;
-				qcom,cpu-name = <&CPU0>;
-			};
+		ea0: qcom,cpu0-chars {
+			sensor = <&sensor_information7>;
+		};
 
-			ea1: qcom,cpu1-chars {
-				qcom,sensor = <&sensor_information8>;
-				qcom,cpu-name = <&CPU1>;
-			};
+		ea1: qcom,cpu1-chars {
+			sensor = <&sensor_information8>;
+		};
 
-			ea2: qcom,cpu2-chars {
-				qcom,sensor = <&sensor_information9>;
-				qcom,cpu-name = <&CPU2>;
-			};
+		ea2: qcom,cpu2-chars {
+			sensor = <&sensor_information9>;
+		};
 
-			ea3: qcom,cpu3-chars {
-				qcom,sensor = <&sensor_information10>;
-				qcom,cpu-name = <&CPU3>;
-			};
+		ea3: qcom,cpu3-chars {
+			sensor = <&sensor_information10>;
+		};
 
-			ea4: qcom,cpu4-chars {
-				qcom,sensor = <&sensor_information13>;
-				qcom,cpu-name = <&CPU4>;
-			};
+		ea4: qcom,cpu4-chars {
+			sensor = <&sensor_information13>;
+		};
 
-			ea5: qcom,cpu5-chars {
-				qcom,sensor = <&sensor_information14>;
-				qcom,cpu-name = <&CPU5>;
-			};
+		ea5: qcom,cpu5-chars {
+			sensor = <&sensor_information14>;
+		};
 
-			ea6: qcom,cpu6-chars {
-				qcom,sensor = <&sensor_information15>;
-				qcom,cpu-name = <&CPU6>;
-			};
+		ea6: qcom,cpu6-chars {
+			sensor = <&sensor_information15>;
+		};
 
-			ea7: qcom,cpu7-chars {
-				qcom,sensor = <&sensor_information6>;
-				qcom,cpu-name = <&CPU7>;
-			};
+		ea7: qcom,cpu7-chars {
+			sensor = <&sensor_information6>;
 		};
 	};
 

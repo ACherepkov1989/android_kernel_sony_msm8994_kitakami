@@ -161,6 +161,8 @@
 	/* I2C : BLSP6 */
 	i2c@f9928000 {
 		qcom,clk-freq-out = <355000>;
+		pinctrl-0 = <&msm_gpio_27_act &msm_gpio_28_act>;
+		pinctrl-1 = <&msm_gpio_27_sus &msm_gpio_28_sus>;
 		status = "ok";
 		synaptics_clearpad@2c {
 			compatible = "synaptics,clearpad";
@@ -388,7 +390,6 @@
 			     &msm_gpio_105 &msm_gpio_106 &msm_gpio_107 &msm_gpio_108 &msm_gpio_109
 			     &msm_gpio_110 &msm_gpio_111 &msm_gpio_112 &msm_gpio_113 &msm_gpio_114
 			     &msm_gpio_122>;
-
 
 		/* If product common default setting is needed,
 		   fill pinctrl-1 value in <product>_common.dtsi */
@@ -1299,8 +1300,10 @@
 &usb3 {
 	qcom,usb_dp-vadc = <&pmi8994_vadc>;
 	qcom,usb_dm-vadc = <&pmi8994_vadc>;
-	usb_switch_sel2 = <&pmi8994_gpios 9 0>;
-	usb_switch_sel  = <&pmi8994_gpios 10 0>;
+//	usb_switch_sel2 = <&pmi8994_gpios 9 0>;
+//	usb_switch_sel  = <&pmi8994_gpios 10 0>;
+	mhl_switch_sel1_gpio = <&pmi8994_gpios 9 0>;
+	mhl_switch_sel2_gpio = <&pmi8994_gpios 10 0>;
 	vbus_rec-supply = <&smbcharger_charger_otg>;
 
 	qcom,usbin-vadc = <&pmi8994_vadc>;
