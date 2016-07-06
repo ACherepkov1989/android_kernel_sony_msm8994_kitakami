@@ -49,26 +49,6 @@
 			 <&clock_gcc clk_gcc_ufs_ahb_clk>;
 		qcom,ce-opp-freq = <171430000>;
 	};
-
-	tlmm_pinmux: pinctrl@fd510000 {
-		pmx_sdc2_clk {
-			sdc2_clk_on: clk_on {
-				drive-strength = <10>; /* 10 MA */
-			};
-		};
-
-		pmx_sdc2_cmd {
-			sdc2_cmd_on: cmd_on {
-				drive-strength = <10>; /* 10 MA */
-			};
-		};
-
-		pmx_sdc2_data {
-			sdc2_data_on: data_on {
-				drive-strength = <10>; /* 10 MA */
-			};
-		};
-	};
 };
 
 &pm8994_gpios {
@@ -139,88 +119,60 @@
 	};
 };
 
-&tlmm_pinmux {
-	/* GPIO_9: USB_SHELL_SEL */
-	msm_gpio_9 {
-		qcom,pin-func = <0>;
-		msm_gpio_9_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-high;
-			/delete-property/ output-low;
-		};
-	};
 
-	/* GPIO_41: NC */
-	msm_gpio_41 {
-		qcom,pin-func = <0>;
-		msm_gpio_41_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-			/delete-property/ bias-pull-up;
-			/delete-property/ input-enable;
-		};
-	};
 
-	/* GPIO_77: NC */
-	msm_gpio_77 {
-		qcom,pin-func = <0>;
-		msm_gpio_77_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-			/delete-property/ input-enable;
-		};
-	};
-
-	/* GPIO_100: TRAY_DET */
-	msm_gpio_100 {
-		qcom,pins = <&gp 100>;
-		qcom,num-grp-pins = <1>;
-		label = "msm_gpio_100";
-		qcom,pin-func = <0>;
-		msm_gpio_100_act: active {
-			drive-strength = <2>;
-			bias-pull-up;
-			input-enable;
-		};
-		msm_gpio_100_sus: suspend {
-			drive-strength = <2>;
-			bias-pull-up;
-			input-enable;
-		};
-		msm_gpio_100_def: default {
-			drive-strength = <2>;
-			bias-pull-up;
-			input-enable;
-		};
-	};
-
-	/* GPIO_107: NC */
-	msm_gpio_107 {
-		qcom,pin-func = <0>;
-		msm_gpio_107_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
-	};
-
-	/* GPIO_122: NC */
-	msm_gpio_122 {
-		qcom,pin-func = <0>;
-		msm_gpio_122_def: default {
-			drive-strength = <2>;
-			bias-disable;
-			output-low;
-		};
+&sdc2_clk_on {
+	config {
+		drive-strength = <10>; /* 10mA */
 	};
 };
 
+&sdc2_cmd_on {
+	config {
+		drive-strength = <10>; /* 10mA */
+	};
+};
+
+&sdc2_data_on {
+	config {
+		drive-strength = <10>; /* 10mA */
+	};
+};
+
+/* GPIO_9: USB_SHELL_SEL */
+&msm_gpio_9 {
+	config {
+		/delete-property/ output-low;
+		output-high;
+	};
+};
+
+/* GPIO_41: NC */
+&msm_gpio_41 {
+	config {
+		/delete-property/ bias-pull-up;
+		/delete-property/ input-enable;
+		bias-disable;
+		output-low;
+	};
+};
+
+/* GPIO_77: NC */
+&msm_gpio_77 {
+	config {
+		/delete-property/ input-enable;
+		output-low;
+	};
+};
+
+/* GPIO_100: TRAY_DET */
+/* GPIO_107: NC */
+/* GPIO_122: NC */
+
 &somc_pinctrl {
-	pinctrl-1 = <&msm_gpio_49_def &msm_gpio_50_def &msm_gpio_51_def &msm_gpio_125_def &msm_gpio_130_def
-		     &msm_gpio_132_def &msm_gpio_133_def &msm_gpio_142_def &msm_gpio_143_def>;
+	pinctrl-1 = <&msm_gpio_49  &msm_gpio_50  &msm_gpio_51  &msm_gpio_125
+		     &msm_gpio_130 &msm_gpio_132 &msm_gpio_133 &msm_gpio_142
+		     &msm_gpio_143>;
 };
 
 &hsphy0 {
@@ -284,6 +236,7 @@
 	reg = <0 0 0 0x1900000>;
 };
 
+/*
 &removed_regions {
 	reg = <0 0x06300000 0 0x9D00000>;
-};
+};*/
