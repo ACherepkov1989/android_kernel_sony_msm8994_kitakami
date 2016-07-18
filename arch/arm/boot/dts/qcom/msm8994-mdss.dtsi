@@ -343,6 +343,7 @@
 			lab-supply = <&lab_regulator>;
 			ibb-supply = <&ibb_regulator>;
 			qcom,mdss-mdp = <&mdss_mdp>;
+			qcom,timing-db-mode;
 
 			clocks = <&clock_mmss clk_mdss_byte0_clk>,
 				 <&clock_mmss clk_mdss_pclk0_clk>,
@@ -387,6 +388,7 @@
 			lab-supply = <&lab_regulator>;
 			ibb-supply = <&ibb_regulator>;
 			qcom,mdss-mdp = <&mdss_mdp>;
+			qcom,timing-db-mode;
 
 			clocks = <&clock_mmss clk_mdss_byte1_clk>,
 				 <&clock_mmss clk_mdss_pclk1_clk>,

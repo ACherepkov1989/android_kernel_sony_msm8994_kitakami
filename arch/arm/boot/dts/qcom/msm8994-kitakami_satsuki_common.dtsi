@@ -185,7 +185,7 @@
 };
 
 &labibb {
-	qpnp-labibb-mode = "lcd";
+	qpnp,qpnp-labibb-mode = "lcd";
 	qcom,qpnp-ibb-discharge-resistor = <32>;
 };
 
@@ -213,7 +213,11 @@
 };
 
 &mdss_fb0 {
-	linux,contiguous-region = <&fb_mem>;
+	memory-region = <&fb_mem>;
+};
+
+&mdss_dsi {
+	hw-config = "split_dsi";
 };
 
 &mdss_dsi0 {
@@ -225,15 +229,24 @@
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 	somc,platform-disp-dcdc-en-gpio = <&msm_gpio 87 0>;
 	/delete-property/ qcom,platform-enable-gpio;
-	qcom,platform-regulator-settings = [];
-	qcom,platform-lane-config = [];
+	qcom,platform-regulator-settings = [03 03 03 00 20 00 01];
+	qcom,platform-lane-config = [02 00 EF 00 20 00 00 01 FF
+				02 00 EF 00 40 00 00 01 FF
+				02 00 EF 40 20 00 00 01 FF
+				02 00 EF 40 00 00 00 01 FF
+				00 00 45 80 00 00 00 01 97];
 };
 
 &mdss_dsi1 {
 	status = "ok";
+	qcom,display-id = "primary";
 	qcom,dsi-pref-prim-pan = <&dsi_dual_1_default_gpio_0>;
-	qcom,platform-regulator-settings = [];
-	qcom,platform-lane-config = [];
+	qcom,platform-regulator-settings = [03 03 03 00 20 00 01];
+	qcom,platform-lane-config = [02 00 EF 00 20 00 00 01 FF
+				02 00 EF 00 40 00 00 01 FF
+				02 00 EF 40 20 00 00 01 FF
+				02 00 EF 40 00 00 00 01 FF
+				00 00 45 80 00 00 00 01 97];
 };
 
 / {
