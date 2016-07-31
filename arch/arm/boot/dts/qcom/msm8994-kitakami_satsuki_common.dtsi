@@ -191,16 +191,40 @@
 
 &lab_regulator {
 	qcom,qpnp-lab-limit-maximum-current = <400>;
+	qcom,qpnp-lab-init-lcd-voltage = <5800000>;
+	regulator-max-microvolt = <5800000>;
 };
 
 &ibb_regulator {
 	qcom,qpnp-ibb-limit-maximum-current = <900>;
+	qcom,qpnp-ibb-init-lcd-voltage = <5600000>;
+	regulator-max-microvolt = <5600000>;
 };
 
 &kitakami_panel_power_supply {
 	qcom,panel-supply-entry@0 {
 		qcom,supply-min-voltage = <1850000>;
 		qcom,supply-max-voltage = <1850000>;
+	};
+
+
+	qcom,panel-supply-entry@1 {
+		reg = <1>;
+		qcom,supply-name = "lab";
+		qcom,supply-min-voltage = <5800000>;
+		qcom,supply-max-voltage = <5800000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+	};
+
+	qcom,panel-supply-entry@2 {
+		reg = <2>;
+		qcom,supply-name = "ibb";
+		qcom,supply-min-voltage = <5600000>;
+		qcom,supply-max-voltage = <5600000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-post-on-sleep = <10>;
 	};
 };
 
@@ -221,6 +245,7 @@
 };
 
 &mdss_dsi0 {
+	qcom,display-id = "primary";
 	qcom,dsi-pref-prim-pan = <&dsi_dual_0_default_gpio_0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&msm_gpio_10 &msm_gpio_56_act &msm_gpio_78_act>;
