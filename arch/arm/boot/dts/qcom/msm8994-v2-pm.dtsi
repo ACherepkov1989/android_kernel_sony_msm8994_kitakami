@@ -76,6 +76,7 @@
 				18 00 30 50 08 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			/* qcom,slp_cmd_mode; */
 		};
 	};
 
@@ -117,6 +118,7 @@
 				e2 3b c0 16 6b 26 6b 48 18 00 30 50 08 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			/* qcom,slp_cmd_mode; */
 		};
 	};
 
@@ -153,6 +155,7 @@
 				3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -189,6 +192,7 @@
 				3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -225,6 +229,7 @@
 				3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -261,6 +266,7 @@
 				3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -298,6 +304,7 @@
 			3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -335,6 +342,7 @@
 			3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -372,6 +380,7 @@
 			3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -409,6 +418,7 @@
 			3b c0 50 00 40 30 0f];
 			qcom,pc_mode;
 			qcom,spm_en;
+			qcom,slp_cmd_mode;
 		};
 	};
 
@@ -445,6 +455,7 @@
 				qcom,time-overhead = <5431>;
 				qcom,min-child-idx = <2>;
 				qcom,notify-rpm;
+				qcom,reset-level = <LPM_RESET_LVL_PC>;
 			};
 
 			qcom,pm-cluster@0{
@@ -475,6 +486,7 @@
 					qcom,energy-overhead = <44460>;
 					qcom,time-overhead = <180>;
 					qcom,min-child-idx = <1>;
+					qcom,reset-level = <LPM_RESET_LVL_RET>;
 				};
 
 				qcom,pm-cluster-level@2{
@@ -486,6 +498,7 @@
 					qcom,energy-overhead = <432250>;
 					qcom,time-overhead = <1750>;
 					qcom,min-child-idx = <3>;
+					qcom,reset-level = <LPM_RESET_LVL_PC>;
 				};
 
 				qcom,pm-cpu {
@@ -509,6 +522,8 @@
 						qcom,energy-overhead = <15975>;
 						qcom,time-overhead = <150>;
 						qcom,use-broadcast-timer;
+						qcom,reset-level =
+							<LPM_RESET_LVL_RET>;
 					};
 
 					qcom,pm-cpu-level@2 {
@@ -519,6 +534,8 @@
 						qcom,energy-overhead = <74550>;
 						qcom,time-overhead = <700>;
 						qcom,use-broadcast-timer;
+						qcom,reset-level =
+							<LPM_RESET_LVL_PC>;
 					};
 
 					qcom,pm-cpu-level@3 {
@@ -529,6 +546,8 @@
 						qcom,energy-overhead = <85200>;
 						qcom,time-overhead = <800>;
 						qcom,use-broadcast-timer;
+						qcom,reset-level =
+							<LPM_RESET_LVL_PC>;
 					};
 				};
 			};
@@ -561,6 +580,7 @@
 					qcom,energy-overhead = <157850>;
 					qcom,time-overhead = <350>;
 					qcom,min-child-idx = <1>;
+					qcom,reset-level = <LPM_RESET_LVL_RET>;
 				};
 
 				qcom,pm-cluster-level@2{
@@ -572,6 +592,7 @@
 					qcom,energy-overhead = <1318724>;
 					qcom,time-overhead = <2924>;
 					qcom,min-child-idx = <3>;
+					qcom,reset-level = <LPM_RESET_LVL_PC>;
 				};
 
 				qcom,pm-cpu {
@@ -595,6 +616,8 @@
 						qcom,energy-overhead = <46800>;
 						qcom,time-overhead = <180>;
 						qcom,use-broadcast-timer;
+						qcom,reset-level =
+							<LPM_RESET_LVL_RET>;
 					};
 
 
@@ -606,6 +629,8 @@
 						qcom,energy-overhead = <201500>;
 						qcom,time-overhead = <775>;
 						qcom,use-broadcast-timer;
+						qcom,reset-level =
+							<LPM_RESET_LVL_PC>;
 					};
 
 					qcom,pm-cpu-level@3 {
@@ -616,6 +641,8 @@
 						qcom,energy-overhead = <248560>;
 						qcom,time-overhead = <956>;
 						qcom,use-broadcast-timer;
+						qcom,reset-level =
+							<LPM_RESET_LVL_PC>;
 					};
 				};
 			};
