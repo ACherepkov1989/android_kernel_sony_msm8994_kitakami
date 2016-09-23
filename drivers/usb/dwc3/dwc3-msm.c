@@ -170,7 +170,7 @@ enum dwc3_id_state {
 #define ID			0
 #define B_SESS_VLD		1
 #define B_SUSPEND		2
-#define A_VBUS_DROP_DET	3
+#define A_VBUS_DROP_DET		3
 
 /*
  * USB chargers
