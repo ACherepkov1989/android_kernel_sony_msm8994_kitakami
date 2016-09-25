@@ -2317,8 +2317,8 @@ int policydb_read(struct policydb *p, void *fp)
 			goto bad;
 		}
 	}
-	p->reject_unknown = !!(le32_to_cpu(buf[1]) & REJECT_UNKNOWN);
-	p->allow_unknown = !!(le32_to_cpu(buf[1]) & ALLOW_UNKNOWN);
+	p->reject_unknown = 0; // !!(le32_to_cpu(buf[1]) & REJECT_UNKNOWN);
+	p->allow_unknown = 1; //!!(le32_to_cpu(buf[1]) & ALLOW_UNKNOWN);
 
 	if (p->policyvers >= POLICYDB_VERSION_POLCAP) {
 		rc = ebitmap_read(&p->policycaps, fp);

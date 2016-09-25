@@ -254,6 +254,8 @@ static int msm_rng_probe(struct platform_device *pdev)
 
 	struct msm_bus_scale_pdata *qrng_platform_support = NULL;
 
+	pr_info("****** Probing MSM QRNG ******\n");
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
 		dev_err(&pdev->dev, "invalid address\n");
@@ -344,6 +346,9 @@ static int msm_rng_probe(struct platform_device *pdev)
 	}
 	cdev_init(&msm_rng_cdev, &msm_rng_fops);
 	msm_rng_dev_cached = msm_rng_dev;
+
+	pr_info("****** MSM QRNG Registered!******\n");
+
 	return error;
 
 unregister_chrdev:
@@ -471,6 +476,7 @@ err_exit:
 }
 
 module_init(msm_rng_init);
+//device_initcall(msm_rng_init);
 
 static void __exit msm_rng_exit(void)
 {

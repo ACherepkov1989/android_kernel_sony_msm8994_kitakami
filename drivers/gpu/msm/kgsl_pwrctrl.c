@@ -1701,11 +1701,11 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	struct msm_bus_scale_pdata *bus_scale_table;
 	struct device_node *gpubw_dev_node = NULL;
 	struct platform_device *p2dev;
-
+pr_info("GET CL ..............\n");
 	bus_scale_table = msm_bus_cl_get_pdata(device->pdev);
 	if (bus_scale_table == NULL)
 		return -EINVAL;
-
+pr_info("GET CLOCKS ..............\n");
 	result = _get_clocks(device);
 	if (result)
 		return result;
@@ -1713,11 +1713,11 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	/* Make sure we have a source clk for freq setting */
 	if (pwr->grp_clks[0] == NULL)
 		pwr->grp_clks[0] = pwr->grp_clks[1];
-
+pr_info("DEEP NAP ..............\n");
 	if (of_property_read_u32(pdev->dev.of_node, "qcom,deep-nap-timeout",
 		&pwr->deep_nap_timeout))
 		pwr->deep_nap_timeout = 20;
-
+pr_info("GX RETENTION ..............\n");
 	pwr->gx_retention = of_property_read_bool(pdev->dev.of_node,
 						"qcom,gx-retention");
 	if (pwr->gx_retention) {
@@ -1728,7 +1728,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 			KGSL_CORE_ERR("Couldn't get clock: mx_clk\n");
 		}
 	}
-
+pr_info("BIMC INTERFACE CLK ..............\n");
 	/* Getting gfx-bimc-interface-clk frequency */
 	if (!of_property_read_u32(pdev->dev.of_node,
 			"qcom,gpu-bimc-interface-clk-freq",
@@ -1750,7 +1750,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->thermal_pwrlevel = 0;
 
 	pwr->wakeup_maxpwrlevel = 0;
-
+pr_info("POWERLEVELS ..............\n");
 	for (i = 0; i < pwr->num_pwrlevels; i++) {
 		unsigned int freq = pwr->pwrlevels[i].gpu_freq;
 
@@ -1767,18 +1767,20 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		clk_round_rate(pwr->grp_clks[6], KGSL_RBBMTIMER_CLK_FREQ));
 
 	result = get_regulators(device);
-	if (result)
+	if (result) {
+		pr_err("---------------RETURNING FROM GET REGULATORS-----------------\n");
 		return result;
+	}
 
 	pwr->power_flags = 0;
-
+pr_info("L2PC CPU MASK ..............\n");
 	kgsl_property_read_u32(device, "qcom,l2pc-cpu-mask",
 			&pwr->l2pc_cpus_mask);
 
 	pm_runtime_enable(&pdev->dev);
-
+pr_info("OCMEM BUS NODE ..............\n");
 	ocmem_bus_node = of_find_node_by_name(
-				device->pdev->dev.of_node,
+				pdev->dev.of_node,
 				"qcom,ocmem-bus-client");
 	/* If platform has splitted ocmem bus client - use it */
 	if (ocmem_bus_node) {
@@ -1788,15 +1790,19 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 			pwr->ocmem_pcl = msm_bus_scale_register_client
 					(ocmem_scale_table);
 
-		if (!pwr->ocmem_pcl)
-			return -EINVAL;
+		if (!pwr->ocmem_pcl) {
+			ocmem_bus_node = NULL;
+			pr_info("%s: Invalid ocmem bus client. Not fatal.\n",
+				__func__);
+			//return -EINVAL;
+		}
 	}
 
 	/* Bus width in bytes, set it to zero if not found */
 	if (of_property_read_u32(pdev->dev.of_node, "qcom,bus-width",
 		&pwr->bus_width))
 		pwr->bus_width = 0;
-
+pr_info("FIND GPUBW ..............\n");
 	/* Check if gpu bandwidth vote device is defined in dts */
 	if (pwr->bus_control)
 		/* Check if gpu bandwidth vote device is defined in dts */
@@ -1819,15 +1825,19 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		 * from the driver.
 		 */
 		pwr->pcl = msm_bus_scale_register_client(bus_scale_table);
-		if (pwr->pcl == 0)
+		if (pwr->pcl == 0) {
+			pr_err("---------------CANNOT REGISTER BUS SCALE CLIENT----------------\n");
 			return -EINVAL;
+		}
 	}
 
 	pwr->bus_ib = kzalloc(bus_scale_table->num_usecases *
 		sizeof(*pwr->bus_ib), GFP_KERNEL);
-	if (pwr->bus_ib == NULL)
+	if (pwr->bus_ib == NULL) {
+		pr_err("------------KGSL PWRCTL ARGHHHHHHHHHHHHHHHH----------\n");
 		return -ENOMEM;
-
+	}
+pr_info("BWVOTE..............\n");
 	/*
 	 * Pull the BW vote out of the bus table.  They will be used to
 	 * calculate the ratio between the votes.
@@ -1868,7 +1878,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 			}
 		}
 	}
-
+pr_info("INIT WORK..............\n");
 	INIT_WORK(&pwr->thermal_cycle_ws, kgsl_thermal_cycle);
 	setup_timer(&pwr->thermal_timer, kgsl_thermal_timer,
 			(unsigned long) device);
@@ -1880,6 +1890,8 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	setup_timer(&pwr->deep_nap_timer, kgsl_deep_nap_timer,
 			(unsigned long) device);
 	devfreq_vbif_register_callback(kgsl_get_bw);
+
+pr_info("RETURN RESULT..............\n");
 
 	return result;
 }

@@ -157,6 +157,7 @@ void adreno_readreg64(struct adreno_device *adreno_dev,
  * @hi:	higher 32bit register enum that is to be written
  * @val: 64 bit value to write
  */
+/*
 void adreno_writereg64(struct adreno_device *adreno_dev,
 		enum adreno_regs lo, enum adreno_regs hi, uint64_t val)
 {
@@ -169,7 +170,7 @@ void adreno_writereg64(struct adreno_device *adreno_dev,
 		kgsl_regwrite(KGSL_DEVICE(adreno_dev),
 			gpudev->reg_offsets->offsets[hi], upper_32_bits(val));
 }
-
+*/
 /**
  * adreno_get_rptr() - Get the current ringbuffer read pointer
  * @rb: Pointer the ringbuffer to query

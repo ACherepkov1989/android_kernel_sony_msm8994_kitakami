@@ -175,7 +175,7 @@ static int cmd_panel_detect(struct mdss_panel_data *pdata)
 	mdss_dsi_cmds_rx(ctrl_pdata,
 			 spec_pdata->id_read_cmds.cmds, 10, 0);
 
-	pr_debug("0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X",
+	pr_info("0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X",
 		ctrl_pdata->rx_buf.data[0], ctrl_pdata->rx_buf.data[1],
 		ctrl_pdata->rx_buf.data[2], ctrl_pdata->rx_buf.data[3],
 		ctrl_pdata->rx_buf.data[4], ctrl_pdata->rx_buf.data[5],
@@ -211,7 +211,7 @@ static int cmd_panel_detect(struct mdss_panel_data *pdata)
 			if ((len == 1) && (data[0] == PANEL_SKIP_ID))
 				continue;
 			for (i = 0; i < len; i++) {
-				pr_debug("Read data:0x%02X DT data:0x%02X ",
+				pr_info("Read data:0x%02X DT data:0x%02X ",
 					rx_data[i], data[i]);
 				if ((rx_data[i] != data[i]) &&
 					(data[i] != PANEL_SKIP_ID))
