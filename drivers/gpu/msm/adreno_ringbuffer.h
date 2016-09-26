@@ -111,6 +111,7 @@ struct adreno_ringbuffer {
 	struct kgsl_memdesc buffer_desc;
 	unsigned int _wptr;
 	unsigned int wptr;
+	unsigned int rptr;
 	unsigned int last_wptr;
 	int id;
 	unsigned int fault_detect_ts;
@@ -131,6 +132,9 @@ struct adreno_ringbuffer {
 
 /* Returns the current ringbuffer */
 #define ADRENO_CURRENT_RINGBUFFER(a)	((a)->cur_rb)
+
+#define KGSL_MEMSTORE_RB_OFFSET(rb, field)	\
+	KGSL_MEMSTORE_OFFSET((rb->id + KGSL_MEMSTORE_MAX), field)
 
 int cp_secure_mode(struct adreno_device *adreno_dev, uint *cmds, int set);
 

@@ -736,7 +736,6 @@ static unsigned int a4xx_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_WFI_PEND_CTR, A4XX_CP_WFI_PEND_CTR),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_RB_BASE, A4XX_CP_RB_BASE),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_RB_BASE_HI, ADRENO_REG_SKIP),
-	ADRENO_REG_DEFINE(ADRENO_REG_CP_RB_RPTR_ADDR_LO, A4XX_CP_RB_RPTR_ADDR),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_RB_RPTR, A4XX_CP_RB_RPTR),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_RB_WPTR, A4XX_CP_RB_WPTR),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_CNTL, A4XX_CP_CNTL),
@@ -1532,14 +1531,7 @@ static int a4xx_rb_start(struct adreno_device *adreno_dev,
 			 unsigned int start_type)
 {
 	struct adreno_ringbuffer *rb = ADRENO_CURRENT_RINGBUFFER(adreno_dev);
-	struct kgsl_device *device = &adreno_dev->dev;
-	uint64_t addr;
 	int ret;
-
-	addr = SCRATCH_RPTR_GPU_ADDR(device, rb->id);
-
-	adreno_writereg64(adreno_dev, ADRENO_REG_CP_RB_RPTR_ADDR_LO,
-			ADRENO_REG_CP_RB_RPTR_ADDR_HI, addr);
 
 	/*
 	 * The size of the ringbuffer in the hardware is the log2
@@ -1549,8 +1541,8 @@ static int a4xx_rb_start(struct adreno_device *adreno_dev,
 	 */
 
 	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_CNTL,
-			((ilog2(4) << 8) & 0x1F00) |
-			(ilog2(KGSL_RB_DWORDS >> 1) & 0x3F));
+		(ilog2(KGSL_RB_DWORDS >> 1) & 0x3F) |
+		(1 << 27));
 
 	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_BASE,
 			  rb->buffer_desc.gpuaddr);
@@ -1666,9 +1658,7 @@ static void a4xx_preempt_callback(struct adreno_device *adreno_dev, int bit)
 		return;
 
 	trace_adreno_hw_preempt_trig_to_comp_int(adreno_dev->cur_rb,
-			      adreno_dev->next_rb,
-			      adreno_get_rptr(adreno_dev->cur_rb),
-			      adreno_get_rptr(adreno_dev->next_rb));
+			      adreno_dev->next_rb);
 
 	adreno_dispatcher_schedule(KGSL_DEVICE(adreno_dev));
 }

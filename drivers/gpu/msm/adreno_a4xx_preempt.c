@@ -22,13 +22,12 @@ static void a4xx_preemption_timer(unsigned long data)
 {
 	struct adreno_device *adreno_dev = (struct adreno_device *) data;
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
-	unsigned int cur_rptr = adreno_get_rptr(adreno_dev->cur_rb);
-	unsigned int next_rptr = adreno_get_rptr(adreno_dev->next_rb);
 
 	KGSL_DRV_ERR(device,
 		"Preemption timed out. cur_rb rptr/wptr %x/%x id %d, next_rb rptr/wptr %x/%x id %d, disp_state: %d\n",
-		cur_rptr, adreno_dev->cur_rb->wptr, adreno_dev->cur_rb->id,
-		next_rptr, adreno_dev->next_rb->wptr, adreno_dev->next_rb->id,
+		adreno_dev->cur_rb->rptr, adreno_dev->cur_rb->wptr,
+		adreno_dev->cur_rb->id, adreno_dev->next_rb->rptr,
+		adreno_dev->next_rb->wptr, adreno_dev->next_rb->id,
 		atomic_read(&adreno_dev->preempt.state));
 
 	adreno_set_gpu_fault(adreno_dev, ADRENO_PREEMPT_FAULT);
@@ -58,7 +57,7 @@ unsigned int a4xx_preemption_pre_ibsubmit(struct adreno_device *adreno_dev,
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	unsigned int *cmds_orig = cmds;
 	unsigned int cond_addr = device->memstore.gpuaddr +
-		MEMSTORE_ID_GPU_ADDR(device, context->id, preempted);
+		KGSL_MEMSTORE_OFFSET(context->id, preempted);
 
 	cmds += a4xx_preemption_token(adreno_dev, cmds, cond_addr);
 
@@ -98,10 +97,9 @@ static void a4xx_preemption_start(struct adreno_device *adreno_dev,
 	/* scratch REG9 corresponds to CP_RB_CNTL register */
 	kgsl_regwrite(device, A4XX_CP_SCRATCH_REG9, val);
 	/* scratch REG10 corresponds to rptr address */
-	kgsl_regwrite(device, A4XX_CP_SCRATCH_REG10,
-		SCRATCH_RPTR_GPU_ADDR(device, rb->id));
+	kgsl_regwrite(device, A4XX_CP_SCRATCH_REG10, 0);
 	/* scratch REG11 corresponds to rptr */
-	kgsl_regwrite(device, A4XX_CP_SCRATCH_REG11, adreno_get_rptr(rb));
+	kgsl_regwrite(device, A4XX_CP_SCRATCH_REG11, rb->rptr);
 	/* scratch REG12 corresponds to wptr */
 	kgsl_regwrite(device, A4XX_CP_SCRATCH_REG12, rb->wptr);
 	/*
@@ -124,6 +122,7 @@ static void a4xx_preemption_save(struct adreno_device *adreno_dev,
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 
+	kgsl_regread(device, A4XX_CP_SCRATCH_REG18, &rb->rptr);
 	kgsl_regread(device, A4XX_CP_SCRATCH_REG23, &rb->gpr11);
 }
 
@@ -187,7 +186,7 @@ static int a4xx_submit_preempt_token(struct adreno_ringbuffer *rb,
 
 	ringcmds += a4xx_preemption_token(adreno_dev, ringcmds,
 				device->memstore.gpuaddr +
-				MEMSTORE_RB_OFFSET(rb, preempted));
+				KGSL_MEMSTORE_RB_OFFSET(rb, preempted));
 
 	if ((uint)(ringcmds - start) > total_sizedwords) {
 		KGSL_DRV_ERR(device, "Insufficient rb size allocated\n");
@@ -245,9 +244,7 @@ static void a4xx_preempt_trig_state(struct adreno_device *adreno_dev)
 			KGSL_DRV_INFO(device,
 			"Preemption completed without interrupt\n");
 			trace_adreno_hw_preempt_trig_to_comp(adreno_dev->cur_rb,
-					adreno_dev->next_rb,
-					adreno_get_rptr(adreno_dev->cur_rb),
-					adreno_get_rptr(adreno_dev->next_rb));
+					adreno_dev->next_rb);
 			adreno_set_preempt_state(adreno_dev,
 				ADRENO_PREEMPT_COMPLETE);
 			adreno_dispatcher_schedule(device);
@@ -275,7 +272,9 @@ static void a4xx_preempt_trig_state(struct adreno_device *adreno_dev)
 	 * commands that got submitted to current RB after triggering preemption
 	 * then submit them as those commands may have a preempt token in them
 	 */
-	if (!adreno_rb_empty(adreno_dev->cur_rb)) {
+	adreno_readreg(adreno_dev, ADRENO_REG_CP_RB_RPTR,
+			&adreno_dev->cur_rb->rptr);
+	if (adreno_dev->cur_rb->rptr != adreno_dev->cur_rb->wptr) {
 		/*
 		 * Memory barrier before informing the
 		 * hardware of new commands
@@ -302,9 +301,7 @@ static void a4xx_preempt_trig_state(struct adreno_device *adreno_dev)
 	adreno_dev->preempt.token_submit = true;
 	adreno_dev->cur_rb->wptr_preempt_end = adreno_dev->cur_rb->wptr;
 	trace_adreno_hw_preempt_token_submit(adreno_dev->cur_rb,
-			adreno_dev->next_rb,
-			adreno_get_rptr(adreno_dev->cur_rb),
-			adreno_get_rptr(adreno_dev->next_rb));
+			adreno_dev->next_rb);
 }
 
 static struct adreno_ringbuffer *a4xx_next_ringbuffer(
@@ -314,7 +311,7 @@ static struct adreno_ringbuffer *a4xx_next_ringbuffer(
 	int i;
 
 	FOR_EACH_RINGBUFFER(adreno_dev, rb, i) {
-		if (!adreno_rb_empty(rb) && next == NULL) {
+		if (rb->rptr != rb->wptr && next == NULL) {
 			next = rb;
 			continue;
 		}
@@ -324,7 +321,7 @@ static struct adreno_ringbuffer *a4xx_next_ringbuffer(
 
 		switch (rb->starve_timer_state) {
 		case ADRENO_DISPATCHER_RB_STARVE_TIMER_UNINIT:
-			if (!adreno_rb_empty(rb) &&
+			if (rb->rptr != rb->wptr &&
 				adreno_dev->cur_rb != rb) {
 				rb->starve_timer_state =
 				ADRENO_DISPATCHER_RB_STARVE_TIMER_INIT;
@@ -347,7 +344,7 @@ static struct adreno_ringbuffer *a4xx_next_ringbuffer(
 			 * If the RB has not been running for the minimum
 			 * time slice then allow it to run
 			 */
-			if (!adreno_rb_empty(rb) && time_before(jiffies,
+			if (rb->rptr != rb->wptr && time_before(jiffies,
 				adreno_dev->cur_rb->sched_timer +
 				msecs_to_jiffies(adreno_dispatch_time_slice)))
 				next = rb;
@@ -376,6 +373,10 @@ static void a4xx_preempt_clear_state(struct adreno_device *adreno_dev)
 	if (!kgsl_state_is_awake(device))
 		return;
 
+	/* keep updating the current rptr when preemption is clear */
+	adreno_readreg(adreno_dev, ADRENO_REG_CP_RB_RPTR,
+			&(adreno_dev->cur_rb->rptr));
+
 	highest_busy_rb = a4xx_next_ringbuffer(adreno_dev);
 	if (!highest_busy_rb || highest_busy_rb == adreno_dev->cur_rb)
 		return;
@@ -389,7 +390,7 @@ static void a4xx_preempt_clear_state(struct adreno_device *adreno_dev)
 		 * if switching to lower priority make sure that the rptr and
 		 * wptr are equal, when the lower rb is not starved
 		 */
-		if (!adreno_rb_empty(adreno_dev->cur_rb))
+		if (adreno_dev->cur_rb->rptr != adreno_dev->cur_rb->wptr)
 			return;
 		/*
 		 * switch to default context because when we switch back
@@ -429,9 +430,7 @@ static void a4xx_preempt_clear_state(struct adreno_device *adreno_dev)
 		msecs_to_jiffies(ADRENO_PREEMPT_TIMEOUT));
 
 	trace_adreno_hw_preempt_clear_to_trig(adreno_dev->cur_rb,
-			adreno_dev->next_rb,
-			adreno_get_rptr(adreno_dev->cur_rb),
-			adreno_get_rptr(adreno_dev->next_rb));
+			adreno_dev->next_rb);
 	/* issue PREEMPT trigger */
 	adreno_writereg(adreno_dev, ADRENO_REG_CP_PREEMPT, 1);
 
@@ -459,7 +458,6 @@ static void a4xx_preempt_complete_state(struct adreno_device *adreno_dev)
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	unsigned int wptr, rbbase;
 	unsigned int val, val1;
-	unsigned int prevrptr;
 
 	del_timer_sync(&adreno_dev->preempt.timer);
 
@@ -489,9 +487,7 @@ static void a4xx_preempt_complete_state(struct adreno_device *adreno_dev)
 
 	/* new RB is the current RB */
 	trace_adreno_hw_preempt_comp_to_clear(adreno_dev->next_rb,
-			adreno_dev->cur_rb,
-			adreno_get_rptr(adreno_dev->next_rb),
-			adreno_get_rptr(adreno_dev->cur_rb));
+			adreno_dev->cur_rb);
 
 	adreno_dev->prev_rb = adreno_dev->cur_rb;
 	adreno_dev->cur_rb = adreno_dev->next_rb;
@@ -511,7 +507,7 @@ static void a4xx_preempt_complete_state(struct adreno_device *adreno_dev)
 		 * If the outgoing RB is has commands then set the
 		 * busy time for it
 		 */
-		if (!adreno_rb_empty(adreno_dev->prev_rb)) {
+		if (adreno_dev->prev_rb->rptr != adreno_dev->prev_rb->wptr) {
 			adreno_dev->prev_rb->starve_timer_state =
 				ADRENO_DISPATCHER_RB_STARVE_TIMER_INIT;
 			adreno_dev->prev_rb->sched_timer = jiffies;
@@ -522,13 +518,13 @@ static void a4xx_preempt_complete_state(struct adreno_device *adreno_dev)
 	}
 	adreno_set_preempt_state(adreno_dev, ADRENO_PREEMPT_NONE);
 
-	prevrptr = adreno_get_rptr(adreno_dev->prev_rb);
-
 	if (adreno_compare_prio_level(adreno_dev->prev_rb->id,
 				adreno_dev->cur_rb->id) < 0) {
-		if (adreno_dev->prev_rb->wptr_preempt_end != prevrptr)
+		if (adreno_dev->prev_rb->wptr_preempt_end !=
+			adreno_dev->prev_rb->rptr)
 			adreno_dev->prev_rb->preempted_midway = 1;
-	} else if (adreno_dev->prev_rb->wptr_preempt_end != prevrptr)
+	} else if (adreno_dev->prev_rb->wptr_preempt_end !=
+			adreno_dev->prev_rb->rptr)
 		BUG();
 
 	/* submit wptr if required for new rb */

@@ -204,10 +204,10 @@ int adreno_ringbuffer_start(struct adreno_device *adreno_dev,
 	FOR_EACH_RINGBUFFER(adreno_dev, rb, i) {
 		kgsl_sharedmem_set(device, &(rb->buffer_desc),
 				0, 0xAA, KGSL_RB_SIZE);
-		kgsl_sharedmem_writel(device, &device->scratch,
-				SCRATCH_RPTR_OFFSET(rb->id), 0);
+
 		rb->wptr = 0;
 		rb->_wptr = 0;
+		rb->rptr = 0;
 		rb->wptr_preempt_end = 0xFFFFFFFF;
 		rb->starve_timer_state =
 			ADRENO_DISPATCHER_RB_STARVE_TIMER_UNINIT;
@@ -387,6 +387,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	unsigned int total_sizedwords = sizedwords;
 	unsigned int i;
 	unsigned int context_id = 0;
+	uint64_t gpuaddr = device->memstore.gpuaddr;
 	bool profile_ready;
 	struct adreno_context *drawctxt = rb->drawctxt_active;
 	struct kgsl_context *context = NULL;
@@ -542,12 +543,12 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	/* start-of-pipeline timestamp for the context */
 	if (drawctxt && !(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE))
 		ringcmds += cp_mem_write(adreno_dev, ringcmds,
-			MEMSTORE_ID_GPU_ADDR(device, context_id, soptimestamp),
-			timestamp);
+			gpuaddr + KGSL_MEMSTORE_OFFSET(context_id,
+			soptimestamp), timestamp);
 
 	/* start-of-pipeline timestamp for the ringbuffer */
 	ringcmds += cp_mem_write(adreno_dev, ringcmds,
-		MEMSTORE_RB_GPU_ADDR(device, rb, soptimestamp), rb->timestamp);
+		gpuaddr + KGSL_MEMSTORE_RB_OFFSET(rb, soptimestamp), rb->timestamp);
 
 	if (secured_ctxt)
 		ringcmds += cp_secure_mode(adreno_dev, ringcmds, 1);
@@ -596,9 +597,9 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	 * early detection of timestamp interrupt storms to stave
 	 * off system collapse.
 	 */
-	ringcmds += cp_mem_write(adreno_dev, ringcmds,
-		MEMSTORE_ID_GPU_ADDR(device, KGSL_MEMSTORE_GLOBAL,
-			ref_wait_ts), ++_seq_cnt);
+	ringcmds += cp_mem_write(adreno_dev, ringcmds,gpuaddr +
+			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
+				ref_wait_ts), ++_seq_cnt);
 
 	/*
 	 * end-of-pipeline timestamp.  If per context timestamps is not
@@ -612,17 +613,17 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		*ringcmds++ = CACHE_FLUSH_TS;
 
 	if (drawctxt && !(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE)) {
-		ringcmds += cp_gpuaddr(adreno_dev, ringcmds,
-			MEMSTORE_ID_GPU_ADDR(device, context_id, eoptimestamp));
+		ringcmds += cp_gpuaddr(adreno_dev, ringcmds,gpuaddr +
+				KGSL_MEMSTORE_OFFSET(context_id, eoptimestamp));
 		*ringcmds++ = timestamp;
 
 		/* Write the end of pipeline timestamp to the ringbuffer too */
-		ringcmds += cp_mem_write(adreno_dev, ringcmds,
-			MEMSTORE_RB_GPU_ADDR(device, rb, eoptimestamp),
-			rb->timestamp);
+		ringcmds += cp_mem_write(adreno_dev, ringcmds, gpuaddr +
+				KGSL_MEMSTORE_RB_OFFSET(rb, eoptimestamp),
+				rb->timestamp);
 	} else {
-		ringcmds += cp_gpuaddr(adreno_dev, ringcmds,
-			MEMSTORE_RB_GPU_ADDR(device, rb, eoptimestamp));
+		ringcmds += cp_gpuaddr(adreno_dev, ringcmds, gpuaddr +
+				KGSL_MEMSTORE_RB_OFFSET(rb, eoptimestamp));
 		*ringcmds++ = timestamp;
 	}
 

@@ -308,11 +308,11 @@ static void _retire_marker(struct kgsl_cmdbatch *cmdbatch)
 	 * So avoid reading GPU register directly for A3xx.
 	 */
 	if (adreno_is_a3xx(adreno_dev))
-		trace_adreno_cmdbatch_retired(cmdbatch, -1, 0, 0, drawctxt->rb,
-				0);
+		trace_adreno_cmdbatch_retired(cmdbatch, -1, 0, 0, drawctxt->rb); //,
+				//0);
 	else
-		trace_adreno_cmdbatch_retired(cmdbatch, -1, 0, 0, drawctxt->rb,
-			adreno_get_rptr(drawctxt->rb));
+		trace_adreno_cmdbatch_retired(cmdbatch, -1, 0, 0, drawctxt->rb); //,
+			//0); //adreno_get_rptr(drawctxt->rb));
 	kgsl_cmdbatch_destroy(cmdbatch);
 }
 
@@ -650,8 +650,7 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	nsecs = do_div(secs, 1000000000);
 
 	trace_adreno_cmdbatch_submitted(cmdbatch, (int) dispatcher->inflight,
-		time.ticks, (unsigned long) secs, nsecs / 1000, drawctxt->rb,
-		adreno_get_rptr(drawctxt->rb));
+		time.ticks, (unsigned long) secs, nsecs / 1000, drawctxt->rb);
 
 	mutex_unlock(&device->mutex);
 
@@ -1394,7 +1393,7 @@ static void adreno_fault_header(struct kgsl_device *device,
 		if (rb != NULL)
 			pr_fault(device, cmdbatch,
 				"gpu fault rb %d rb sw r/w %4.4x/%4.4x\n",
-				rb->id, rptr, rb->wptr);
+				rb->id, rb->rptr, rb->wptr);
 	} else {
 		int id = (rb != NULL) ? rb->id : -1;
 
@@ -1405,7 +1404,7 @@ static void adreno_fault_header(struct kgsl_device *device,
 		if (rb != NULL)
 			dev_err(device->dev,
 				"RB[%d] gpu fault rb sw r/w %4.4x/%4.4x\n",
-				rb->id, rptr, rb->wptr);
+				rb->id, rb->rptr, rb->wptr);
 	}
 }
 
@@ -1801,6 +1800,8 @@ static int dispatcher_do_fault(struct adreno_device *adreno_dev)
 		if (base == rb->buffer_desc.gpuaddr) {
 			dispatch_q = &(rb->dispatch_q);
 			hung_rb = rb;
+			adreno_readreg(adreno_dev, ADRENO_REG_CP_RB_RPTR,
+				&hung_rb->rptr);
 			if (adreno_dev->cur_rb != hung_rb) {
 				adreno_dev->prev_rb = adreno_dev->cur_rb;
 				adreno_dev->cur_rb = hung_rb;
@@ -1843,12 +1844,12 @@ static int dispatcher_do_fault(struct adreno_device *adreno_dev)
 
 	if (hung_rb != NULL) {
 		kgsl_sharedmem_writel(device, &device->memstore,
-				MEMSTORE_RB_OFFSET(hung_rb, soptimestamp),
-				hung_rb->timestamp);
+			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_MAX + hung_rb->id,
+				soptimestamp), hung_rb->timestamp);
 
 		kgsl_sharedmem_writel(device, &device->memstore,
-				MEMSTORE_RB_OFFSET(hung_rb, eoptimestamp),
-				hung_rb->timestamp);
+			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_MAX + hung_rb->id,
+				eoptimestamp), hung_rb->timestamp);
 
 		/* Schedule any pending events to be run */
 		kgsl_process_event_group(device, &hung_rb->events);
@@ -1944,12 +1945,12 @@ static void retire_cmdbatch(struct adreno_device *adreno_dev,
 	if (adreno_is_a3xx(adreno_dev))
 		trace_adreno_cmdbatch_retired(cmdbatch,
 				(int) dispatcher->inflight, start, end,
-				ADRENO_CMDBATCH_RB(cmdbatch), 0);
+				ADRENO_CMDBATCH_RB(cmdbatch)); //, 0);
 	else
 		trace_adreno_cmdbatch_retired(cmdbatch,
 				(int) dispatcher->inflight, start, end,
-				ADRENO_CMDBATCH_RB(cmdbatch),
-				adreno_get_rptr(drawctxt->rb));
+				ADRENO_CMDBATCH_RB(cmdbatch)); //,
+				//adreno_get_rptr(drawctxt->rb));
 
 	drawctxt->submit_retire_ticks[drawctxt->ticks_index] =
 		end - cmdbatch->submit_ticks;

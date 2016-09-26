@@ -1150,8 +1150,6 @@ static int kgsl_open_device(struct kgsl_device *device)
 		atomic_inc(&device->active_cnt);
 		kgsl_sharedmem_set(device, &device->memstore, 0, 0,
 				device->memstore.size);
-		kgsl_sharedmem_set(device, &device->scratch, 0, 0,
-				device->scratch.size);
 
 		result = device->ftbl->init(device);
 		if (result)
@@ -3910,13 +3908,11 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	status = kgsl_allocate_global(device, &device->memstore,
 		KGSL_MEMSTORE_SIZE, 0, KGSL_MEMDESC_CONTIG);
 
-	if (status != 0)
+	if (status != 0) {
+		KGSL_DRV_ERR(device, "kgsl_allocate_global failed %d\n",
+				status);
 		goto error_close_mmu;
-
-	status = kgsl_allocate_global(device, &device->scratch,
-		PAGE_SIZE, 0, 0);
-	if (status != 0)
-		goto error_free_memstore;
+	}
 
 	/*
 	 * The default request type PM_QOS_REQ_ALL_CORES is
@@ -3966,8 +3962,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 
 	return 0;
 
-error_free_memstore:
-	kgsl_free_global(device, &device->memstore);
 error_close_mmu:
 	kgsl_mmu_close(device);
 error_pwrctrl_close:
@@ -3993,8 +3987,6 @@ void kgsl_device_platform_remove(struct kgsl_device *device)
 		pm_qos_remove_request(&device->pwrctrl.l2pc_cpus_qos);
 
 	idr_destroy(&device->context_idr);
-
-	kgsl_free_global(device, &device->scratch);
 
 	kgsl_free_global(device, &device->memstore);
 
