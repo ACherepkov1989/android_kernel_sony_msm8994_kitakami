@@ -79,6 +79,16 @@ config DEVFREQ_GOV_MSM_ADRENO_TZ
 	  Sets the frequency using a "on-demand" algorithm.
 	  This governor is unlikely to be useful for other devices.
 
+config DEVFREQ_GOV_MSM_ADRENO_TZ_CURRENT
+        bool
+        depends on DEVFREQ_GOV_MSM_ADRENO_TZ && MSM_KGSL_CURRENT
+        default y
+
+config DEVFREQ_GOV_MSM_ADRENO_TZ_LEGACY
+        bool
+        depends on DEVFREQ_GOV_MSM_ADRENO_TZ && MSM_KGSL_LEGACY
+        default y
+
 config MSM_BIMC_BWMON
 	tristate "MSM BIMC Bandwidth monitor hardware"
 	depends on ARCH_MSM
