@@ -19,6 +19,7 @@ dtb-$(CONFIG_MACH_SONY_SATSUKI_DSDS)	+= msm8994-v2.0-kitakami_satsuki_dsds.dtb
 dtb-$(CONFIG_MACH_SONY_SATSUKI_DSDS)	+= msm8994-v2.1-kitakami_satsuki_dsds.dtb
 
 # MSM8939/MSM8936
+dtb-$(CONFIG_MACH_SONY_TULIP)		+= msm8936-kanuti_tulip.dtb
 dtb-$(CONFIG_MACH_SONY_TULIP)		+= msm8939-kanuti_tulip.dtb
 
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
