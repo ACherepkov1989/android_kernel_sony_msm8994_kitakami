@@ -1,4 +1,4 @@
-# Copyright (c) 2014, The Linux Foundation. All rights reserved.
+# Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -30,9 +30,11 @@ if [ -d /system/lib/modules/ ]; then
 	cp $modpath/modsign_test_module.ko /data/modsign_test_module.ko
 	modpath=/data
 elif [ -d /kernel-tests/modules/lib/modules/$(uname -r)/extra ]; then
-	modpath=/kernel-tests/modules/lib/modules/$(uname -r)/extra
+	modpath=/kernel-tests/modules/lib/modules/$(uname -r)
+	cp "$modpath"/extra/modsign_test_module.ko "$modpath"
 elif [ -d /kernel-tests/modules/lib/modules/$(uname -r)-dirty/extra ]; then
-	modpath=/kernel-tests/modules/lib/modules/$(uname -r)-dirty/extra
+	modpath=/kernel-tests/modules/lib/modules/$(uname -r)-dirty
+	cp "$modpath"/extra/modsign_test_module.ko "$modpath"
 fi
 
 modsign_test_module=${modpath}/modsign_test_module.ko
@@ -95,22 +97,7 @@ modsign_test() {
 		return;
 	fi
 
-	sed -i '1s/.//' $modsign_test_module
-
-	insmod $modsign_test_module
-	if [ $? -ne 0 ]; then
-		echo "ERROR: failed to load module $modsign_test_module_name"
-		test_result=1
-		return;
-	fi
-
-	# remove modsign_test_module after test
-	rmmod $modsign_test_module > /dev/null 2>&1
-	if [ $? -ne 0 ]; then
-		echo "ERROR: failed to remove module $modsign_test_module_name"
-		test_result=1
-		return;
-	fi
+	rm -f "$modsign_test_module"
 
 	test_result=0
 	return;

@@ -8,7 +8,6 @@ TEST DESCRITION:
 The test verifies that for a kernel with module signature configs enabled:
 * only signed modules can get loaded into the kernel & not the unsigned ones.
 * signed module fails to load after being edited.
-* signed module gets loaded successfully after reverting any edits made to it.
 
 TARGETS:
 The test is supported on all targets with the module signature configs enabled.

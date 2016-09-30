@@ -1,14 +1,5 @@
-BOARD_PLATFORM_LIST := msm8660
-BOARD_PLATFORM_LIST += msm8960
-BOARD_PLATFORM_LIST += apq8064
-BOARD_PLATFORM_LIST += msm8930
-BOARD_PLATFORM_LIST += msm8974
-BOARD_PLATFORM_LIST += mdm9625
-BOARD_PLATFORM_LIST += msm8226
-BOARD_PLATFORM_LIST += msm8610
-BOARD_PLATFORM_LIST += plutonium
-
-ifneq (,$(filter  $(BOARD_PLATFORM_LIST),$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter $(QCOM_BOARD_PLATFORMS),$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter arm aarch64 arm64, $(TARGET_ARCH)))
 
 DLKM_DIR   := device/qcom/common/dlkm
 LOCAL_PATH := $(call my-dir)
@@ -30,4 +21,5 @@ LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA)/kernel-tests
 include $(BUILD_EXECUTABLE)
 
+endif
 endif
