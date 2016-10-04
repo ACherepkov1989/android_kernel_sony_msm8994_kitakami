@@ -97,8 +97,8 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_default_gpio_0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&msm_gpio_10_act &msm_gpio_56_act &msm_gpio_78_act>;
-	pinctrl-1 = <&msm_gpio_10_sus &msm_gpio_56_sus &msm_gpio_78_sus>;
+	pinctrl-0 = <&msm_gpio_10 &msm_gpio_56_act &msm_gpio_78_act>;
+	pinctrl-1 = <&msm_gpio_10 &msm_gpio_56_sus &msm_gpio_78_sus>;
 	qcom,dsi-panel-bias-vreg;
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 	/delete-property/ qcom,platform-enable-gpio;
@@ -116,8 +116,8 @@
 };
 
 &somc_pinctrl {
-	pinctrl-1 = <&msm_gpio_115_def &msm_gpio_116_def &msm_gpio_117_def &msm_gpio_126_def &msm_gpio_127_def
-		     &msm_gpio_130_def &msm_gpio_132_def &msm_gpio_133_def &msm_gpio_142_def &msm_gpio_143_def>;
+	pinctrl-1 = <&msm_gpio_115 &msm_gpio_116 &msm_gpio_117 &msm_gpio_126 &msm_gpio_127
+		     &msm_gpio_130 &msm_gpio_132 &msm_gpio_133 &msm_gpio_142 &msm_gpio_143>;
 };
 
 &hsphy0 {
