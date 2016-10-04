@@ -4230,6 +4230,12 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps2 |= MMC_CAP2_SLEEP_AWAKE;
 	msm_host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_WAKE_SDIO_IRQ;
 
+#ifdef CONFIG_ARCH_MSM8994
+	msm_host->mmc->caps2 |= MMC_CAP2_ASYNC_SDIO_IRQ_4BIT_MODE;
+	msm_host->mmc->caps2 |= MMC_CAP2_PACKED_WR;
+	msm_host->mmc->caps2 |= MMC_CAP2_PACKED_WR_CONTROL;
+#endif
+
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 
