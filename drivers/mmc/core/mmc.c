@@ -1283,11 +1283,14 @@ static int mmc_select_timing(struct mmc_card *card)
 		goto bus_speed;
 
 	/* For Enhance Strobe HS400 flow */
+/*
 	if (card->ext_csd.strobe_support &&
 	    card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS400 &&
 	    card->host->caps & MMC_CAP_8_BIT_DATA)
 		err = mmc_select_hs400(card);
-	else if (card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS200)
+	else 
+*/
+	if (card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS200)
 		err = mmc_select_hs200(card);
 	else if (card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS)
 		err = mmc_select_hs(card);
@@ -1848,6 +1851,9 @@ reinit:
 	/*
 	 * Enable power_off_notification byte in the ext_csd register
 	 */
+#if defined(CONFIG_ARCH_SONY_LOIRE) || defined(CONFIG_ARCH_SONY_KITAKAMI)
+	if (host->caps2 & MMC_CAP2_FULL_PWR_CYCLE)
+#endif
 	if (card->ext_csd.rev >= 6) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_POWER_OFF_NOTIFICATION,
