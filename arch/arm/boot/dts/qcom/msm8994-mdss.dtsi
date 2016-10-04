@@ -258,6 +258,14 @@
 			0xfd998780 0xfd998780 0x30
 			0xfd828000 0xfd828000 0x108>;
 
+		/* Bus Scale Settings */
+		qcom,msm-bus,name = "mdss_dsi";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<22 512 0 0>,
+			<22 512 0 1000>;
+
 		qcom,mmss-ulp-clamp-ctrl-offset = <0x14>;
 		qcom,mmss-phyreset-ctrl-offset = <0x108>;
 		clocks = <&clock_mmss clk_mdss_mdp_vote_clk>,
