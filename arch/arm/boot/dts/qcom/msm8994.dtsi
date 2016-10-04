@@ -1246,9 +1246,12 @@
 
 		qcom,bus-width = <8>;
 		qcom,wakeup-on-idle;
-		qcom,cpu-dma-latency-us = <301>;
-		qcom,cpu-affinity = "affine_cores";
-		qcom,cpu-affinity-mask = <0x0f>;
+
+		qcom,pm-qos-cpu-groups = <0x0f>;
+		qcom,pm-qos-legacy-latency-us = <301 301>;
+		qcom,pm-qos-irq-type = "affine_cores";
+		qcom,pm-qos-irq-cpu = <0>;
+		qcom,pm-qos-irq-latency = <301 301>;
 
 		qcom,msm-bus,name = "sdhc1";
 		qcom,msm-bus,num-cases = <9>;
@@ -1286,9 +1289,12 @@
 
 		qcom,bus-width = <4>;
 		qcom,wakeup-on-idle;
-		qcom,cpu-dma-latency-us = <301>;
-		qcom,cpu-affinity = "affine_cores";
-		qcom,cpu-affinity-mask = <0x0f>;
+
+		qcom,pm-qos-cpu-groups = <0x0f>;
+		qcom,pm-qos-legacy-latency-us = <301 301>;
+		qcom,pm-qos-irq-type = "affine_cores";
+		qcom,pm-qos-irq-cpu = <0>;
+		qcom,pm-qos-irq-latency = <301 301>;
 
 		qcom,msm-bus,name = "sdhc2";
 		qcom,msm-bus,num-cases = <8>;
@@ -1321,9 +1327,12 @@
 
 		qcom,bus-width = <4>;
 		qcom,wakeup-on-idle;
-		qcom,cpu-dma-latency-us = <301>;
-		qcom,cpu-affinity = "affine_cores";
-		qcom,cpu-affinity-mask = <0x0f>;
+
+		qcom,pm-qos-cpu-groups = <0x0f>;
+		qcom,pm-qos-legacy-latency-us = <301 301>;
+		qcom,pm-qos-irq-type = "affine_cores";
+		qcom,pm-qos-irq-cpu = <0>;
+		qcom,pm-qos-irq-latency = <301 301>;
 
 		qcom,msm-bus,name = "sdhc3";
 		qcom,msm-bus,num-cases = <8>;
