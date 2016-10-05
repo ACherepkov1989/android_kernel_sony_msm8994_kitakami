@@ -186,7 +186,10 @@
 		* The gpu can only program a single context bank
 		* at this fixed offset.
 		*/
-		qcom,protect = <0x40000 0x1000>; /* A530 */
+		//qcom,protect = <0x40000 0x1000>; /* A530 */
+		qcom,protect = <0x4000 0xE>;  //      static struct kgsl_protected_registers iommuv1_regs = { 0x4000, 14 };
+		qcom,micro-mmu-control = <0x12000>; //<0x2000>; /* 3.10 kernel dmesg says 0x4800 */
+
 		clocks = <&clock_mmss clk_oxili_gfx3d_clk>,
 			 <&clock_mmss clk_oxilicx_ahb_clk>;
 		clock-names = "core_clk", "iface_clk";
@@ -196,7 +199,7 @@
 		gfx3d_user: gfx3d_user {
 			compatible = "qcom,smmu-kgsl-cb";
 			label = "gfx3d_user";
-			qcom,gpu-offset = <0x40000>;
+			qcom,gpu-offset = <0x12000>;
 		};
 	};
 
