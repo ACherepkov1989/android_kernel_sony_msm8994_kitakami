@@ -1173,11 +1173,12 @@
 	memory-region = <&fb_mem>;
 
 	/* Kernel splash configuration */
-	qcom,memblock-reserve = <0x03401000 0x2200000>;
-	qcom,memory-reservation-size = <0x1000000>; /* size: 16MB */
-	qcom,mdss-fb-splash-logo-enabled;
+	//qcom,memblock-reserve = <0x03401000 0x2200000>;
+	//qcom,memory-reservation-size = <0x1000000>; /* size: 16MB */
+	//qcom,mdss-fb-splash-logo-enabled;
 	qcom,cont-splash-memory {
-		memory-region = <&cont_splash_mem>;
+		//memory-region = <&cont_splash_mem>;
+		linux,contiguous-region = <&cont_splash_mem>;
 	};
 };
 
