@@ -22,6 +22,6 @@
 / {
 	model = "SoMC Tulip SMB1360";
 	compatible = "somc,kanuti", "somc,tulip", "somc,fih-board",
-		     "qcom,msm8936-mtp", "qcom,msm8936", "qcom,mtp";
+		     "qcom,msm8939-mtp", "qcom,msm8939", "qcom,mtp";
 	qcom,board-id = <8 0>;
 };
