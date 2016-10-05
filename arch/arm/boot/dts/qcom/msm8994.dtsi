@@ -423,8 +423,9 @@
 			size = <0 0x4000000>;
 		};
 
-		qsecom_mem: qsecom_region {
+		qseecom_mem: qsecom_region {
 			compatible = "shared-dma-pool";
+			alloc-ranges = <0 0x00000000 0 0xffffffff>;
 			reusable;
 			alignment = <0 0x400000>;
 			size = <0 0x1400000>;
