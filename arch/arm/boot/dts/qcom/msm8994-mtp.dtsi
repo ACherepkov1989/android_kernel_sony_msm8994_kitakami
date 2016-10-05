@@ -43,6 +43,8 @@
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 192000000 384000000>;
 	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
+	qcom,devfreq,freq-table = <50000000 192000000>;
+
 	status = "ok";
 };
 
@@ -72,6 +74,7 @@
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+	qcom,devfreq,freq-table = <50000000 200000000>;
 	status = "ok";
 };
 
