@@ -33,9 +33,9 @@
 	};
 
 	/delete-node/ qcom,qseecom@6500000;
-	qcom,qseecom@e700000 {
+	qcom,qseecom@e900000 {
 		compatible = "qcom,qseecom";
-		reg = <0xe700000 0x1900000>;
+		reg = <0xe900000 0x1900000>;
 		reg-names = "secapp-region";
 		qcom,disk-encrypt-pipe-pair = <2>;
 		qcom,file-encrypt-pipe-pair = <0>;
@@ -203,15 +203,15 @@
 	somc,charge-full-design = <2781000>;
 };
 
-&qsecom_mem {
+&qseecom_mem {
 	//reg = <0 0 0 0x1900000>;
-	size = <0 0x1C00000>;
+	size = <0 0x1900000>;
 };
-/*
+
 &removed_regions {
 	reg = <0 0x06300000 0 0x9D00000>;
 };
-*/
+
 &pcie1 {
 	status = "disabled";
 };
