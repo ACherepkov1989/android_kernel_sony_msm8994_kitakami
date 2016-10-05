@@ -175,6 +175,13 @@
 
 &mdss_dsi0 {
 	/delete-property/ qcom,platform-enable-gpio;
+
+	qcom,platform-regulator-settings = [03 03 03 00 20 00 01];
+	qcom,platform-lane-config = [02 00 EF 00 20 00 00 01 FF
+				02 00 EF 00 40 00 00 01 FF
+				02 00 EF 40 20 00 00 01 FF
+				02 00 EF 40 00 00 00 01 FF
+				00 00 45 80 00 00 00 01 97];
 };
 
 /{
