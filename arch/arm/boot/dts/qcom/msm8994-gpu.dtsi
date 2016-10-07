@@ -199,7 +199,7 @@
 		gfx3d_user: gfx3d_user {
 			compatible = "qcom,smmu-kgsl-cb";
 			label = "gfx3d_user";
-			qcom,gpu-offset = <0x12000>;
+			qcom,gpu-offset = <0x18000>; /* ctx_ahb + ahb_base */
 		};
 	};
 
