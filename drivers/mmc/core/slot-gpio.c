@@ -23,9 +23,63 @@ struct mmc_gpio {
 	struct gpio_desc *cd_gpio;
 	bool override_ro_active_level;
 	bool override_cd_active_level;
+#ifdef CONFIG_MMC_UIM2TRAY_SUPPORT
+	bool status;
+	int uim2_gpio;
+#endif
 	char *ro_label;
 	char cd_label[0];
 };
+
+#ifdef CONFIG_MMC_UIM2TRAY_SUPPORT
+int mmc_gpio_get_status(struct mmc_host *host)
+{
+	int ret = -ENOSYS;
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+
+	if (!ctx || !gpio_is_valid(desc_to_gpio(ctx->cd_gpio)))
+		goto out;
+
+	ret = !gpio_get_value_cansleep(desc_to_gpio(ctx->cd_gpio)) ^
+		!!(host->caps2 & MMC_CAP2_CD_ACTIVE_HIGH);
+out:
+	return ret;
+}
+
+static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
+{
+	/* Schedule a card detection after a debounce timeout */
+	struct mmc_host *host = dev_id;
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+	int status;
+
+	if (!host->ops)
+		goto out;
+
+	status = mmc_gpio_get_status(host);
+	if (unlikely(status < 0))
+		goto out;
+
+	if (status == 0)
+		mmc_gpio_set_uim2_en(host, 0);
+
+	if (status ^ ctx->status) {
+		pr_info("%s: slot status change detected (%d -> %d), GPIO_ACTIVE_%s\n",
+				mmc_hostname(host), ctx->status, status,
+				(host->caps2 & MMC_CAP2_CD_ACTIVE_HIGH) ?
+				"HIGH" : "LOW");
+		ctx->status = status;
+
+		host->trigger_card_event = true;
+
+		/* Schedule a card detection after a debounce timeout */
+		mmc_detect_change(host, msecs_to_jiffies(200));
+	}
+out:
+	return IRQ_HANDLED;
+}
+
+#else
 
 static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 {
@@ -37,6 +91,7 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static int mmc_gpio_alloc(struct mmc_host *host)
 {
@@ -405,3 +460,43 @@ void mmc_gpiod_free_cd(struct mmc_host *host)
 	ctx->cd_gpio = NULL;
 }
 EXPORT_SYMBOL(mmc_gpiod_free_cd);
+
+#ifdef CONFIG_MMC_UIM2TRAY_SUPPORT
+void mmc_gpio_init_uim2(struct mmc_host *host, unsigned int gpio)
+{
+	struct mmc_gpio *ctx;
+
+	ctx = host->slot.handler_priv;
+
+	ctx->uim2_gpio = gpio;
+
+	pr_info("## %s: %s: gpio=%d\n", mmc_hostname(host), __func__, gpio);
+
+	mmc_gpio_set_uim2_en(host, 0);
+}
+EXPORT_SYMBOL(mmc_gpio_init_uim2);
+
+void mmc_gpio_set_uim2_en(struct mmc_host *host, int value)
+{
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+
+	if (!ctx || !gpio_is_valid(ctx->uim2_gpio)) {
+		pr_err("## %s: gpio_set failure: ctx=%p, uim2_gpio=%d\n",
+			mmc_hostname(host), ctx, ctx ? ctx->uim2_gpio : 0);
+		return;
+	}
+	gpio_set_value(ctx->uim2_gpio, value);
+	pr_info("## %s: %s: gpio=%d value=%d\n", mmc_hostname(host), __func__,
+			ctx->uim2_gpio, value);
+}
+EXPORT_SYMBOL(mmc_gpio_set_uim2_en);
+
+void mmc_gpio_tray_close_set_uim2(struct mmc_host *host, int value)
+{
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+
+	if (ctx && ctx->status)
+		mmc_gpio_set_uim2_en(host, value);
+}
+EXPORT_SYMBOL(mmc_gpio_tray_close_set_uim2);
+#endif

@@ -22,6 +22,12 @@ int mmc_gpio_request_cd(struct mmc_host *host, unsigned int gpio,
 			unsigned int debounce);
 void mmc_gpio_free_cd(struct mmc_host *host);
 
+#ifdef CONFIG_MMC_UIM2TRAY_SUPPORT
+void mmc_gpio_init_uim2(struct mmc_host *host, unsigned int gpio);
+void mmc_gpio_set_uim2_en(struct mmc_host *host, int value);
+void mmc_gpio_tray_close_set_uim2(struct mmc_host *host, int value);
+#endif
+
 int mmc_gpiod_request_cd(struct mmc_host *host, const char *con_id,
 			 unsigned int idx, bool override_active_level,
 			 unsigned int debounce, bool *gpio_invert);

@@ -26,3 +26,19 @@ config MMC_PARANOID_SD_INIT
 	  about re-trying SD init requests. This can be a useful
 	  work-around for buggy controllers and hardware. Enable
 	  if you are experiencing issues with SD detection.
+
+config MMC_UIM2TRAY_SUPPORT
+	bool "Enable support for UIM2 Tray"
+	help
+	  Enable support for UIM2 GPIOs. This functionality is
+	  required for SoMC boards which have SDCard in the same
+	  tray as SIM slot. On those boards, Card Detect GPIO is
+	  shared with tray status for also recognizing SIM card
+	  insertion.
+
+config MMC_DISABLE_SD_SDR104
+	bool "Disable SD card speed bus mode SDR104"
+	default y
+	help
+	  If you say N here, the SD layer uses a speed bus mode
+	  of SDR104.
