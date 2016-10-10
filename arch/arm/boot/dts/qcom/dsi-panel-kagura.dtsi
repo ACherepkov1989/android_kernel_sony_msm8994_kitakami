@@ -18,8 +18,11 @@
  */
 
 &mdss_mdp {
+       somc,postpwron-no-reset-quirk;
 	dsi_jdi_synaptics_cmd_6: somc,jdi_synaptics_cmd_6_panel {
 		qcom,mdss-dsi-panel-name = "6";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-destination = "display_1";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-width = <1080>;
 		qcom,mdss-dsi-panel-height = <1920>;
@@ -94,8 +97,8 @@
 		qcom,mdss-brightness-max-level = <4095>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		somc,qpnp-lab-limit-maximum-current = <200>;
-		somc,qpnp-ibb-limit-maximum-current = <800>;
+		qcom,qpnp-lab-limit-maximum-current = <200>;
+		qcom,qpnp-ibb-limit-maximum-current = <800>;
 		somc,qpnp-lab-max-precharge-time = <300>;
 		somc,qpnp-lab-soft-start = <800>;
 		somc,qpnp-lab-pull-down-enable;
@@ -103,6 +106,7 @@
 		somc,qpnp-ibb-pull-down-enable;
 		somc,qpnp-ibb-full-pull-down;
 
+		somc,lcd-id = <0>;
 		somc,lcd-id-adc = <565000 653000>;
 		somc,mdss-dsi-master;
 		somc,pw-on-rst-seq = <0 10>, <1 10>, <0 1>, <1 10>;
@@ -390,6 +394,8 @@
 
 	dsi_sharp_synaptics_cmd_9: somc,sharp_synaptics_cmd_9_panel {
 		qcom,mdss-dsi-panel-name = "9";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-destination = "display_1";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-width = <1080>;
 		qcom,mdss-dsi-panel-height = <1920>;
@@ -449,8 +455,8 @@
 		qcom,mdss-brightness-max-level = <4095>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		somc,qpnp-lab-limit-maximum-current = <200>;
-		somc,qpnp-ibb-limit-maximum-current = <800>;
+		qcom,qpnp-lab-limit-maximum-current = <200>;
+		qcom,qpnp-ibb-limit-maximum-current = <800>;
 		somc,qpnp-lab-max-precharge-time = <300>;
 		somc,qpnp-lab-soft-start = <800>;
 		somc,qpnp-lab-pull-down-enable;
@@ -458,6 +464,7 @@
 		somc,qpnp-ibb-pull-down-enable;
 		somc,qpnp-ibb-full-pull-down;
 
+		somc,lcd-id = <0>;
 		somc,lcd-id-adc = <0 57000>;
 		somc,mdss-dsi-master;
 		somc,pw-on-rst-seq = <0 10>, <1 10>;
@@ -737,6 +744,8 @@
 
 	dsi_default_panel: somc,default_cmd_panel {
 		qcom,mdss-dsi-panel-name = "Default Panel";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-destination = "display_1";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-width = <1080>;
 		qcom,mdss-dsi-panel-height = <1920>;
@@ -811,8 +820,8 @@
 		qcom,mdss-brightness-max-level = <4095>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		somc,qpnp-lab-limit-maximum-current = <200>;
-		somc,qpnp-ibb-limit-maximum-current = <800>;
+		qcom,qpnp-lab-limit-maximum-current = <200>;
+		qcom,qpnp-ibb-limit-maximum-current = <800>;
 		somc,qpnp-lab-max-precharge-time = <300>;
 		somc,qpnp-lab-soft-start = <800>;
 		somc,qpnp-lab-pull-down-enable;
@@ -820,6 +829,7 @@
 		somc,qpnp-ibb-pull-down-enable;
 		somc,qpnp-ibb-full-pull-down;
 
+		somc,lcd-id = <0>;
 		somc,lcd-id-adc = <0 0x7fffffff>;
 		somc,mdss-dsi-master;
 		somc,pw-on-rst-seq = <0 10>, <1 10>, <0 1>, <1 10>;
