@@ -28,6 +28,10 @@ dtb-$(CONFIG_MACH_SONY_SATSUKI)		+= msm8994-v2.1-kitakami_satsuki_generic.dtb
 dtb-$(CONFIG_MACH_SONY_SATSUKI_DSDS)	+= msm8994-v2.0-kitakami_satsuki_dsds.dtb
 dtb-$(CONFIG_MACH_SONY_SATSUKI_DSDS)	+= msm8994-v2.1-kitakami_satsuki_dsds.dtb
 
+# MSM8956
+dtb-$(CONFIG_MACH_SONY_SUZU)		+= msm8956-v1.1-loire-suzu_generic.dtb
+dtb-$(CONFIG_MACH_SONY_KUGO)		+= msm8956-v1.1-loire-kugo_generic.dtb
+
 # MSM8939/MSM8936
 dtb-$(CONFIG_MACH_SONY_TULIP)		+= msm8936-kanuti_tulip.dtb
 dtb-$(CONFIG_MACH_SONY_TULIP)		+= msm8939-kanuti_tulip.dtb
