@@ -38,7 +38,20 @@
 	};
 };
 
+&cci {
+	/delete-node/ qcom,actuator@0;
+	/delete-node/ qcom,actuator@1;
+	/delete-node/ qcom,ois@0;
+	/delete-node/ qcom,eeprom@0;
+	/delete-node/ qcom,eeprom@1;
+	/delete-node/ qcom,camera@0;
+	/delete-node/ qcom,camera@1;
+	/delete-node/ qcom,camera@2;
+};
+
 &soc {
+	/delete-node/ qcom,camera-flash;
+
 	pinctrl@01010000 {
 		disabled-pins = <0 1 2 3>;
 	};
@@ -371,10 +384,13 @@
 	};
 
 	sound-9335 {
-		qcom,msm-mbhc-hphl-swh = <1>;
+		/delete-property/ qcom,hdmi-audio-rx;
+		/delete-property/ asoc-codec;
+		/delete-property/ asoc-codec-names;
 		/delete-property/ qcom,hph-en1-gpio;
 		/delete-property/ qcom,hph-en0-gpio;
 		/delete-property/ qcom,us-euro-gpios;
+		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,ear-en-gpios = <&pm8994_gpios 13 0>;
 		qcom,audio-routing =
 			"AIF4 VI", "MCLK",
@@ -762,6 +778,23 @@
                         qcom,vph-low-threshold-uv = <3200000>;
 		};
 	};
+};
+
+&mdss_hdmi_tx {
+	pinctrl-names = "";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-2;
+	/delete-property/ pinctrl-3;
+	/delete-property/ pinctrl-4;
+};
+
+&dai_mi2s {
+	pinctrl-names = "";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
 };
 
 &sony_camera_module_0 {
@@ -1616,6 +1649,11 @@
 	regulator-max-microvolt = <1800000>;
 	qcom,init-voltage = <1800000>;
 	status = "okay";
+};
+
+&pm8994_l18_pin_ctrl {
+	regulator-min-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
 };
 
 /* pm8994_l19 */
@@ -3539,6 +3577,27 @@
 	config {
 		bias-pull-down;
 		input-enable;
+	};
+};
+
+&pcie0_clkreq_sleep {
+	config {
+		/delete-property/ bias-disable;
+		bias-pull-up;
+	};
+};
+
+&pcie0_wake_sleep {
+	config {
+		/delete-property/ bias-disable;
+		bias-pull-up;
+	};
+};
+
+&cdc_reset_active {
+	config {
+		/delete-property/ bias-pull-down;
+		bias-disable;
 	};
 };
 
