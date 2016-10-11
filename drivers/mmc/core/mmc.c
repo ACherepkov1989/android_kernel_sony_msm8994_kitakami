@@ -2476,15 +2476,15 @@ static int mmc_partial_init(struct mmc_host *host)
 	pr_debug("%s: %s: reading and comparing ext_csd successful\n",
 		mmc_hostname(host), __func__);
 
-	if (mmc_card_support_auto_bkops(host->card))
-		(void)mmc_set_auto_bkops(host->card, true);
-
 	err = mmc_cache_ctrl(host, 1);
 	if (err) {
 		pr_err("%s: %s failed (%d) cache_ctrl\n",
 		    mmc_hostname(host), __func__, err);
 		goto out;
 	}
+
+	if (mmc_card_support_auto_bkops(host->card))
+		(void)mmc_set_auto_bkops(host->card, true);
 
 	if (host->card->cmdq_init) {
 		mmc_host_clk_hold(host);
