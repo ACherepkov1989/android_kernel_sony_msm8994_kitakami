@@ -2070,8 +2070,10 @@ reinit:
 		(void)mmc_set_auto_bkops(card, true);
 	}
 
-	if (card->cid.manfid == CID_MANFID_HYNIX &&
-	    card->ext_csd.fw_version == 0xA4)
+	if ((card->cid.manfid == CID_MANFID_HYNIX &&
+	     card->ext_csd.fw_version == 0xA4) ||
+	    (card->cid.manfid == CID_MANFID_SAMSUNG &&
+	     card->ext_csd.fw_version == 0x04))
 		card->host->caps2 &= ~MMC_CAP2_CMD_QUEUE;
 
 	if (card->ext_csd.cmdq_support && (card->host->caps2 &
