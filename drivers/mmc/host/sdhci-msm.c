@@ -4242,6 +4242,11 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps2 |= MMC_CAP2_CLK_SCALE;
 #endif
 
+#ifdef CONFIG_MMC_SD_DEFERRED_RESUME
+	if (!msm_host->pdata->nonremovable)
+		msm_host->mmc->caps |= MMC_CAP_RUNTIME_RESUME;
+#endif
+
 #ifdef CONFIG_ARCH_MSM8994
 	msm_host->mmc->caps2 |= MMC_CAP2_ASYNC_SDIO_IRQ_4BIT_MODE;
 	msm_host->mmc->caps2 |= MMC_CAP2_PACKED_WR;

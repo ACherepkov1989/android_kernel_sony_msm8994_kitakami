@@ -27,9 +27,59 @@ struct mmc_gpio {
 	bool status;
 	int uim2_gpio;
 #endif
+#ifdef CONFIG_MMC_SD_DEFERRED_RESUME
+	bool pending_detect;
+	bool suspended;
+#endif
 	char *ro_label;
 	char cd_label[0];
 };
+
+#ifdef CONFIG_MMC_SD_DEFERRED_RESUME
+void mmc_cd_prepare_suspend(struct mmc_host *host, bool pending_detect)
+{
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+
+	if (!ctx)
+		return;
+
+	ctx->suspended = true;
+	ctx->pending_detect = pending_detect;
+}
+EXPORT_SYMBOL(mmc_cd_prepare_suspend);
+
+bool mmc_cd_is_pending_detect(struct mmc_host *host)
+{
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+
+	if (!ctx)
+		return false;
+
+	return ctx->pending_detect;
+}
+EXPORT_SYMBOL(mmc_cd_is_pending_detect);
+
+static void mmc_sd_deferred_resume_irqt(struct mmc_host *host)
+{
+	struct mmc_gpio *ctx = host->slot.handler_priv;
+	unsigned long flags;
+
+	if (ctx->suspended) {
+		/*
+		 * host->rescan_disable is normally set to 0 in
+		 * PM_POST_RESTORE of mmc_pm_notify but in case
+		 * of a deferred resume we might get IRQ before
+		 * it is called.
+		 */
+		spin_lock_irqsave(&host->lock, flags);
+		host->rescan_disable = 0;
+		spin_unlock_irqrestore(&host->lock, flags);
+	}
+	ctx->suspended = false;
+}
+#else
+#define mmc_sd_deferred_resume_irqt(x)
+#endif
 
 #ifdef CONFIG_MMC_UIM2TRAY_SUPPORT
 int mmc_gpio_get_status(struct mmc_host *host)
@@ -72,6 +122,8 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 
 		host->trigger_card_event = true;
 
+		mmc_sd_deferred_resume_irqt(host);
+
 		/* Schedule a card detection after a debounce timeout */
 		mmc_detect_change(host, msecs_to_jiffies(200));
 	}
@@ -87,6 +139,7 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 	struct mmc_host *host = dev_id;
 
 	host->trigger_card_event = true;
+	mmc_sd_deferred_resume_irqt(host);
 	mmc_detect_change(host, msecs_to_jiffies(200));
 
 	return IRQ_HANDLED;
@@ -275,6 +328,10 @@ int mmc_gpio_request_cd(struct mmc_host *host, unsigned int gpio,
 
 	ctx->override_cd_active_level = true;
 	ctx->cd_gpio = gpio_to_desc(gpio);
+#ifdef CONFIG_MMC_SD_DEFERRED_RESUME
+	ctx->pending_detect = false;
+	ctx->suspended = false;
+#endif
 
 	return 0;
 }
