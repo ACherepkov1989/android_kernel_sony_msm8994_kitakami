@@ -3679,6 +3679,7 @@
 };
 
 &mdss_dsi0 {
+	qcom,display-id = "primary";
 	qcom,dsi-pref-prim-pan = <&dsi_default_panel>;
 	pinctrl-names = "mdss_default", "mdss_sleep", "mdss_touch_active", "mdss_touch_suspend";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
