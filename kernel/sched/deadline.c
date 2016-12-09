@@ -484,7 +484,7 @@ static void enqueue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 		return;
 
 	enqueue_dl_entity(&p->dl, flags);
-	inc_nr_running(rq);
+	add_nr_running(rq, 1);
 }
 
 static void __dequeue_task_dl(struct rq *rq, struct task_struct *p, int flags)
@@ -497,7 +497,7 @@ static void dequeue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 	update_curr_dl(rq);
 	__dequeue_task_dl(rq, p, flags);
 
-	dec_nr_running(rq);
+	sub_nr_running(rq, 1);
 }
 
 /*
