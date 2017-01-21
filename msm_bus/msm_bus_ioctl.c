@@ -1,4 +1,4 @@
-/* Copyright (c)2012,2014-2016 The Linux Foundation. All rights reserved.
+/* Copyright (c)2012,2014-2017 The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,7 @@ static int msm_bus_create_client(unsigned long arg)
 	int i, j;
 	struct msm_bus_test_cldata cldata;
 	uint32_t clid;
+	char *buf_name = NULL;
 
 	pdata = kmalloc(sizeof(struct msm_bus_scale_pdata), GFP_KERNEL);
 	pr_debug("AXI: %s(): create cl\n", __func__);
@@ -37,12 +38,34 @@ static int msm_bus_create_client(unsigned long arg)
 		return -EFAULT;
 	}
 
-	pdata->name = cldata.pdata.name;
+	buf_name = kmalloc(sizeof(char) * 10, GFP_KERNEL);
+	if (strncpy_from_user(buf_name,
+				cldata.pdata.name,
+				10) < 0) {
+		kfree(buf_name);
+		kfree(pdata);
+		return -EINVAL;
+	}
+	else
+		buf_name[9] = '\0';
+
+	pdata->name = buf_name;
 	pdata->active_only = cldata.pdata.active_only;
 	pdata->num_usecases = cldata.pdata.num_usecases;
+
+	if (pdata->num_usecases < 0 || pdata->num_usecases >
+						NUM_USECASES) {
+		kfree(buf_name);
+		kfree(pdata);
+		pr_err("AXI: %s(): Invalid num_usecases\n", __func__);
+		return -EFAULT;
+	}
+
 	usecase = kmalloc(((pdata->num_usecases) *
 		sizeof(struct msm_bus_paths)), GFP_KERNEL);
-	if (IS_ERR(usecase)) {
+	if (!usecase) {
+		kfree(buf_name);
+		kfree(pdata);
 		pr_err("AXI: %s(): Error creating usecase in test\n", __func__);
 		return -ENOMEM;
 	}
@@ -56,6 +79,7 @@ static int msm_bus_create_client(unsigned long arg)
 			for (j = 0; j < i; j++)
 				kfree(pdata->usecase[j].vectors);
 
+			kfree(buf_name);
 			kfree(pdata->usecase);
 			kfree(pdata);
 			pr_err("AXI: %s(): Error creating usecase in test\n",
@@ -83,6 +107,7 @@ static int msm_bus_create_client(unsigned long arg)
 		for (i = 0; i < pdata->num_usecases; i++)
 			kfree(pdata->usecase[i].vectors);
 
+		kfree(buf_name);
 		kfree(pdata->usecase);
 		kfree(pdata);
 		return -EFAULT;
@@ -109,6 +134,7 @@ static int msm_bus_ioctl_unreg_cl(unsigned cmd, unsigned long arg)
 	for (i = 0; i < pdata->num_usecases; i++)
 		kfree(pdata->usecase[i].vectors);
 
+	kfree(pdata->name);
 	kfree(pdata->usecase);
 	kfree(pdata);
 	return retval;

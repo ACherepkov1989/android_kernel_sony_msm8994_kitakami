@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013, 2016-2017 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -80,7 +80,7 @@ struct msm_bus_test_paths {
 struct msm_bus_test_scale_pdata {
 	struct msm_bus_test_paths usecase[NUM_USECASES];
 	int num_usecases;
-	const char *name;
+	const char __user *name;
 	unsigned int active_only;
 };
 
