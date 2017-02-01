@@ -1,0 +1,11 @@
+Kernel for Kitakami
+
+Tool to unpack and pack ramdisk image for Xperia devices 
+https://github.com/AndroPlus-org/build_tools_xperia
+
+Cross compiler GCC 4.9 
+https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+/nougat-release
+
+mkbootimg 
+https://android.googlesource.com/platform/system/core/+/nougat-release/mkbootimg
+https://github.com/omnirom/android_system_core/tree/android-7.1/mkbootimg
