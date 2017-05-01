@@ -8804,9 +8804,8 @@ struct sched_domain_topology_level {
  */
 int group_balance_cpu(struct sched_group *sg)
 {
-	return cpumask_first_and(sched_group_cpus(sg), sched_group_mask(sg));
+	return cpumask_first(sched_group_mask(sg));
 }
-
 
 /*
  * NUMA topology (first read the regular topology blurb below)
@@ -8902,7 +8901,6 @@ int group_balance_cpu(struct sched_group *sg)
  * NUMA-0	0		1		2		3
  *
  */
-
 
 /*
  * Build an iteration mask that can exclude certain CPUs from the upwards
@@ -9060,7 +9058,6 @@ fail:
 
 	return -ENOMEM;
 }
-
 
 /*
  * Package topology (also see the load-balance blurb in fair.c)
