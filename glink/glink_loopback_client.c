@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015,2017 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -336,6 +336,7 @@ void glink_loopback_notify_rx_cb(void *handle, const void *priv,
 	struct loopback_channel *lpb_ch = (struct loopback_channel *)priv;
 	struct rx_done_completion *rx_done_comp =
 		(struct rx_done_completion *)pkt_priv;
+	bool free_rx_done = false;
 
 	GLINK_LL_CLNT_INFO("%s:%s:%s %s: priv[%p] data[%p] size[%zu]\n",
 			lpb_ch->open_cfg.transport,
@@ -354,7 +355,7 @@ void glink_loopback_notify_rx_cb(void *handle, const void *priv,
 				lpb_ch->open_cfg.edge,
 				lpb_ch->open_cfg.name,
 				__func__, "Receive data orphaned");
-			kfree(rx_done_comp);
+			free_rx_done = true;
 		} else {
 			complete(&rx_done_comp->completion);
 			GLINK_LL_CLNT_INFO("%s:%s:%s %s: Called complete()%s\n",
@@ -368,6 +369,8 @@ void glink_loopback_notify_rx_cb(void *handle, const void *priv,
 	} else {
 		complete(&lpb_ch->cb_data.cb_completion);
 	}
+	if (free_rx_done)
+		kfree(rx_done_comp);
 }
 
 /**
