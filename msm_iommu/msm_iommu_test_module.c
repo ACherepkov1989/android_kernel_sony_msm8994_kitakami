@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015,2017 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1292,7 +1292,7 @@ static long iommu_test_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	struct msm_iommu_test *iommu_test = file->private_data;
 	struct get_next_cb gnc;
 	struct test_iommu tst_iommu;
-	struct target_struct target;
+	struct target_struct target = {{0}};
 
 	switch (cmd) {
 	case IOC_IOMMU_GET_NXT_IOMMU_CB:
