@@ -2,10 +2,10 @@ Kernel for Kitakami
 
 
 Tool to unpack and pack ramdisk image for Xperia devices 
-https://github.com/GreyLeshy/build_tools_xperia
+https://github.com/GreyLeshy/android_build_tools_xperia
 
 
-Cross compiler Google GCC 4.9 (2015)
+Cross compiler Google 4.9 (2015)
 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+/nougat-release
 
 Cross compiler Linaro Toolchain
