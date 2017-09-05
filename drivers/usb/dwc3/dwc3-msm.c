@@ -789,14 +789,14 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 
 	if (!dep->endpoint.desc) {
 		dev_err(mdwc->dev,
-			"%s: trying to queue request %p to disabled ep %s\n",
+			"%s: trying to queue request %pK to disabled ep %s\n",
 			__func__, request, ep->name);
 		return -EPERM;
 	}
 
 	if (dep->number == 0 || dep->number == 1) {
 		dev_err(mdwc->dev,
-			"%s: trying to queue dbm request %p to control ep %s\n",
+			"%s: trying to queue dbm request %pK to control ep %s\n",
 			__func__, request, ep->name);
 		return -EPERM;
 	}
@@ -805,7 +805,7 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 	if (dep->busy_slot != dep->free_slot || !list_empty(&dep->request_list)
 					 || !list_empty(&dep->req_queued)) {
 		dev_err(mdwc->dev,
-			"%s: trying to queue dbm request %p tp ep %s\n",
+			"%s: trying to queue dbm request %pK tp ep %s\n",
 			__func__, request, ep->name);
 		return -EPERM;
 	} else {
@@ -850,7 +850,7 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 		return ret;
 	}
 
-	dev_vdbg(dwc->dev, "%s: queing request %p to ep %s length %d\n",
+	dev_vdbg(dwc->dev, "%s: queing request %pK to ep %s length %d\n",
 			__func__, request, ep->name, request->length);
 
 	dbm_event_buffer_config(mdwc->dbm,
@@ -1127,7 +1127,7 @@ static void msm_dwc3_vbus_control(void *ctx, bool on)
  */
 int msm_register_usb_ext_notification(struct usb_ext_notification *info)
 {
-	pr_debug("%s usb_ext: %p\n", __func__, info);
+	pr_debug("%s usb_ext: %pK\n", __func__, info);
 
 	if (info) {
 		if (usb_ext) {
@@ -2706,10 +2706,10 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		if ((mdwc->charger.chg_type == DWC3_SDP_CHARGER) &&
 				(mdwc->chg_state != USB_CHG_STATE_DETECTED)) {
 			dev_dbg(mdwc->dev, "%s: SDP/MHL/FLOATED\n", __func__);
-			//mdwc->charger.chg_type = DWC3_INVALID_CHARGER;
-			//wake_lock_timeout(&mdwc->id_wakelock,
-			//			USB_ID_WAKE_LOCK_TIMEOUT);
-			//queue_work(system_nrt_wq, &mdwc->id_work);
+			mdwc->charger.chg_type = DWC3_INVALID_CHARGER;
+			wake_lock_timeout(&mdwc->id_wakelock,
+						USB_ID_WAKE_LOCK_TIMEOUT);
+			queue_work(system_nrt_wq, &mdwc->id_work);
 		}
 
 		if (mdwc->charger.chg_type != DWC3_INVALID_CHARGER)
