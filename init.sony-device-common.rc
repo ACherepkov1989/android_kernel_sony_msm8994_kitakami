@@ -1,0 +1,98 @@
+# Copyright (c) 2015 Sony Mobile Communications Inc.
+#
+# product common configuration
+#
+import init.sony-platform.rc
+
+on init
+    write /proc/sys/vm/swappiness 100
+    write /sys/devices/soc.0/f98a4900.sdhci/mmc_host/mmc1/clkgate_delay 1
+
+on post-fs
+    # Backlight
+    chown system system /sys/class/leds/wled/bl_scale
+
+    # Touch
+    mkdir /dev/socket/tfsw 0770 system system
+
+    # KSM options
+    write /sys/kernel/mm/ksm/pages_to_scan 100
+    write /sys/kernel/mm/ksm/deferred_timer 1
+    write /sys/kernel/mm/ksm/sleep_millisecs 999
+    write /sys/kernel/mm/ksm/run 1
+
+on boot
+    # PM8994 flash
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/current1
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/current2
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/fault_status
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/fine_current1
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/fine_current2
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/flash_timer
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/mask_clamp_current
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/mask_enable
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/max_current
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/mode
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/startup_delay
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/strobe
+    chown cameraserver system /sys/class/misc/pmi8994-flash/device/vph_pwr_droop
+
+    # Cover mode
+    chown system system /sys/devices/virtual/input/clearpad/cover_mode_enabled
+    chown system system /sys/devices/virtual/input/clearpad/cover_win_bottom
+    chown system system /sys/devices/virtual/input/clearpad/cover_win_left
+    chown system system /sys/devices/virtual/input/clearpad/cover_win_right
+    chown system system /sys/devices/virtual/input/clearpad/cover_win_top
+
+   # Touch filter
+    chown system system /system/etc/tfswinfo/default.tfswinfo
+    chmod 0600          /system/etc/tfswinfo/default.tfswinfo
+
+# Touch
+on property:persist.sys.touch.glove_mode=0
+    write /sys/devices/virtual/input/clearpad/glove 0
+
+on property:persist.sys.touch.glove_mode=1
+    write /sys/devices/virtual/input/clearpad/glove 1
+
+on property:sys.screen_on=0
+    write /sys/devices/virtual/input/clearpad/screen_status 0
+
+on property:sys.screen_on=1
+    write /sys/devices/virtual/input/clearpad/screen_status 1
+
+on property:sys.cover_state=0
+    write /sys/devices/virtual/input/clearpad/cover_status 0
+
+on property:sys.cover_state=1
+    write /sys/devices/virtual/input/clearpad/cover_status 1
+
+on property:persist.sys.touch.easywakeup=0
+    write /sys/devices/virtual/input/clearpad/wakeup_gesture 0
+
+on property:persist.sys.touch.easywakeup=1
+    write /sys/devices/virtual/input/clearpad/wakeup_gesture 1
+
+on property:init.svc.illumination=running
+    start touchscreend
+
+on property:init.svc.illumination=stopped
+    stop touchscreend
+
+service touchscreend /system/bin/touchscreend
+    disabled
+    user system
+    group system
+    class core
+
+service kobjeventd /system/bin/kobjeventd
+    user system
+    group system
+    class main
+
+# Start Key Provision daemon
+service keyprovd /system/bin/keyprovd
+    user system
+    group system
+    oneshot
+    class late_start
