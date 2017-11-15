@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2013, 2015, The Linux Foundation. All rights reserved.
 # Copyright (C) 2016 Sony Mobile Communications Inc.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -914,6 +914,8 @@ case "$target" in
         echo 0 > /sys/devices/system/cpu/cpu5/online
         echo 0 > /sys/devices/system/cpu/cpu6/online
         echo 0 > /sys/devices/system/cpu/cpu7/online
+        # in case CPU4 is online, limit its frequency
+        echo 960000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
         # Limit A57 max freq from msm_perf module in case CPU 4 is offline
         echo "4:960000 5:960000 6:960000 7:960000" > /sys/module/msm_performance/parameters/cpu_max_freq
 
@@ -953,6 +955,8 @@ case "$target" in
         echo 384000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
         # online CPU4
         echo 1 > /sys/devices/system/cpu/cpu4/online
+        # Best effort limiting for first time boot if msm_performance module is absent
+        echo 960000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
         # configure governor settings for big cluster
         echo "interactive" > /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor
         echo 1 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/use_sched_load
@@ -966,6 +970,8 @@ case "$target" in
         echo 40000 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/min_sample_time
         echo 80000 > /sys/devices/system/cpu/cpu4/cpufreq/interactive/max_freq_hysteresis
         echo 384000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+        # restore A57's max
+        cat /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_max_freq > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
 
         # enable boost for cgroup's tasks
         echo 1 > /dev/cpuctl/cpu.sched_boost
@@ -1012,8 +1018,8 @@ case "$target" in
         # configure core_ctl module parameters
         echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
         echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
-        echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
-        echo 30 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
+        echo 68 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
+        echo 40 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
         echo 100 > /sys/devices/system/cpu/cpu4/core_ctl/offline_delay_ms
         echo 1 > /sys/devices/system/cpu/cpu4/core_ctl/is_big_cluster
         echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/task_thres
