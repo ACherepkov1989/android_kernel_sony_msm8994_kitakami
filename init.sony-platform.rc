@@ -10,8 +10,6 @@ on early-init
     write /sys/module/msm_performance/parameters/managed_cpus "4-7"
     write /sys/module/msm_performance/parameters/max_cpus "-1:0"
 
-    
-    
     write /sys/module/msm_rtb/parameters/enable 0
 
 on init
@@ -42,7 +40,7 @@ on init
     write /sys/bus/msm_subsys/devices/subsys1/restart_level "RELATED"
     # modem ssr
     write /sys/bus/msm_subsys/devices/subsys2/restart_level "RELATED"
-    
+
     # bcm_wlan ssr
     write /sys/module/bcm_wlan_ramdump/parameters/enable_ssr_dump 1
 
@@ -64,7 +62,9 @@ on fs
     insmod /system/lib/modules/brcm_bt_drv.ko
     insmod /system/lib/modules/fm_drv.ko
     insmod /system/lib/modules/ant_drv.ko
+    # FIPS AES-XTS/AES-CBC
     insmod /system/lib/modules/kscl.ko
+    # eCrypt filesystem
     insmod /system/lib/modules/ecryptfs.ko
 
     # mount LTA-Label here as from Kitakami the mount path is changed.
@@ -77,8 +77,7 @@ on fs
     # SONY: Fota must be started after partitions are mounted
     exec u:r:fota-ua:s0 -- /sbin/fota-ua c
 
-    
-    
+
 
 on post-fs-data
     # SONY: Start early TA-users
@@ -91,7 +90,6 @@ on post-fs-data
     setprop init.taimport.ready true
     # create directory for illumination service
     mkdir /data/illumination_service 0770 system system
-
 
     # Bluetooth address setting
     setprop ro.bt.bdaddr_path "/data/etc/bluetooth_bdaddr"
@@ -212,7 +210,7 @@ on post-fs
     # create directory for ric data
     
 
-   # Create directory for hdcp-sdk
+    # Create directory for hdcp-sdk
     
 
     # create directory for dtcpip plug-ins - give drm the read/write access to
@@ -241,7 +239,6 @@ on early-boot
     start mlog_qmi_service
 
     exec u:r:touch_fw_update:s0 -- /system/bin/sh /system/etc/touch_fw_update.sh
-    
 
     # Debug config for clearpad
     
@@ -284,11 +281,6 @@ on property:nd.start.pid=*
 
 on property:vold.decrypt=trigger_restart_framework
     start display_cc
-
-
-
-
-
 
 
 on property:gsm.nitz.time=*
@@ -341,7 +333,6 @@ service xssm /system/bin/xssm
     socket xssm stream 0660 root system
     socket prmd stream 0666 root system
     socket xssm_wakelock_socket stream 0660 root system
-
 
 
 service illumination /system/bin/illumination_service
@@ -461,10 +452,6 @@ service ric /sbin/ric
     class main
     seclabel u:r:ric:s0
 
-on property:init.svc.fuse_sdcard1=running
-   write /sys/class/block/mmcblk1/queue/scheduler cfq
-   write /sys/class/block/mmcblk1/bdi/max_ratio 1
-
 service ssr_dumper /system/bin/ssr_dumper
     class main
     user root
@@ -486,8 +473,6 @@ service lota /system/bin/lota
 # DCI_Logger
 
 
-
-
 on property:init.svc.fuse_sdcard1=running
    write /sys/class/block/mmcblk1/queue/scheduler cfq
    write /sys/class/block/mmcblk1/bdi/max_ratio 1
@@ -498,9 +483,6 @@ service fast-dormancy /system/bin/fast-dormancy
     group fastdormancy system inet net_raw net_admin qcom_diag radio wifi
     socket fastdorm stream 0660 system system
     class main
-
-
-
 
 
 # Native daemon for PacketFilter

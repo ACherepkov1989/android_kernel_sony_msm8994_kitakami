@@ -95,7 +95,7 @@ on boot
     write /sys/bus/i2c/devices/2-004a/update_fw 1
     write /sys/bus/i2c/devices/2-004a/update_cfg 1
     write /sys/bus/i2c/devices/2-0020/input/input0/update_fw 1
-# access permission for secure touch
+    # access permission for secure touch
     chmod 0660 /sys/devices/soc.0/f9924000.i2c/i2c-2/2-0020/input/input0/secure_touch_enable
     chmod 0440 /sys/devices/soc.0/f9924000.i2c/i2c-2/2-0020/input/input0/secure_touch
     chmod 0660 /sys/devices/soc.0/f9924000.i2c/i2c-2/2-004a/secure_touch_enable
@@ -113,7 +113,7 @@ service iddd /system/bin/iddd
     user idd
     group idd log inet trimarea
 
-#start camera server as daemon
+# start camera server as daemon
 service qcamerasvr /system/bin/mm-qcamera-daemon
     class late_start
     user camera
@@ -140,7 +140,6 @@ service qcamerasvr /system/bin/mm-qcamera-daemon
 #
 #on property:sys.boot_completed=1
 #    start qrngp
-#
 
 service qseecomd /system/bin/qseecomd
    class core
@@ -155,7 +154,7 @@ service perfd /system/vendor/bin/perfd
 #service mpdecision /system/bin/mpdecision --avg_comp
 #   user root
 #   disabled
-#
+
 service per_mgr /system/bin/pm-service
     class core
     user system
@@ -177,7 +176,7 @@ on property:sys.shutdown.requested=*
 #   user system
 #   group system
 #   disabled
-#
+
 service thermal-engine /system/vendor/bin/thermal-engine
    class main
    user root
@@ -266,13 +265,13 @@ service imsdatadaemon /system/bin/imsdatadaemon
     socket ims_datad stream 0660 system radio
     group system wifi radio inet log diag
     disabled
-#
+
 #service wcnss-service /system/bin/wcnss_service
 #    class late_start
 #    user root
 #    group system wifi
 #    oneshot
-#
+
 on property:sys.ims.QMI_DAEMON_STATUS=1
     start imsdatadaemon
 

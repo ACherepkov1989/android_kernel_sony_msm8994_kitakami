@@ -55,8 +55,6 @@ on boot
     # Override the value set in rootdir/init.rc
     
 
-    
-
     # NFC local data and storage
     mkdir /data/nfc 0770 nfc nfc
     mkdir /data/nfc/param 0770 nfc nfc
@@ -70,13 +68,7 @@ on property:dev.bootcomplete=1
 
 
 
-
-
-
 # input events logger
-
-
-
 
 
 
@@ -95,7 +87,6 @@ service cleanlostfound /system/bin/cleanlostfound.sh
 #teelog service
 
 
-
 #service to let Service Menu get and set Wlan antenna mode
 service sm_svc_get /system/bin/sm_native_svc GetWlanAntennaMode
     oneshot
@@ -110,7 +101,6 @@ on property:wlan.antenna_mode.action=get
 
 on property:wlan.antenna_mode.action=set
     start sm_svc_set
-
 
 
 # klogger service
@@ -168,7 +158,6 @@ service system_monitor /system/bin/system_monitor
 
 on property:ro.somc.thermal=system_monitor
     start system_monitor
-
 
 
 service startup-prober /system/bin/startup-prober
