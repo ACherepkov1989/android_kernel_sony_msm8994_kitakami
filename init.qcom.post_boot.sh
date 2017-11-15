@@ -1050,6 +1050,24 @@ case "$target" in
         # Override with SOMC tuning parameters for scheduler and others
         /system/bin/sh /system/etc/init.sony.cpu_parameter.sh
 
+        # set cpu_boost parameters
+        echo "0:1344000" > /sys/module/cpu_boost/parameters/input_boost_freq
+        echo 20 > /sys/module/cpu_boost/parameters/boost_ms
+        echo 40 > /sys/module/cpu_boost/parameters/input_boost_ms
+
+        # set core_ctl parameters
+        echo "40 40 40 40" > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
+        echo "68 68 68 68" > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
+
+        # Ensure 512 kb read-ahead setting for DM 0/1
+        echo 512 > /sys/block/dm-0/queue/read_ahead_kb
+        echo 512 > /sys/block/dm-1/queue/read_ahead_kb
+
+        # Set 512 KB for internal memory read-cache
+        echo 512 > /sys/block/mmcblk0/queue/read_ahead_kb
+        # Set 1024 KB for external memory read-cache
+        echo 1024 > /sys/block/mmcblk1/queue/read_ahead_kb
+
         # Set Memory parameters
         configure_memory_parameters
         restorecon -R /sys/devices/system/cpu
