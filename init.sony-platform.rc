@@ -276,6 +276,10 @@ on boot
     write /sys/module/qpnp_smbcharger_extension/parameters/id_polling_timeout 30000
     write /sys/module/qpnp_smbcharger_extension/parameters/start_id_polling 1
 
+
+on verity-logging
+    exec u:r:slideshow:s0 -- /sbin/slideshow -t 7000 warning/verity_red_1 warning/verity_red_2
+
 # SONY: Native dumper via system property(for non dumpable process)
 on property:nd.start.pid=*
     exec u:r:debuggerd:s0 -- /system/bin/nativedumper -p -c ${nd.start.pid} ${nd.start.signal} 0 0
