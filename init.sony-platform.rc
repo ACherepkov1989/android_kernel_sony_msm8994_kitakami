@@ -252,6 +252,7 @@ on early-boot
 on boot
     # SONY: Enable Sony RIC
     mount securityfs securityfs /sys/kernel/security nosuid nodev noexec
+    write /sys/kernel/security/sony_ric/enable 0
     chmod 0640 /sys/kernel/security/sony_ric/enable
 
     # SONY: Native dumper via corepattern
@@ -447,6 +448,7 @@ service tpm-service /system/bin/tpm-service
 
 # Start RIC
 service ric /sbin/ric
+    disabled
     user root
     group root drmrpc trimarea system
     class main
