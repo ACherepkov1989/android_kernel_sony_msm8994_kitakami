@@ -86,6 +86,7 @@ on post-fs-data
     mkdir /persist/data/sfs 0700 system system
     mkdir /persist/data/tz 0700 system system
     mkdir /data/usf 0700 system system
+    mkdir /data/misc/audio_pp 0771 media audio
     mkdir /data/misc/dts 0770 media audio
     mkdir /data/misc/seemp 0700 system system
 
