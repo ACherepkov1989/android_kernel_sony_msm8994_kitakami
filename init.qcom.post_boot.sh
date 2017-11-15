@@ -33,7 +33,7 @@
 target=`getprop ro.board.platform`
 
 function configure_memory_parameters() {
-# Set Memory paremeters.
+# Set Memory parameters.
 #
 # Set Low memory killer minfree parameters
 # 64 bit all memory configurations will use 18K series
@@ -148,7 +148,7 @@ case "$target" in
          echo 1 > /sys/module/msm_pm/modes/cpu2/standalone_power_collapse/idle_enabled
          echo 1 > /sys/module/msm_pm/modes/cpu3/standalone_power_collapse/idle_enabled
          echo 1 > /sys/module/msm_pm/modes/cpu0/power_collapse/idle_enabled
-	 echo 0 > /sys/module/msm_thermal/core_control/enabled
+         echo 0 > /sys/module/msm_thermal/core_control/enabled
          echo 1 > /sys/devices/system/cpu/cpu1/online
          echo 1 > /sys/devices/system/cpu/cpu2/online
          echo 1 > /sys/devices/system/cpu/cpu3/online
@@ -181,7 +181,7 @@ case "$target" in
          chown -h system /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
          chown -h system /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq
          chown -h system /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
-	 echo 1 > /sys/module/msm_thermal/core_control/enabled
+         echo 1 > /sys/module/msm_thermal/core_control/enabled
          chown -h root.system /sys/devices/system/cpu/mfreq
          chmod -h 220 /sys/devices/system/cpu/mfreq
          chown -h root.system /sys/devices/system/cpu/cpu1/online
@@ -384,15 +384,15 @@ case "$target" in
         fi
         case "$soc_id" in
             "206" | "247" | "248" | "249" | "250")
-		echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-	        echo 1 > /sys/devices/system/cpu/cpu1/online
-		echo 1 > /sys/devices/system/cpu/cpu2/online
-	        echo 1 > /sys/devices/system/cpu/cpu3/online
-	    ;;
+        echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+            echo 1 > /sys/devices/system/cpu/cpu1/online
+        echo 1 > /sys/devices/system/cpu/cpu2/online
+            echo 1 > /sys/devices/system/cpu/cpu3/online
+        ;;
            "239" | "241" | "263")
-		echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-		echo 10 > /sys/class/net/rmnet0/queues/rx-0/rps_cpus
-		if [ -f /sys/devices/soc0/platform_subtype_id ]; then
+        echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+        echo 10 > /sys/class/net/rmnet0/queues/rx-0/rps_cpus
+        if [ -f /sys/devices/soc0/platform_subtype_id ]; then
                     platform_subtype_id=`cat /sys/devices/soc0/platform_subtype_id`
                 fi
                 if [ -f /sys/devices/soc0/hw_platform ]; then
@@ -420,11 +420,11 @@ case "$target" in
                 esac
             ;;
              "233" | "240" | "242")
-		echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-	        echo 1 > /sys/devices/system/cpu/cpu1/online
-		echo 1 > /sys/devices/system/cpu/cpu2/online
-	        echo 1 > /sys/devices/system/cpu/cpu3/online
-	    ;;
+        echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+            echo 1 > /sys/devices/system/cpu/cpu1/online
+        echo 1 > /sys/devices/system/cpu/cpu2/online
+            echo 1 > /sys/devices/system/cpu/cpu3/online
+        ;;
        esac
     ;;
 esac
@@ -532,9 +532,9 @@ case "$target" in
 
         # HMP scheduler settings for 8916, 8936, 8939
         echo 2 > /proc/sys/kernel/sched_window_stats_policy
-	echo 3 > /proc/sys/kernel/sched_ravg_hist_size
+        echo 3 > /proc/sys/kernel/sched_ravg_hist_size
 
-	# HMP Task packing settings for 8916, 8936, 8939
+        # HMP Task packing settings for 8916, 8936, 8939
         echo 50 > /proc/sys/kernel/sched_small_task
         echo 50 > /proc/sys/kernel/sched_mostly_idle_load
         echo 10 > /proc/sys/kernel/sched_mostly_idle_nr_run
@@ -543,9 +543,9 @@ case "$target" in
         case "$soc_id" in
             "206" | "247" | "248" | "249" | "250")
 
-		# disable thermal core_control to update scaling_min_freq
+        # disable thermal core_control to update scaling_min_freq
                 echo 0 > /sys/module/msm_thermal/core_control/enabled
-		echo 1 > /sys/devices/system/cpu/cpu0/online
+                echo 1 > /sys/devices/system/cpu/cpu0/online
                 echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
                 echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
                 # enable thermal core_control now
@@ -561,20 +561,20 @@ case "$target" in
                 echo 50000 > /sys/devices/system/cpu/cpufreq/interactive/sampling_down_factor
 
                 # Bring up all cores online
-		echo 1 > /sys/devices/system/cpu/cpu1/online
-	        echo 1 > /sys/devices/system/cpu/cpu2/online
-	        echo 1 > /sys/devices/system/cpu/cpu3/online
-	        echo 1 > /sys/devices/system/cpu/cpu4/online
+                echo 1 > /sys/devices/system/cpu/cpu1/online
+                echo 1 > /sys/devices/system/cpu/cpu2/online
+                echo 1 > /sys/devices/system/cpu/cpu3/online
+                echo 1 > /sys/devices/system/cpu/cpu4/online
             ;;
         esac
 
-	# Apply governor settings for 8936
+        # Apply governor settings for 8936
         case "$soc_id" in
             "233" | "240" | "242")
 
-		# disable thermal core_control to update scaling_min_freq, interactive gov
+        # disable thermal core_control to update scaling_min_freq, interactive gov
                 echo 0 > /sys/module/msm_thermal/core_control/enabled
-		echo 1 > /sys/devices/system/cpu/cpu0/online
+        echo 1 > /sys/devices/system/cpu/cpu0/online
                 echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
                 echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
                 # enable thermal core_control now
@@ -590,10 +590,10 @@ case "$target" in
                 echo 50000 > /sys/devices/system/cpu/cpufreq/interactive/sampling_down_factor
 
                 # Bring up all cores online
-		echo 1 > /sys/devices/system/cpu/cpu1/online
-	        echo 1 > /sys/devices/system/cpu/cpu2/online
-	        echo 1 > /sys/devices/system/cpu/cpu3/online
-	        echo 1 > /sys/devices/system/cpu/cpu4/online
+                echo 1 > /sys/devices/system/cpu/cpu1/online
+                echo 1 > /sys/devices/system/cpu/cpu2/online
+                echo 1 > /sys/devices/system/cpu/cpu3/online
+                echo 1 > /sys/devices/system/cpu/cpu4/online
             ;;
         esac
 
@@ -601,12 +601,12 @@ case "$target" in
         case "$soc_id" in
             "239" | "241" | "263")
 
-		for devfreq_gov in /sys/class/devfreq/qcom,cpubw*/governor
-		do
-			 echo "bw_hwmon" > $devfreq_gov
-		done
+        for devfreq_gov in /sys/class/devfreq/qcom,cpubw*/governor
+        do
+            echo "bw_hwmon" > $devfreq_gov
+        done
 
-		# disable thermal core_control to update interactive gov settings
+                # disable thermal core_control to update interactive gov settings
                 echo 0 > /sys/module/msm_thermal/core_control/enabled
 
                 # enable governor for perf cluster
@@ -636,13 +636,13 @@ case "$target" in
                 echo 499200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
 
                 # enable thermal core_control now
-		echo 1 > /sys/module/msm_thermal/core_control/enabled
+                echo 1 > /sys/module/msm_thermal/core_control/enabled
 
                 # Bring up all cores online
-		echo 1 > /sys/devices/system/cpu/cpu1/online
-	        echo 1 > /sys/devices/system/cpu/cpu2/online
-	        echo 1 > /sys/devices/system/cpu/cpu3/online
-	        echo 1 > /sys/devices/system/cpu/cpu4/online
+                echo 1 > /sys/devices/system/cpu/cpu1/online
+                echo 1 > /sys/devices/system/cpu/cpu2/online
+                echo 1 > /sys/devices/system/cpu/cpu3/online
+                echo 1 > /sys/devices/system/cpu/cpu4/online
                 echo 1 > /sys/devices/system/cpu/cpu5/online
                 echo 1 > /sys/devices/system/cpu/cpu6/online
                 echo 1 > /sys/devices/system/cpu/cpu7/online
@@ -770,7 +770,7 @@ case "$target" in
         chmod -h 664 /sys/devices/system/cpu/cpu1/online
         chmod -h 664 /sys/devices/system/cpu/cpu2/online
         chmod -h 664 /sys/devices/system/cpu/cpu3/online
-	;;
+    ;;
 esac
 
 case "$target" in
@@ -802,17 +802,17 @@ case "$target" in
             echo -n enable > $mode
         done
 
-	# Disable CPU retention
-	echo 0 > /sys/module/lpm_levels/system/a53/cpu0/retention/idle_enabled
-	echo 0 > /sys/module/lpm_levels/system/a53/cpu1/retention/idle_enabled
-	echo 0 > /sys/module/lpm_levels/system/a53/cpu2/retention/idle_enabled
-	echo 0 > /sys/module/lpm_levels/system/a53/cpu3/retention/idle_enabled
-	echo 0 > /sys/module/lpm_levels/system/a57/cpu4/retention/idle_enabled
-	echo 0 > /sys/module/lpm_levels/system/a57/cpu5/retention/idle_enabled
+        # Disable CPU retention
+        echo 0 > /sys/module/lpm_levels/system/a53/cpu0/retention/idle_enabled
+        echo 0 > /sys/module/lpm_levels/system/a53/cpu1/retention/idle_enabled
+        echo 0 > /sys/module/lpm_levels/system/a53/cpu2/retention/idle_enabled
+        echo 0 > /sys/module/lpm_levels/system/a53/cpu3/retention/idle_enabled
+        echo 0 > /sys/module/lpm_levels/system/a57/cpu4/retention/idle_enabled
+        echo 0 > /sys/module/lpm_levels/system/a57/cpu5/retention/idle_enabled
 
-	# Disable L2 retention
-	echo 0 > /sys/module/lpm_levels/system/a53/a53-l2-retention/idle_enabled
-	echo 0 > /sys/module/lpm_levels/system/a57/a57-l2-retention/idle_enabled
+        # Disable L2 retention
+        echo 0 > /sys/module/lpm_levels/system/a53/a53-l2-retention/idle_enabled
+        echo 0 > /sys/module/lpm_levels/system/a57/a57-l2-retention/idle_enabled
 
         # configure governor settings for little cluster
         echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
@@ -916,6 +916,7 @@ case "$target" in
         echo 0 > /sys/devices/system/cpu/cpu7/online
         # Limit A57 max freq from msm_perf module in case CPU 4 is offline
         echo "4:960000 5:960000 6:960000 7:960000" > /sys/module/msm_performance/parameters/cpu_max_freq
+
         # disable thermal bcl hotplug to switch governor
         echo 0 > /sys/module/msm_thermal/core_control/enabled
         for mode in /sys/devices/soc.0/qcom,bcl.*/mode
@@ -936,6 +937,7 @@ case "$target" in
         do
             echo -n enable > $mode
         done
+
         # configure governor settings for little cluster
         echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
         echo 1 > /sys/devices/system/cpu/cpu0/cpufreq/interactive/use_sched_load
@@ -976,6 +978,7 @@ case "$target" in
         # insert core_ctl module and use conservative paremeters
         insmod /system/lib/modules/core_ctl.ko
         echo 1 > /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
+
         # re-enable thermal and BCL hotplug
         echo 1 > /sys/module/msm_thermal/core_control/enabled
         for mode in /sys/devices/soc.0/qcom,bcl.*/mode
@@ -994,13 +997,18 @@ case "$target" in
         do
             echo -n enable > $mode
         done
+
         # enable LPM
         echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+
         # Restore CPU 4 max freq from msm_performance
         echo "4:4294967295 5:4294967295 6:4294967295 7:4294967295" > /sys/module/msm_performance/parameters/cpu_max_freq
+
         # input boost configuration
+        echo 20 > /sys/module/cpu_boost/parameters/boost_ms
         echo 0:1344000 > /sys/module/cpu_boost/parameters/input_boost_freq
         echo 40 > /sys/module/cpu_boost/parameters/input_boost_ms
+
         # configure core_ctl module parameters
         echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
         echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
@@ -1009,6 +1017,7 @@ case "$target" in
         echo 100 > /sys/devices/system/cpu/cpu4/core_ctl/offline_delay_ms
         echo 1 > /sys/devices/system/cpu/cpu4/core_ctl/is_big_cluster
         echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/task_thres
+
         # Setting b.L scheduler parameters
         echo 1 > /proc/sys/kernel/sched_migration_fixup
         echo 30 > /proc/sys/kernel/sched_small_task
@@ -1019,8 +1028,10 @@ case "$target" in
         echo 400000 > /proc/sys/kernel/sched_freq_inc_notify
         echo 400000 > /proc/sys/kernel/sched_freq_dec_notify
         echo 0 > /proc/sys/kernel/sched_boost
-        #enable rps static configuration
+
+        # enable rps static configuration
         echo 8 >  /sys/class/net/rmnet_ipa0/queues/rx-0/rps_cpus
+
         for devfreq_gov in /sys/class/devfreq/qcom,cpubw*/governor
         do
             echo "bw_hwmon" > $devfreq_gov
@@ -1078,15 +1089,15 @@ case "$target" in
 
         # Bring up all cores online
         echo 1 > /sys/devices/system/cpu/cpu1/online
-	echo 1 > /sys/devices/system/cpu/cpu2/online
-	echo 1 > /sys/devices/system/cpu/cpu3/online
-	echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+        echo 1 > /sys/devices/system/cpu/cpu2/online
+        echo 1 > /sys/devices/system/cpu/cpu3/online
+        echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
 
-	for devfreq_gov in /sys/class/devfreq/qcom,cpubw*/governor
-	do
-		echo "bw_hwmon" > $devfreq_gov
-	done
-	;;
+        for devfreq_gov in /sys/class/devfreq/qcom,cpubw*/governor
+        do
+           echo "bw_hwmon" > $devfreq_gov
+        done
+    ;;
 esac
 
 case "$target" in
@@ -1234,9 +1245,9 @@ case "$target" in
      ;;
 esac
 
+# Let kernel know our image version/variant/crm_version
 case "$target" in
     "msm8226" | "msm8974" | "msm8610" | "apq8084" | "mpq8092" | "msm8610" | "msm8916" | "msm8994" | "msm8992")
-        # Let kernel know our image version/variant/crm_version
         image_version="10:"
         image_version+=`getprop ro.build.id`
         image_version+=":"
