@@ -1,5 +1,5 @@
-# Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
-# Copyright (C) 2013 Sony Mobile Communications Inc.
+# Copyright (c) 2012-2015,2016, The Linux Foundation. All rights reserved.
+# Copyright (C) 2015 Sony Mobile Communications Inc.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,7 @@
 /dev/kgsl-2d0             0666   root       root
 /dev/kgsl-2d1             0666   root       root
 /dev/ion                  0664   system     system
-/dev/rtc0                 0600   system     system
+/dev/rtc0                 0660   system     system
 /dev/smd0                 0660   system     system
 /dev/smd4                 0660   system     system
 /dev/smd_cxm_qmi          0640   radio      radio
@@ -48,9 +48,15 @@
 /dev/ipaNatTable          0660   net_admin  net_admin
 /dev/rmnet_ctrl           0660   usb        usb
 /dev/dpl_ctrl             0660   usb        usb
+/dev/wlan                 0660   wifi       wifi
 
 #permissions for CSVT
 /dev/smd11                0660   radio      radio
+
+#permsissions for BT/FM
+/dev/smd2                 0660   bluetooth  net_bt_stack
+/dev/smd3                 0660   bluetooth  net_bt_stack
+/dev/btpower              0660   bluetooth  system
 
 /dev/radio0               0640   system     system
 /dev/rfcomm0              0660   bluetooth  bluetooth
@@ -104,12 +110,15 @@
 /dev/mhi_pipe_14          0640   radio      radio
 /dev/mhi_pipe_16          0640   radio      radio
 /dev/mhi_pipe_32          0640   radio      radio
+/dev/at_usb0              0640   radio      radio
+/dev/at_mdm0              0640   radio      radio
 /dev/video*               0660   system     camera
 /dev/media*               0660   system     camera
 /dev/v4l-subdev*          0660   system     camera
 /dev/qseecom              0660   system     drmrpc
 /dev/seemplog             0660   system     system
 /dev/pft                  0660   system     drmrpc
+/dev/cryptoapp            0660   system     system
 /dev/gemini0              0660   system     camera
 /dev/jpeg0                0660   system     camera
 /dev/jpeg1                0660   system     camera
@@ -117,6 +126,8 @@
 /dev/jpeg3                0660   system     camera
 /dev/adsprpc-smd          0664   system     system
 /dev/system_health_monitor 0640  radio      system
+/dev/mdss_rotator         0664   system     system
+/dev/spidev0.0            0660   system     audio
 /dev/msm_camera/*         0660   system     camera
 /dev/gemini/              0660   system     camera
 /dev/mercury0             0660   system     camera
@@ -134,6 +145,8 @@
 /dev/msm_evrc             0660   system     audio
 /dev/msm_wma              0660   system     audio
 /dev/msm_wmapro           0660   system     audio
+/dev/msm_alac             0660   system     audio
+/dev/msm_ape              0660   system     audio
 /dev/msm_amrnb            0660   system     audio
 /dev/msm_amrwb            0660   system     audio
 /dev/msm_amrwbplus        0660   system     audio
@@ -143,6 +156,7 @@
 /dev/msm_qcelp_in         0660   system     audio
 /dev/msm_evrc_in          0660   system     audio
 /dev/msm_amrnb_in         0640   system     audio
+/dev/msm_amrwb_in         0640   system     audio
 /dev/msm_a2dp_in          0660   system     audio
 /dev/msm_ac3              0660   system     audio
 /dev/msm_audio_cal        0660   system     audio
@@ -154,8 +168,8 @@
 /dev/msm_preproc_ctl      0660   system     audio
 /dev/msm_rtac             0660   system     audio
 /dev/msm_voicememo        0660   system     audio
-/dev/smd3                 0660   bluetooth  net_bt_stack
-/dev/smd2                 0660   bluetooth  net_bt_stack
+/dev/msm_g711alaw_in      0640   system     audio
+/dev/msm_g711mlaw_in      0640   system     audio
 /dev/ttyHSL1              0660   system     system
 /dev/ttyHS1               0660   system     system
 /dev/mdm                  0660   system     radio
@@ -163,7 +177,7 @@
 /dev/sdio_tty_ciq_00      0660   system     system
 /dev/tty_sdio_00          0660   system     system
 /dev/ttyGS0               0660   system     system
-/dev/i2c-5                0660   media       media
+/dev/i2c-5                0660   media      media
 /dev/voice_svc            0660   system     audio
 /dev/avtimer              0660   system     audio
 
@@ -175,6 +189,9 @@
 # Broadcast devices
 /dev/tsc_mux0             0660   media       media
 /dev/tsc_ci0              0660   media       media
+
+# permissions for Digital TV
+/dev/spidev7.0            0660   system      system
 
 # sensors
 /sys/devices/i2c-12/12-*  pollrate_ms 0664 system system
@@ -220,9 +237,16 @@
 /dev/wcnss_ctrl           0660   system     system
 /sys/devices/pci0000:00/0000:00:00.0/0000:01:00.0/net/wlan0/queues/rx-* rps_cpus 0660 system system
 
-#nfc permissions
-#/dev/nq-nci               0660    nfc         nfc
+# wigig
+/sys/bus/pci/drivers/wil6210* 0000:01:00.0/wil6210/fst_link_loss 0660 wifi wifi
+/sys/bus/pci/drivers/wil6210* 0000:01:00.0/wil6210/thermal_throttling 0660 system system
+/sys/bus/pci/drivers/wil6210* 0000:01:00.0/net/wigig0/queues/rx-0/rps_cpus 0660 system system
+/sys/bus/pci/drivers/wil6210* 0000:01:00.0/net/wigig0/gro_flush_timeout 0660 system system
+/sys/devices/virtual/net/bond0 queues/rx-0/rps_cpus 0660 system system
+
+# nfc permissions
 #/dev/nfc-nci              0660    nfc         nfc
+#/dev/nq-nci               0660    nfc         nfc
 #/dev/assd                 0660    nfc         nfc
 
 # NFC
@@ -238,7 +262,7 @@
 /dev/uio2                 0660   system     system
 
 # SSR devices
-/dev/subsys_*         0640   system     system
+/dev/subsys_*             0640   system     system
 
 # Ultrasound device
 /dev/usf1                 0660   system     system
@@ -246,8 +270,16 @@
 # Ramdump devices
 /dev/ramdump*             0640   system     system
 
+# ImproveTouch device
+/dev/hbtp_input           0660   system     system
+/dev/hbtp_vm              0660   system     system
+
+# Kmsg device
+#/dev/kmsg                 0620   root       system
+
 # Add device block for FRP
 /dev/block/platform/soc.0/f9824900.sdhci/by-name/config    0600   system     system
+/dev/block/bootdevice/by-name/config                       0600   system     system
 
 # BT/FM/ANT+ V4L2
 /dev/brcm_bt_drv          0660   bluetooth  net_bt_stack
@@ -266,18 +298,24 @@
 /sys/devices/soc.0/f9923000.spi/spi_master/spi0/spi0.1 wakeup_enable    0220 system input
 /sys/devices/soc.0/f9923000.spi/spi_master/spi0/spi0.1 irq              0660 system input
 
-# Fingerprint sensor  device
+# Fingerprint sensor device
 /sys/devices/soc/soc:fpc1145 hw_reset         0220 system input
 /sys/devices/soc/soc:fpc1145 pinctl_set       0220 system input
 /sys/devices/soc/soc:fpc1145 regulator_enable 0220 system input
 /sys/devices/soc/soc:fpc1145 spi_prepare      0220 system input
 /sys/devices/soc/soc:fpc1145 irq              0660 system input
 /sys/devices/soc/soc:fpc1145 wakeup_enable    0220 system input
+/sys/devices/soc/soc:fpc1145 pm_wakeup        0660 system input
+/sys/devices/soc.0/0.fpc1145 hw_reset         0220 system input
+/sys/devices/soc.0/0.fpc1145 pinctl_set       0220 system input
+/sys/devices/soc.0/0.fpc1145 regulator_enable 0220 system input
+/sys/devices/soc.0/0.fpc1145 spi_prepare      0220 system input
+/sys/devices/soc.0/0.fpc1145 irq              0660 system input
+/sys/devices/soc.0/0.fpc1145 wakeup_enable    0660 system input
+/sys/devices/soc.0/0.fpc1145 pm_wakeup        0660 system input
 
 # Audio Sony Effect tuning parameter setting device
-/dev/sony_hweffect_params 0660  system      audio
-
-/dev/block/bootdevice/by-name/config 0600  system      system
+/dev/sony_hweffect_params   0660  system     audio
 
 # TA
-/dev/block/bootdevice/by-name/TA 0770  tad     tad
+/dev/block/bootdevice/by-name/TA   0770  tad     tad
