@@ -1,7 +1,7 @@
-id=template
-name=Template Module
+id=cpuvoltsuzuran
+name=Table of CPU voltages
 version=v1
 versionCode=1
-author=topjohnwu
-description=A short description
+author=GreyLeshy
+description=Table of CPU voltages for Xperia E5823 (GreenKernel)
 template=1400
