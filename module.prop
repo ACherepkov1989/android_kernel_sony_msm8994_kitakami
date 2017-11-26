@@ -1,6 +1,6 @@
 id=cpuvoltsuzuran
 name=Table of CPU voltages
-version=v1
+version=v2
 versionCode=1
 author=GreyLeshy
 description=Table of CPU voltages for Xperia E5823 (GreenKernel)
