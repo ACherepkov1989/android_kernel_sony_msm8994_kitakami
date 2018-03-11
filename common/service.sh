@@ -7,10 +7,25 @@ MODDIR=${0%/*}
 # More info in the main Magisk thread
 
 sleep 5
-echo "735 745 765 795 825 845 865 945 975 995 1005 1015 745 755 755 825 845 865 895 905 915 925 940 955 965 975 985" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+echo "735 745 765 795 825 845 865 945 975 995 1005 1015 745 755 755 825 845 865 895 905 915 925 940 955 965 975 995" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
 
 sleep 75
-echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 985" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 995" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
 
-sleep 360
-echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 985" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+sleep 325
+chown 0.0 /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+sleep 1
+echo "4" > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 995" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+sleep 1
+echo "3" > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 995" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+sleep 1
+echo "2" > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 995" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+sleep 1
+echo "1" > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+echo "725 745 765 795 825 845 865 945 965 985 995 1005 735 735 735 805 835 865 895 905 915 925 940 955 965 975 995" > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
+sleep 1
+chown 1000.1000 /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+chown 1000.1000 /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
