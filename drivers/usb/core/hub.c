@@ -621,12 +621,17 @@ void usb_wakeup_notification(struct usb_device *hdev,
 		unsigned int portnum)
 {
 	struct usb_hub *hub;
+	struct usb_port *port_dev;
 
 	if (!hdev)
 		return;
 
 	hub = usb_hub_to_struct_hub(hdev);
 	if (hub) {
+		port_dev = hub->ports[portnum - 1];
+		if (port_dev && port_dev->child)
+			pm_wakeup_event(&port_dev->child->dev, 0);
+
 		set_bit(portnum, hub->wakeup_bits);
 		kick_khubd(hub);
 	}
@@ -853,6 +858,14 @@ static unsigned hub_power_on(struct usb_hub *hub, bool do_delay)
 	if (do_delay)
 		msleep(delay);
 	return delay;
+}
+
+static inline unsigned hub_power_on_good_delay(struct usb_hub *hub)
+{
+	unsigned delay = hub->descriptor->bPwrOn2PwrGood * 2;
+
+	/* Wait at least 100 msec for power to become stable */
+	return max(delay, 100U);
 }
 
 static int hub_hub_status(struct usb_hub *hub,
@@ -3420,8 +3433,11 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 
 	/* Skip the initial Clear-Suspend step for a remote wakeup */
 	status = hub_port_status(hub, port1, &portstatus, &portchange);
-	if (status == 0 && !port_is_suspended(hub, portstatus))
+	if (status == 0 && !port_is_suspended(hub, portstatus)) {
+		if (portchange & USB_PORT_STAT_C_SUSPEND)
+			pm_wakeup_event(&udev->dev, 0);
 		goto SuspendCleared;
+	}
 
 	// dev_dbg(hub->intfdev, "resume port %d\n", port1);
 
@@ -4580,6 +4596,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 {
 	struct usb_device *hdev = hub->hdev;
 	struct device *hub_dev = hub->intfdev;
+	struct usb_port *port_dev = hub->ports[port1 - 1];
 	struct usb_hcd *hcd = bus_to_hcd(hdev->bus);
 	unsigned wHubCharacteristics =
 			le16_to_cpu(hub->descriptor->wHubCharacteristics);
@@ -4804,6 +4821,15 @@ loop:
 		usb_put_dev(udev);
 		if ((status == -ENOTCONN) || (status == -ENOTSUPP))
 			break;
+
+		/* When halfway through our retry count, power-cycle the port */
+		if (i == (SET_CONFIG_TRIES / 2) - 1) {
+			dev_info(&port_dev->dev, "attempt power cycle\n");
+			usb_hub_set_port_power(hdev, hub, port1, false);
+			msleep(2 * hub_power_on_good_delay(hub));
+			usb_hub_set_port_power(hdev, hub, port1, true);
+			msleep(hub_power_on_good_delay(hub));
+		}
 	}
 	if (hub->hdev->parent ||
 			!hcd->driver->port_handed_over ||

@@ -1829,7 +1829,6 @@ static struct usb_gadget_driver gadgetfs_driver = {
 	.bind		= gadgetfs_bind,
 	.unbind		= gadgetfs_unbind,
 	.setup		= gadgetfs_setup,
-	.reset		= gadgetfs_disconnect,
 	.disconnect	= gadgetfs_disconnect,
 	.suspend	= gadgetfs_suspend,
 
@@ -1927,8 +1926,10 @@ dev_config (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
 
 	spin_lock_irq (&dev->lock);
 	value = -EINVAL;
-	if (dev->buf)
+	if (dev->buf) {
+		kfree(kbuf);
 		goto fail;
+	}
 	dev->buf = kbuf;
 
 	/* full or low speed config */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, 2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014,2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -131,7 +131,7 @@ struct fastrpc_ioctl_munmap {
 struct fastrpc_ioctl_mmap {
 	int fd;				/* ion fd */
 	uint32_t flags;			/* flags for dsp to map with */
-	uintptr_t vaddrin;	/* optional virtual address */
+	uintptr_t vaddrin;		/* optional virtual address */
 	size_t size;			/* size */
 	uintptr_t vaddrout;		/* dsps virtual address */
 };

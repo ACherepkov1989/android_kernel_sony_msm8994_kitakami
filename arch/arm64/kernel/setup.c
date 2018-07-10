@@ -141,12 +141,16 @@ void cpuinfo_store_cpu(void)
 
 void __init smp_setup_processor_id(void)
 {
+	u64 mpidr = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
+	cpu_logical_map(0) = mpidr;
+
 	/*
 	 * clear __my_cpu_offset on boot CPU to avoid hang caused by
 	 * using percpu variable early, for example, lockdep will
 	 * access percpu variable inside lock_release
 	 */
 	set_my_cpu_offset(0);
+	pr_info("Booting Linux on physical CPU 0x%lx\n", (unsigned long)mpidr);
 }
 
 bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
@@ -399,11 +403,6 @@ void __init __weak init_random_pool(void) { }
 
 void __init setup_arch(char **cmdline_p)
 {
-	/*
-	 * Unmask asynchronous aborts early to catch possible system errors.
-	 */
-	local_async_enable();
-
 	setup_processor();
 
 	setup_machine_fdt(__fdt_pointer);
@@ -420,6 +419,12 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
+	/*
+	 *  Unmask asynchronous aborts after bringing up possible earlycon.
+	 * (Report possible System Errors once we can report this occurred)
+	 */
+	local_async_enable();
+
 	efi_init();
 	arm64_memblock_init();
 
@@ -427,12 +432,12 @@ void __init setup_arch(char **cmdline_p)
 	request_standard_resources();
 
 	efi_idmap_init();
+	early_ioremap_reset();
 
 	unflatten_device_tree();
 
 	psci_init();
 
-	cpu_logical_map(0) = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
 	cpu_read_bootcpu_ops();
 #ifdef CONFIG_SMP
 	smp_init_cpus();

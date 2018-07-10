@@ -102,7 +102,7 @@ static inline uint64_t ptr_to_uint64(void *ptr)
 	return addr;
 }
 
-static inline int buf_get_pages(void *addr, size_t sz, int nr_pages,
+static inline int buf_get_pages(void *addr, ssize_t sz, int nr_pages,
 				int access, struct smq_phy_page *pages,
 				int nr_elems, struct smq_phy_page *range)
 {
@@ -167,7 +167,6 @@ struct overlap {
 	uintptr_t mend;
 	uintptr_t offset;
 };
-
 
 struct smq_invoke_ctx {
 	struct hlist_node hn;
@@ -514,7 +513,6 @@ bail:
 	return err;
 }
 
-
 static void context_free(struct smq_invoke_ctx *ctx, int remove);
 
 static int context_alloc(struct fastrpc_apps *me, uint32_t kernel,
@@ -569,7 +567,7 @@ static int context_alloc(struct fastrpc_apps *me, uint32_t kernel,
 		}
 	}
 	ctx->sc = invoke->sc;
-	if (REMOTE_SCALARS_INBUFS(ctx->sc) + REMOTE_SCALARS_OUTBUFS(ctx->sc)) {
+	if (bufs) {
 		VERIFY(err, 0 == context_build_overlap(ctx));
 		if (err)
 			goto bail;
@@ -1785,7 +1783,7 @@ static void fastrpc_channel_close(struct kref *kref)
 
 	ctx = container_of(kref, struct fastrpc_channel_context, kref);
 	smd_close(ctx->chan);
-	ctx->chan = NULL;
+	ctx->chan = 0;
 	mutex_unlock(&me->smd_mutex);
 	cid = ctx - &me->channel[0];
 	pr_info("'closed /dev/%s c %d %d'\n", gcinfo[cid].name,
@@ -1902,7 +1900,6 @@ smd_bail:
 	mutex_unlock(&me->smd_mutex);
 	return err;
 }
-
 
 static long fastrpc_device_ioctl(struct file *file, unsigned int ioctl_num,
 				 unsigned long ioctl_param)
